@@ -1,7 +1,8 @@
 import { conf } from "@/setup/config";
-import { useAuthStore } from "@/stores/auth";
 
 export function useBackendUrl(): string | null {
-  const backendUrl = useAuthStore((s) => s.backendUrl);
-  return backendUrl ?? conf().BACKEND_URL;
+  // Always use the config BACKEND_URL to avoid CORS issues with old cached URLs
+  // The authStore.backendUrl may contain outdated URLs like server.fifthwit.net
+  // which don't have CORS configured for the current domain
+  return conf().BACKEND_URL;
 }

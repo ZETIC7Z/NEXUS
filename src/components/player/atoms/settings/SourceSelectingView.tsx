@@ -165,6 +165,8 @@ export function SourceSelectionView({
     (s) => s.enableLastSuccessfulSource,
   );
   const disabledSources = usePreferencesStore((s) => s.disabledSources);
+  const febboxKey = usePreferencesStore((s) => s.febboxKey);
+  const hasFebboxKey = febboxKey && febboxKey.length > 0;
 
   const sources = useMemo(() => {
     if (!metaType) return [];
@@ -172,6 +174,16 @@ export function SourceSelectionView({
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id));
+
+    // Create FED API source if user has febbox token
+    const fedApiSource = hasFebboxKey
+      ? {
+        id: "fedapi",
+        name: "FED API (4K) 🔥",
+        type: "source" as const,
+        mediaTypes: ["movie", "show"],
+      }
+      : null;
 
     if (!enableSourceOrder || preferredSourceOrder.length === 0) {
       // Even without custom source order, prioritize last successful source if enabled
@@ -181,10 +193,13 @@ export function SourceSelectionView({
         );
         if (lastSourceIndex !== -1) {
           const lastSource = allSources.splice(lastSourceIndex, 1)[0];
-          return [lastSource, ...allSources];
+          const result = [lastSource, ...allSources];
+          // Add FED API at the very top if available
+          return fedApiSource ? [fedApiSource, ...result] : result;
         }
       }
-      return allSources;
+      // Add FED API at the top if available
+      return fedApiSource ? [fedApiSource, ...allSources] : allSources;
     }
 
     // Sort sources according to preferred order, but prioritize last successful source
@@ -214,7 +229,8 @@ export function SourceSelectionView({
     // Add remaining sources that weren't in the preferred order
     orderedSources.push(...remainingSources);
 
-    return orderedSources;
+    // Add FED API at the very top if available
+    return fedApiSource ? [fedApiSource, ...orderedSources] : orderedSources;
   }, [
     metaType,
     preferredSourceOrder,
@@ -222,6 +238,7 @@ export function SourceSelectionView({
     disabledSources,
     lastSuccessfulSource,
     enableLastSuccessfulSource,
+    hasFebboxKey,
   ]);
 
   return (

@@ -150,6 +150,57 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
     const scrapeMedia = metaToScrapeMedia(meta);
     const providerApiUrl = getLoadbalancedProviderApiUrl();
 
+    // Special handling for FED API (Fembox)
+    if (sourceId === "fedapi") {
+      console.log("FED API: Scraping via Fembox...");
+      try {
+        const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
+          await import("@/backend/providers/fembox");
+
+        let femboxData = null;
+        if (scrapeMedia.type === "movie") {
+          femboxData = await scrapeFemboxMovie(scrapeMedia.tmdbId);
+        } else if (
+          scrapeMedia.type === "show" &&
+          scrapeMedia.episode &&
+          scrapeMedia.season
+        ) {
+          femboxData = await scrapeFemboxTV(
+            scrapeMedia.tmdbId,
+            scrapeMedia.season.number,
+            scrapeMedia.episode.number,
+          );
+        }
+
+        if (femboxData && femboxData.links && femboxData.links.length > 0) {
+          const stream = convertFemboxToStream(femboxData);
+          if (stream) {
+            console.log("FED API: Found 4K stream!");
+            if (isExtensionActiveCached()) await prepareStream(stream);
+            setEmbedId(null);
+            setCaption(null);
+            setSource(
+              convertRunoutputToSource({ stream }),
+              convertProviderCaption(stream.captions || []),
+              getSavedProgress(progressItems, meta),
+            );
+            setSourceId(sourceId);
+            if (enableLastSuccessfulSource) {
+              setLastSuccessfulSource(sourceId);
+            }
+            router.close();
+            return null;
+          }
+        }
+
+        console.log("FED API: No streams found");
+        throw new NotFoundError("No streams found from FED API");
+      } catch (err) {
+        console.error("FED API: Error scraping", err);
+        throw err;
+      }
+    }
+
     let result: SourcererOutput | undefined;
     try {
       if (providerApiUrl && !isExtensionActiveCached()) {

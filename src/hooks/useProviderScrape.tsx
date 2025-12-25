@@ -42,6 +42,17 @@ function useBaseScrape() {
     setSources(
       evt.sourceIds
         .map((v) => {
+          // Special handling for FED API source (not in cached metadata)
+          if (v === "fedapi") {
+            const out: ScrapingSegment = {
+              name: "FED API (4K) 🔥",
+              id: "fedapi",
+              status: "waiting",
+              percentage: 0,
+            };
+            return out;
+          }
+
           const source = getCachedMetadata().find((s) => s.id === v);
           if (!source) throw new Error("invalid source id");
           const out: ScrapingSegment = {
@@ -175,6 +186,77 @@ export function useScrape() {
       const failedSources = playerState.failedSources;
       const failedEmbeds = playerState.failedEmbeds;
 
+      // Check if user has Febbox token for FED API
+      const febboxKey = usePreferencesStore.getState().febboxKey;
+      const hasFebboxKey = febboxKey && febboxKey.length > 0;
+
+      // Try FED API (Fembox) FIRST if user has token
+      if (hasFebboxKey && !startFromSourceId) {
+        console.log("FED API: User has token, trying FED API first...");
+
+        // Initialize FED API source in UI
+        const fedApiSource: ScrapingSegment = {
+          name: "FED API (4K) 🔥",
+          id: "fedapi",
+          status: "pending",
+          percentage: 0,
+        };
+
+        // Add FED API to sources display
+        initEvent({
+          sourceIds: ["fedapi", ...allSources.filter(s =>
+            !(disabledSources || []).includes(s.id) && !failedSources.includes(s.id)
+          ).map(s => s.id)]
+        });
+
+        startEvent("fedapi");
+        updateEvent({ id: "fedapi", status: "pending", percentage: 50 });
+
+        try {
+          const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
+            await import("@/backend/providers/fembox");
+
+          let femboxData = null;
+          if (media.type === "movie") {
+            femboxData = await scrapeFemboxMovie(media.tmdbId);
+          } else if (media.type === "show" && media.episode && media.season) {
+            femboxData = await scrapeFemboxTV(
+              media.tmdbId,
+              media.season.number,
+              media.episode.number,
+            );
+          }
+
+          if (femboxData && femboxData.links && femboxData.links.length > 0) {
+            const stream = convertFemboxToStream(femboxData);
+            if (stream) {
+              console.log("FED API: Found 4K stream!");
+              updateEvent({ id: "fedapi", status: "success", percentage: 100 });
+
+              const femboxOutput = {
+                stream: {
+                  ...stream,
+                  id: "fedapi-stream",
+                },
+                sourceId: "fedapi",
+                embedId: undefined,
+              };
+
+              if (isExtensionActiveCached())
+                await prepareStream(femboxOutput.stream);
+              return getResult(femboxOutput);
+            }
+          }
+
+          // FED API didn't find content, mark as not found and continue
+          console.log("FED API: No streams found, trying other sources...");
+          updateEvent({ id: "fedapi", status: "notfound", percentage: 100 });
+        } catch (error) {
+          console.error("FED API: Error", error);
+          updateEvent({ id: "fedapi", status: "failure", percentage: 100, error });
+        }
+      }
+
       // Start with all available sources (filtered by disabled and failed ones)
       let baseSourceOrder = allSources
         .filter(
@@ -228,10 +310,10 @@ export function useScrape() {
       // Filter out disabled and failed embeds from the embed order
       const filteredEmbedOrder = enableEmbedOrder
         ? (preferredEmbedOrder || []).filter(
-            (id) =>
-              !(disabledEmbeds || []).includes(id) &&
-              !allFailedEmbedIds.includes(id),
-          )
+          (id) =>
+            !(disabledEmbeds || []).includes(id) &&
+            !allFailedEmbedIds.includes(id),
+        )
         : undefined;
 
       const providerApiUrl = getLoadbalancedProviderApiUrl();
@@ -271,8 +353,8 @@ export function useScrape() {
         },
       });
 
-      // If no output from regular providers, try fembox as fallback
-      if (!output) {
+      // If no output from regular providers, try fembox as fallback (if not tried already)
+      if (!output && !hasFebboxKey) {
         console.log("No streams from regular providers, trying fembox...");
         const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
           await import("@/backend/providers/fembox");

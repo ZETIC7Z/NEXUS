@@ -66,8 +66,8 @@ html[data-no-scroll] body {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .google-cast-button:not(.casting) google-cast-launcher {
@@ -420,6 +420,7 @@ body:has([data-player-page]) * {
   0% {
     transform: translateY(0);
   }
+
   100% {
     transform: translateY(-50%);
   }
@@ -429,6 +430,7 @@ body:has([data-player-page]) * {
   0% {
     transform: translateY(-50%);
   }
+
   100% {
     transform: translateY(0);
   }
