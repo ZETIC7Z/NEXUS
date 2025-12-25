@@ -1,0 +1,219 @@
+/* TV Mode Optimizations - 10-foot UI for TV devices */
+
+/* Only apply TV styles when TV device is detected */
+html[data-tv-mode] {
+  /* Larger base font for TV viewing */
+  font-size: 1.25em;
+}
+
+html[data-tv-mode] body {
+  /* Ensure smooth scrolling on TV */
+  scroll-behavior: smooth;
+}
+
+/* Enhanced focus indicators for TV navigation */
+html[data-tv-mode] *:focus {
+  outline: 3px solid theme("colors.pill.highlight");
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(134, 82, 187, 0.3);
+  transition: all 0.2s ease;
+}
+
+html[data-tv-mode] *:focus-visible {
+  outline: 3px solid theme("colors.pill.highlight");
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(134, 82, 187, 0.3), 0 0 20px rgba(134, 82, 187, 0.5);
+}
+
+/* Larger buttons for TV remote interaction */
+html[data-tv-mode] button,
+html[data-tv-mode] a[role="button"],
+html[data-tv-mode] .tabbable {
+  min-height: 60px;
+  padding: 1rem 1.5rem;
+  font-size: 1.1rem;
+}
+
+/* Larger text for readability at 10 feet */
+html[data-tv-mode] h1 {
+  font-size: 3.5rem;
+}
+
+html[data-tv-mode] h2 {
+  font-size: 2.5rem;
+}
+
+html[data-tv-mode] h3 {
+  font-size: 2rem;
+}
+
+html[data-tv-mode] p,
+html[data-tv-mode] span {
+  font-size: 1.2rem;
+  line-height: 1.6;
+}
+
+/* Enhanced media cards for TV */
+html[data-tv-mode] .media-card {
+  border: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+html[data-tv-mode] .media-card:focus,
+html[data-tv-mode] .media-card:focus-within {
+  border-color: theme("colors.pill.highlight");
+  box-shadow: 0 0 30px rgba(134, 82, 187, 0.6);
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+/* Larger spacing for better TV navigation */
+html[data-tv-mode] .grid {
+  gap: 2rem;
+}
+
+html[data-tv-mode] .flex {
+  gap: 1.5rem;
+}
+
+/* Enhanced video player controls for TV */
+html[data-tv-mode] [data-player-page] button {
+  min-width: 70px;
+  min-height: 70px;
+  font-size: 1.5rem;
+}
+
+html[data-tv-mode] [data-player-page] .slider {
+  height: 8px;
+}
+
+/* Improved navigation menu for TV */
+html[data-tv-mode] nav a {
+  padding: 1.5rem 2rem;
+  font-size: 1.3rem;
+}
+
+/* Hide elements inappropriate for TV */
+html[data-tv-mode] .hide-on-tv {
+  display: none !important;
+}
+
+/* Cursor pointer should be clearly visible on TV */
+html[data-tv-mode] .cursor-pointer {
+  cursor: pointer;
+}
+
+/* Smooth transitions for TV focus states */
+html[data-tv-mode] * {
+  transition-property: outline, box-shadow, transform, border-color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+
+/* Enhanced carousel navigation for TV */
+html[data-tv-mode] .carousel-container {
+  padding: 2rem 0;
+}
+
+html[data-tv-mode] .carousel-item {
+  margin: 0 1rem;
+}
+
+/* Larger modal dialogs for TV */
+html[data-tv-mode] .modal,
+html[data-tv-mode] .overlay {
+  max-width: 90vw;
+  padding: 3rem;
+}
+
+/* Enhanced input fields for TV */
+html[data-tv-mode] input,
+html[data-tv-mode] select,
+html[data-tv-mode] textarea {
+  min-height: 60px;
+  font-size: 1.2rem;
+  padding: 1rem 1.5rem;
+}
+
+/* Bigger icons for TV */
+html[data-tv-mode] .icon,
+html[data-tv-mode] svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Enhanced dropdown menus for TV */
+html[data-tv-mode] .dropdown-menu {
+  padding: 1.5rem;
+}
+
+html[data-tv-mode] .dropdown-item {
+  padding: 1.5rem 2rem;
+  font-size: 1.2rem;
+}
+
+/* Better visible scrollbars for TV */
+html[data-tv-mode] ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+html[data-tv-mode] ::-webkit-scrollbar-thumb {
+  background-color: rgba(134, 82, 187, 0.8);
+  border-radius: 6px;
+}
+
+/* Enhanced tooltips for TV */
+html[data-tv-mode] [title] {
+  position: relative;
+}
+
+/* Bigger loading spinners for TV */
+html[data-tv-mode] .spinner,
+html[data-tv-mode] .loading {
+  width: 80px;
+  height: 80px;
+}
+
+/* TV-optimized grid layouts */
+html[data-tv-mode] .media-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2.5rem;
+}
+
+/* Enhanced breadcrumbs for TV */
+html[data-tv-mode] .breadcrumb {
+  font-size: 1.3rem;
+  padding: 1rem 0;
+}
+
+/* Better contrast for TV screens */
+html[data-tv-mode] .text-dimmed {
+  opacity: 0.85;
+}
+
+/* Enhanced focus ring animation */
+@keyframes tv-focus-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 6px rgba(134, 82, 187, 0.3), 0 0 20px rgba(134, 82, 187, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(134, 82, 187, 0.5), 0 0 30px rgba(134, 82, 187, 0.7);
+  }
+}
+
+html[data-tv-mode] *:focus-visible {
+  animation: tv-focus-pulse 2s infinite;
+}
+
+/* Hide mobile-specific elements on TV */
+html[data-tv-mode] .mobile-only,
+html[data-tv-mode] [data-mobile-only] {
+  display: none !important;
+}
+
+/* Show TV-specific elements */
+html[data-tv-mode] .tv-only,
+html[data-tv-mode] [data-tv-only] {
+  display: block !important;
+}
