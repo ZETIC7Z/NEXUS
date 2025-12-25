@@ -75,64 +75,21 @@ export async function fetchFebboxQuota(febboxKey: string | null): Promise<any> {
 }
 
 export async function testFebboxKey(febboxKey: string | null): Promise<Status> {
-  // Use fembox.lordflix.club API - test with a known movie ID (900 = Bringing Up Baby)
-  const febboxApiTestUrl = `https://fembox.lordflix.club/api/media/movie/900?cookie=${febboxKey}`;
-
   if (!febboxKey) {
     return "unset";
   }
 
-  let attempts = 0;
-  const maxAttempts = 2;
-
-  while (attempts < maxAttempts) {
-    console.log(
-      `Attempt ${attempts + 1} of ${maxAttempts} to check Febbox token`,
-    );
-    try {
-      const data = await proxiedFetch(febboxApiTestUrl, {});
-
-      // Fembox API returns {success: true, links: [...], subtitles: [...]}
-      if (!data || typeof data.success === "undefined") {
-        console.error("Invalid response format from Fembox API:", data);
-        attempts += 1;
-        if (attempts === maxAttempts) {
-          console.log("Max attempts reached, returning error");
-          return "invalid_token";
-        }
-        console.log("Retrying after invalid response format...");
-        await sleep(3000);
-        continue;
-      }
-
-      if (data.success && data.links && data.links.length > 0) {
-        console.log("Fembox token valid, links found");
-        return "success";
-      }
-
-      console.log("No links found in attempt", attempts + 1);
-      attempts += 1;
-      if (attempts === maxAttempts) {
-        console.log("Max attempts reached, returning error");
-        return "invalid_token";
-      }
-      console.log("Retrying after no links found...");
-      await sleep(3000);
-    } catch (error: any) {
-      console.error("Error testing Febbox token:", error);
-      attempts += 1;
-      if (attempts === maxAttempts) {
-        console.log("Max attempts reached, returning error");
-        return "api_down";
-      }
-      console.log("Retrying after error...");
-      await sleep(3000);
-    }
+  // Quick validation: JWT tokens should contain two dots and start with eyJ
+  if (!febboxKey.startsWith("eyJ") || febboxKey.split(".").length !== 3) {
+    console.log("Invalid JWT format");
+    return "invalid_token";
   }
 
-  console.log("All attempts exhausted, returning error");
-  return "api_down";
+  // Token looks valid (JWT format), accept it
+  console.log("Febbox token format is valid (JWT)");
+  return "success";
 }
+
 
 export async function testdebridToken(
   debridToken: string | null,
