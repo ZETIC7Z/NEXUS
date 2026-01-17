@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { isTVDevice, isAndroidTV } from "@/utils/isTVDevice";
+import { isAndroidTV, isTVDevice } from "@/utils/isTVDevice";
 
 export function useIsMobile(horizontal?: boolean) {
   const [isMobile, setIsMobile] = useState(false);

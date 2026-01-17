@@ -1,22 +1,15 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useAsyncFn, useInterval } from "react-use";
 
-import { sendPage } from "@/backend/extension/messaging";
-import { Button } from "@/components/buttons/Button";
 import { Icon, Icons } from "@/components/Icon";
-import { Loading } from "@/components/layout/Loading";
 import { Stepper } from "@/components/layout/Stepper";
-import { CenterContainer } from "@/components/layout/ThinContainer";
-import { Heading2, Paragraph } from "@/components/utils/Text";
 import { MinimalPageLayout } from "@/pages/layouts/MinimalPageLayout";
 import {
   useNavigateOnboarding,
   useRedirectBack,
 } from "@/pages/onboarding/onboardingHooks";
-import { Card, Link } from "@/pages/onboarding/utils";
 import { PageTitle } from "@/pages/parts/util/PageTitle";
-import { conf } from "@/setup/config";
 import {
   ExtensionDetectionResult,
   detectExtensionInstall,
@@ -24,401 +17,477 @@ import {
 import { getExtensionState } from "@/utils/extension";
 import type { ExtensionStatus } from "@/utils/extension";
 
+// Extension URLs
+const CHROME_EXTENSION_URL =
+  "https://chromewebstore.google.com/detail/p-stream-extension/gnheenieicoichghfmjlpofcaebbgclh";
+const FIREFOX_EXTENSION_URL =
+  "https://addons.mozilla.org/en-US/firefox/addon/lordflix-extension-v1/";
+const SAFARI_USERSCRIPT_APP_URL =
+  "https://apps.apple.com/us/app/userscripts/id1463298887";
+const USERSCRIPT_URL =
+  "https://raw.githubusercontent.com/p-stream/Userscript/main/p-stream.user.js";
+
+// Browser Icons (SVG URLs)
+const BROWSER_ICONS: Record<string, string> = {
+  chrome:
+    "https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg",
+  firefox:
+    "https://upload.wikimedia.org/wikipedia/commons/a/a0/Firefox_logo%2C_2019.svg",
+  edge: "https://upload.wikimedia.org/wikipedia/commons/9/98/Microsoft_Edge_logo_%282019%29.svg",
+  safari:
+    "https://upload.wikimedia.org/wikipedia/commons/5/52/Safari_browser_logo.svg",
+  brave: "https://upload.wikimedia.org/wikipedia/commons/c/c4/Brave_lion.png",
+  opera:
+    "https://upload.wikimedia.org/wikipedia/commons/4/49/Opera_2015_icon.svg",
+};
+
+// Device Icons (SVG URLs)
+const DEVICE_ICONS: Record<string, string> = {
+  android:
+    "https://upload.wikimedia.org/wikipedia/commons/d/d7/Android_robot.svg",
+  ios: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+  windows:
+    "https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2012.svg",
+  macos:
+    "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+  linux: "https://upload.wikimedia.org/wikipedia/commons/3/35/Tux.svg",
+  tv: "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg",
+};
+
+type DeviceType = "android" | "ios" | "windows" | "macos" | "linux" | "tv";
+
+interface DeviceInfo {
+  type: DeviceType;
+  name: string;
+  icon: string;
+  isMobile: boolean;
+  isTablet: boolean;
+  isTV: boolean;
+}
+
+function detectDevice(): DeviceInfo {
+  const ua = navigator.userAgent;
+
+  // TV detection
+  if (/TV|SmartTV|GoogleTV|AFTM|AFT|Roku|webOS|Tizen/i.test(ua)) {
+    return {
+      type: "tv",
+      name: "Smart TV",
+      icon: DEVICE_ICONS.tv,
+      isMobile: false,
+      isTablet: false,
+      isTV: true,
+    };
+  }
+
+  // iOS detection
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    const isTablet = /iPad/i.test(ua);
+    return {
+      type: "ios",
+      name: isTablet ? "iPad" : "iPhone",
+      icon: DEVICE_ICONS.ios,
+      isMobile: !isTablet,
+      isTablet,
+      isTV: false,
+    };
+  }
+
+  // Android detection
+  if (/Android/i.test(ua)) {
+    const isTablet = !/Mobile/i.test(ua);
+    return {
+      type: "android",
+      name: isTablet ? "Android Tablet" : "Android",
+      icon: DEVICE_ICONS.android,
+      isMobile: !isTablet,
+      isTablet,
+      isTV: false,
+    };
+  }
+
+  // macOS
+  if (/Mac OS X|Macintosh/i.test(ua)) {
+    return {
+      type: "macos",
+      name: "macOS",
+      icon: DEVICE_ICONS.macos,
+      isMobile: false,
+      isTablet: false,
+      isTV: false,
+    };
+  }
+
+  // Windows
+  if (/Windows/i.test(ua)) {
+    return {
+      type: "windows",
+      name: "Windows",
+      icon: DEVICE_ICONS.windows,
+      isMobile: false,
+      isTablet: false,
+      isTV: false,
+    };
+  }
+
+  // Linux
+  if (/Linux/i.test(ua)) {
+    return {
+      type: "linux",
+      name: "Linux",
+      icon: DEVICE_ICONS.linux,
+      isMobile: false,
+      isTablet: false,
+      isTV: false,
+    };
+  }
+
+  return {
+    type: "windows",
+    name: "Desktop",
+    icon: DEVICE_ICONS.windows,
+    isMobile: false,
+    isTablet: false,
+    isTV: false,
+  };
+}
+
 interface BrowserInfo {
   name: string;
-  emoji: string;
+  icon: string;
+  extensionUrl: string | null;
+  supportsExtensions: boolean;
   violentmonkeyUrl: string;
 }
 
-function detectBrowser(): BrowserInfo {
-  const userAgent = navigator.userAgent;
+function detectBrowser(device: DeviceInfo): BrowserInfo {
+  const ua = navigator.userAgent;
 
-  if (userAgent.includes("Firefox")) {
+  if (ua.includes("Firefox")) {
     return {
       name: "Firefox",
-      emoji: "🦊",
+      icon: BROWSER_ICONS.firefox,
+      extensionUrl: FIREFOX_EXTENSION_URL,
+      supportsExtensions: true,
       violentmonkeyUrl:
         "https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/",
     };
   }
 
-  if (userAgent.includes("Edg")) {
+  if (ua.includes("Safari") && !ua.includes("Chrome")) {
     return {
-      name: "Microsoft Edge",
-      emoji: "🌐",
+      name: "Safari",
+      icon: BROWSER_ICONS.safari,
+      extensionUrl: null,
+      supportsExtensions: false,
+      violentmonkeyUrl: SAFARI_USERSCRIPT_APP_URL,
+    };
+  }
+
+  if (ua.includes("Edg")) {
+    return {
+      name: "Edge",
+      icon: BROWSER_ICONS.edge,
+      extensionUrl: CHROME_EXTENSION_URL,
+      supportsExtensions: !device.isMobile && !device.isTablet,
       violentmonkeyUrl:
         "https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao",
     };
   }
 
-  // Chrome (default)
+  if ((navigator as any).brave) {
+    return {
+      name: "Brave",
+      icon: BROWSER_ICONS.brave,
+      extensionUrl: CHROME_EXTENSION_URL,
+      supportsExtensions: !device.isMobile && !device.isTablet,
+      violentmonkeyUrl:
+        "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag",
+    };
+  }
+
+  if (ua.includes("OPR") || ua.includes("Opera")) {
+    return {
+      name: "Opera",
+      icon: BROWSER_ICONS.opera,
+      extensionUrl: CHROME_EXTENSION_URL,
+      supportsExtensions: !device.isMobile && !device.isTablet,
+      violentmonkeyUrl:
+        "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag",
+    };
+  }
+
+  // Default Chrome
   return {
     name: "Chrome",
-    emoji: "🌐",
+    icon: BROWSER_ICONS.chrome,
+    extensionUrl: CHROME_EXTENSION_URL,
+    supportsExtensions: !device.isMobile && !device.isTablet,
     violentmonkeyUrl:
       "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag",
   };
 }
 
-function isMobileDevice(): boolean {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent,
-  );
-}
-
-function RefreshBar() {
-  const { t } = useTranslation();
-  const reload = useCallback(() => {
-    window.location.reload();
-  }, []);
-  return (
-    <Card className="mt-4">
-      <div className="flex items-center space-x-7">
-        <p className="flex-1">{t("onboarding.extension.notDetecting")}</p>
-        <Button theme="secondary" onClick={reload}>
-          {t("onboarding.extension.notDetectingAction")}
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-export function ExtensionStatus(props: {
-  status: ExtensionStatus;
-  loading: boolean;
-  showHelp?: boolean;
+// Step Button with glowing effect
+function StepButton({
+  step,
+  label,
+  href,
+  onClick,
+  glowing = false,
+  completed = false,
+}: {
+  step: number;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  glowing?: boolean;
+  completed?: boolean;
 }) {
-  const { t } = useTranslation();
-  const [lastKnownStatus, setLastKnownStatus] = useState(props.status);
-  useEffect(() => {
-    if (!props.loading) setLastKnownStatus(props.status);
-  }, [props.status, props.loading]);
+  const baseClasses =
+    "flex items-center gap-3 w-full p-3 rounded-lg transition-all duration-300";
+  const stateClasses = completed
+    ? "bg-emerald-500/10 border border-emerald-500/30"
+    : glowing
+      ? "bg-[#1a1f26] border-2 border-cyan-400 shadow-[0_0_15px_rgba(0,255,241,0.4)]"
+      : "bg-[#1a1f26] border border-white/10 hover:border-white/20";
 
-  let content: ReactNode = null;
-  if (props.loading || props.status === "unknown")
-    content = (
-      <>
-        <Loading />
-        <p>{t("onboarding.extension.status.loading")}</p>
-      </>
-    );
-  if (props.status === "disallowed" || props.status === "noperms")
-    content = (
-      <>
-        <p>{t("onboarding.extension.status.disallowed")}</p>
-        <Button
-          onClick={() => {
-            sendPage({
-              page: "PermissionGrant",
-              redirectUrl: window.location.href,
-            });
-          }}
-          theme="purple"
-          padding="md:px-12 p-2.5"
-          className="mt-6"
-        >
-          {t("onboarding.extension.status.disallowedAction")}
-        </Button>
-      </>
-    );
-  else if (props.status === "failed")
-    content = <p>{t("onboarding.extension.status.failed")}</p>;
-  else if (props.status === "outdated")
-    content = <p>{t("onboarding.extension.status.outdated")}</p>;
-  else if (props.status === "success")
-    content = (
-      <p className="flex items-center">
-        <Icon icon={Icons.CHECKMARK} className="text-type-success mr-4" />
-        {t("onboarding.extension.status.success")}
-      </p>
-    );
-  return (
+  const content = (
     <>
-      <Card>
-        <div className="flex py-6 flex-col space-y-2 items-center justify-center">
-          {content}
-        </div>
-      </Card>
-      {lastKnownStatus === "unknown" ? <RefreshBar /> : null}
-      {props.showHelp && props.status !== "success" ? (
-        <Card className="mt-4">
-          <div className="flex items-center space-x-7">
-            <Icon icon={Icons.WARNING} className="text-type-danger text-2xl" />
-            <p className="flex-1">
-              <Trans
-                i18nKey="onboarding.extension.extensionHelp"
-                components={{
-                  bold: <span className="text-white" />,
-                }}
-              />
-            </p>
-          </div>
-        </Card>
-      ) : null}
+      <span
+        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+          completed
+            ? "bg-emerald-500 text-white"
+            : glowing
+              ? "bg-cyan-400 text-black"
+              : "bg-white/10 text-white/60"
+        }`}
+      >
+        {completed ? "✓" : step}
+      </span>
+      <span
+        className={`text-sm ${completed ? "text-emerald-400" : "text-white"}`}
+      >
+        {label}
+      </span>
     </>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${baseClasses} ${stateClasses}`}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${baseClasses} ${stateClasses}`}
+    >
+      {content}
+    </button>
   );
 }
 
 interface ExtensionPageProps {
   status: ExtensionStatus;
-  loading: boolean;
 }
 
 function DefaultExtensionPage(props: ExtensionPageProps) {
   const { t } = useTranslation();
-  const [browser] = useState<BrowserInfo>(detectBrowser());
-  const [isMobile] = useState<boolean>(isMobileDevice());
+  const [device] = useState<DeviceInfo>(detectDevice);
+  const [browser] = useState<BrowserInfo>(() => detectBrowser(device));
+  const isSuccess = props.status === "success";
 
   return (
-    <>
-      <Heading2 className="!mt-0 !text-3xl max-w-[435px] text-center">
-        {t("onboarding.extension.title")}
-      </Heading2>
-      <Paragraph className="max-w-[320px] mb-6 text-center">
-        {t("onboarding.extension.explainer")}
-      </Paragraph>
-
-      {/* Browser Detection */}
-      <div className="bg-pill-background rounded-xl p-6 text-center mb-6">
-        <p className="text-type-dimmed mb-2">We detected:</p>
-        <div className="flex items-center justify-center gap-3">
-          <span className="text-4xl">{browser.emoji}</span>
-          <div className="text-left">
-            <p className="font-bold text-xl">{browser.name}</p>
-            <p className="text-sm text-type-dimmed">
-              {isMobile ? "Mobile Device" : "Desktop Device"}
-            </p>
+    <div className="w-full max-w-sm mx-auto px-4">
+      {/* Header with Device + Browser */}
+      <div className="text-center mb-6">
+        <div className="flex justify-center gap-3 mb-4">
+          {/* Device Icon */}
+          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
+            <img
+              src={device.icon}
+              alt={device.name}
+              className="w-full h-full object-contain"
+              style={{
+                filter:
+                  device.type === "ios" || device.type === "macos"
+                    ? "invert(1)"
+                    : "none",
+              }}
+            />
+          </div>
+          {/* Browser Icon */}
+          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
+            <img
+              src={browser.icon}
+              alt={browser.name}
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
+
+        <p className="text-xs text-gray-500 mb-3">
+          {device.name} • {browser.name}
+        </p>
+
+        <h1 className="text-lg font-bold text-white mb-1">
+          {t("onboarding.extension.title")}
+        </h1>
+        <p className="text-gray-400 text-xs">
+          {t("onboarding.extension.explainer")}
+        </p>
       </div>
 
-      {/* DESKTOP INSTALLATION - Auto-highlighted for PC users */}
-      {!isMobile && (
-        <div className="border-2 rounded-xl p-6 mb-6 transition-all border-pill-highlight bg-pill-highlight/10 shadow-lg">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pill-background flex items-center justify-center font-bold text-lg">
-              💻
-            </div>
-            <div className="flex-1 space-y-4">
-              <h3 className="font-bold text-xl">Desktop Installation</h3>
-              <p className="text-type-dimmed">
-                Install Violentmonkey extension directly from your
-                browser&apos;s store:
-              </p>
-              <a
-                href={browser.violentmonkeyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block"
-              >
-                <Button theme="purple" className="w-full sm:w-auto">
-                  <Icon icon={Icons.DOWNLOAD} className="mr-2" />
-                  Install Violentmonkey for {browser.name}
-                </Button>
-              </a>
-              <div className="bg-dropdown-contentBackground rounded-lg p-4 space-y-2">
-                <p className="text-sm font-medium">What happens next:</p>
-                <ul className="text-sm text-type-dimmed space-y-1 list-disc list-inside">
-                  <li>Browser store will open automatically</li>
-                  <li>Click &quot;Add to {browser.name}&quot; button</li>
-                  <li>Violentmonkey will be installed</li>
-                  <li>Then install NEXUS userscript below</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+      {/* Main Install Button */}
+      {browser.supportsExtensions && browser.extensionUrl && (
+        <a
+          href={browser.extensionUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg font-medium text-sm transition-all duration-300 mb-3 ${
+            isSuccess
+              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+          }`}
+        >
+          {isSuccess ? (
+            <>
+              <Icon icon={Icons.CHECKMARK} /> Installed
+            </>
+          ) : (
+            `Install ${browser.name} Extension`
+          )}
+        </a>
+      )}
+
+      {/* Status */}
+      {isSuccess && (
+        <div className="flex items-center justify-center gap-2 text-emerald-400 text-xs py-2 mb-3">
+          <Icon icon={Icons.CHECKMARK} />
+          Extension working!
         </div>
       )}
 
-      {/* MOBILE INSTALLATION - Auto-highlighted for mobile users */}
-      {isMobile && (
-        <div className="border-2 rounded-xl p-6 mb-6 transition-all border-pill-highlight bg-pill-highlight/10 shadow-lg">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pill-background flex items-center justify-center font-bold text-lg">
-              📱
-            </div>
-            <div className="flex-1 space-y-4">
-              <h3 className="font-bold text-xl">Mobile Installation</h3>
-              <p className="text-type-dimmed mb-3">
-                Follow these steps to use NEXUS on mobile:
-              </p>
-
-              {/* Step 1: Install Violentmonkey */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-pill-highlight flex items-center justify-center text-sm font-bold">
-                    1
-                  </div>
-                  <p className="font-medium">Install Violentmonkey</p>
-                </div>
-                <a
-                  href={browser.violentmonkeyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-3 bg-dropdown-contentBackground rounded-lg hover:bg-dropdown-contentBackground/80 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{browser.emoji}</span>
-                    <div className="flex-1">
-                      <p className="font-medium">{browser.name}</p>
-                      <p className="text-xs text-type-dimmed">Violentmonkey</p>
-                    </div>
-                    <Icon icon={Icons.EXTERNAL_LINK} className="text-sm" />
-                  </div>
-                </a>
-              </div>
-
-              {/* Step 2: Install NEXUS Userscript */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-pill-highlight flex items-center justify-center text-sm font-bold">
-                    2
-                  </div>
-                  <p className="font-medium">Install NEXUS Userscript</p>
-                </div>
-                <a
-                  href="https://raw.githubusercontent.com/p-stream/Userscript/main/p-stream.user.js"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-3 bg-pill-background hover:bg-pill-backgroundHover rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon icon={Icons.DOWNLOAD} className="text-xl" />
-                    <div className="flex-1">
-                      <p className="font-medium">Click to Install</p>
-                      <p className="text-xs text-type-dimmed">
-                        Violentmonkey will open automatically
-                      </p>
-                    </div>
-                    <Icon icon={Icons.EXTERNAL_LINK} className="text-sm" />
-                  </div>
-                </a>
-              </div>
-
-              {/* Step 3: Refresh */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-pill-highlight flex items-center justify-center text-sm font-bold">
-                    3
-                  </div>
-                  <p className="font-medium">Refresh Page</p>
-                </div>
-                <Button
-                  theme="purple"
-                  onClick={() => window.location.reload()}
-                  className="w-full"
-                >
-                  <Icon icon={Icons.REFRESH} className="mr-2" />
-                  Refresh Page
-                </Button>
-              </div>
-            </div>
-          </div>
+      {/* Alternative Method */}
+      <div className="pt-4 border-t border-white/10">
+        <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3 text-center">
+          Alternative
+        </p>
+        <div className="space-y-2">
+          <StepButton
+            step={1}
+            label="Install Violentmonkey"
+            href={browser.violentmonkeyUrl}
+            glowing={
+              !isSuccess &&
+              (!browser.supportsExtensions || !browser.extensionUrl)
+            }
+          />
+          <StepButton
+            step={2}
+            label="Install NEXUS Script"
+            href={USERSCRIPT_URL}
+          />
+          <StepButton
+            step={3}
+            label="Refresh Page"
+            onClick={() => window.location.reload()}
+          />
         </div>
-      )}
-
-      {/* Install NEXUS Userscript - For desktop users after installing Violentmonkey */}
-      {!isMobile && (
-        <div className="border-2 rounded-xl p-6 mb-6 transition-all border-dropdown-border">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pill-background flex items-center justify-center font-bold text-lg">
-              2
-            </div>
-            <div className="flex-1 space-y-4">
-              <h3 className="font-bold text-lg">Install NEXUS Userscript</h3>
-              <p className="text-type-dimmed">
-                After installing Violentmonkey, click below to install the NEXUS
-                userscript.
-              </p>
-              <a
-                href="https://raw.githubusercontent.com/p-stream/Userscript/main/p-stream.user.js"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block"
-              >
-                <Button theme="purple" className="w-full sm:w-auto">
-                  <Icon icon={Icons.DOWNLOAD} className="mr-2" />
-                  Install NEXUS Userscript
-                </Button>
-              </a>
-              <div className="bg-dropdown-contentBackground rounded-lg p-4 space-y-2">
-                <p className="text-sm font-medium">What happens next:</p>
-                <ul className="text-sm text-type-dimmed space-y-1 list-disc list-inside">
-                  <li>Violentmonkey will open automatically</li>
-                  <li>You'll see the NEXUS script details</li>
-                  <li>Click &quot;Confirm installation&quot; button</li>
-                  <li>The script will be installed instantly</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Refresh - For desktop users */}
-      {!isMobile && (
-        <div className="border-2 rounded-xl p-6 mb-6 transition-all border-dropdown-border">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pill-background flex items-center justify-center font-bold text-lg">
-              3
-            </div>
-            <div className="flex-1 space-y-4">
-              <h3 className="font-bold text-lg">
-                Refresh and Start Streaming!
-              </h3>
-              <p className="text-type-dimmed">
-                After installation, refresh this page to start streaming movies
-                and TV shows.
-              </p>
-              <Button
-                theme="purple"
-                onClick={() => window.location.reload()}
-                className="w-full sm:w-auto"
-              >
-                <Icon icon={Icons.REFRESH} className="mr-2" />
-                Refresh Page
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <ExtensionStatus status={props.status} loading={props.loading} showHelp />
-      <Link
-        href="https://github.com/p-stream/extension"
-        target="_blank"
-        className="pt-4 !text-type-dimmed"
-      >
-        See extension source code
-      </Link>
-    </>
+      </div>
+    </div>
   );
 }
 
-function IosExtensionPage(_props: ExtensionPageProps) {
+function IosExtensionPage(props: ExtensionPageProps) {
   const { t } = useTranslation();
+  const [device] = useState<DeviceInfo>(detectDevice);
+  const isSuccess = props.status === "success";
+
   return (
-    <>
-      <Heading2 className="!mt-0 !text-3xl max-w-[435px]">
-        {t("onboarding.extension.title")}
-      </Heading2>
-      <Paragraph className="max-w-[320px] mb-4">
-        <Trans
-          i18nKey="onboarding.extension.explainerIos"
-          components={{ bold: <span className="text-white font-bold" /> }}
+    <div className="w-full max-w-sm mx-auto px-4">
+      <div className="text-center mb-6">
+        <div className="flex justify-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
+            <img
+              src={DEVICE_ICONS.ios}
+              alt="iOS"
+              className="w-full h-full object-contain"
+              style={{ filter: "invert(1)" }}
+            />
+          </div>
+          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
+            <img
+              src={BROWSER_ICONS.safari}
+              alt="Safari"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 mb-3">{device.name} • Safari</p>
+
+        <h1 className="text-lg font-bold text-white mb-1">
+          {t("onboarding.extension.title")}
+        </h1>
+        <p className="text-gray-400 text-xs">
+          <Trans
+            i18nKey="onboarding.extension.explainerIos"
+            components={{ bold: <span className="text-white font-medium" /> }}
+          />
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <StepButton
+          step={1}
+          label="Install Userscripts App"
+          href={SAFARI_USERSCRIPT_APP_URL}
+          glowing={!isSuccess}
         />
-      </Paragraph>
-    </>
+        <StepButton
+          step={2}
+          label="Install NEXUS Script"
+          href={USERSCRIPT_URL}
+        />
+        <StepButton
+          step={3}
+          label="Refresh Page"
+          onClick={() => window.location.reload()}
+        />
+      </div>
+
+      {isSuccess && (
+        <div className="flex items-center justify-center gap-2 text-emerald-400 text-xs py-3 mt-3">
+          <Icon icon={Icons.CHECKMARK} />
+          Extension working!
+        </div>
+      )}
+    </div>
   );
 }
 
 export function OnboardingExtensionPage() {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const navigate = useNavigateOnboarding();
   const { completeAndRedirect } = useRedirectBack();
   const extensionSupport = useMemo(() => detectExtensionInstall(), []);
 
-  const [{ loading, value }, exec] = useAsyncFn(
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const [{ value }, exec] = useAsyncFn(
     async (triggeredManually: boolean = false) => {
       const status = await getExtensionState();
       if (status === "success" && triggeredManually) completeAndRedirect();
@@ -442,20 +511,38 @@ export function OnboardingExtensionPage() {
   return (
     <MinimalPageLayout>
       <PageTitle subpage k="global.pages.onboarding" />
-      <CenterContainer>
-        <Stepper steps={2} current={2} className="mb-12" />
-        <PageContent loading={loading} status={value ?? "unknown"} />
-        <div className="flex justify-between items-center mt-8">
-          <Button onClick={() => navigate("/onboarding")} theme="secondary">
-            {t("onboarding.extension.back")}
-          </Button>
-          {value === "success" ? (
-            <Button onClick={() => exec(true)} theme="purple">
-              {t("onboarding.extension.submit")}
-            </Button>
-          ) : null}
+
+      <div className="w-full min-h-screen bg-[#0c1016] flex flex-col items-center justify-center py-6">
+        <div className="w-full max-w-sm">
+          <Stepper steps={2} current={2} className="mb-6 px-4" />
+
+          <PageContent status={value ?? "unknown"} />
+
+          {/* Footer */}
+          <div className="flex justify-between items-center px-4 mt-6 pt-4 border-t border-white/5">
+            <button
+              type="button"
+              onClick={() => navigate("/onboarding")}
+              className="text-gray-500 hover:text-white text-xs transition-colors"
+            >
+              ← Back
+            </button>
+
+            <button
+              type="button"
+              onClick={() => value === "success" && exec(true)}
+              disabled={value !== "success"}
+              className={`py-2 px-5 rounded-lg text-xs font-medium transition-all ${
+                value === "success"
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  : "bg-white/5 text-gray-600 cursor-not-allowed"
+              }`}
+            >
+              Continue →
+            </button>
+          </div>
         </div>
-      </CenterContainer>
+      </div>
     </MinimalPageLayout>
   );
 }

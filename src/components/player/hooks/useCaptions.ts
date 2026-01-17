@@ -134,7 +134,12 @@ export function useCaptions() {
   }, [setCaption, setLanguage, setIsOpenSubtitles]);
 
   const selectLastUsedLanguage = useCallback(async () => {
-    const language = lastSelectedLanguage ?? "en";
+    const { countryCode } = (
+      await import("@/utils/detectRegion")
+    ).useRegionStore.getState();
+    const { getDefaultLanguageByCountry } = await import("@/utils/language");
+    const language =
+      lastSelectedLanguage ?? getDefaultLanguageByCountry(countryCode);
     await selectLanguage(language);
     return true;
   }, [lastSelectedLanguage, selectLanguage]);

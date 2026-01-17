@@ -89,8 +89,8 @@ export interface SourceSlice {
     asTrack: boolean;
   };
   meta: PlayerMeta | null;
-  failedSources: string[];
-  failedEmbeds: Record<string, string[]>; // sourceId -> array of failed embedIds
+  failedSourcesPerMedia: Record<string, string[]>; // mediaKey -> array of failed sourceIds
+  failedEmbedsPerMedia: Record<string, Record<string, string[]>>; // mediaKey -> sourceId -> array of failed embedIds
   setStatus(status: PlayerStatus): void;
   setSource(
     stream: SourceSliceSource,
@@ -108,8 +108,8 @@ export interface SourceSlice {
   addExternalSubtitles(): Promise<void>;
   addFailedSource(sourceId: string): void;
   addFailedEmbed(sourceId: string, embedId: string): void;
-  clearFailedSources(): void;
-  clearFailedEmbeds(): void;
+  clearFailedSources(mediaKey?: string): void;
+  clearFailedEmbeds(mediaKey?: string): void;
   reset(): void;
 }
 
@@ -136,6 +136,27 @@ export function metaToScrapeMedia(meta: PlayerMeta): ScrapeMedia {
   };
 }
 
+/**
+ * Generates a unique media key for tracking failed sources per media.
+ * For movies: `${type}-${tmdbId}`
+ * For shows: `${type}-${tmdbId}-${season.tmdbId}-${episode.tmdbId}`
+ */
+export function getMediaKey(meta: PlayerMeta | null): string | null {
+  if (!meta) return null;
+
+  if (meta.type === "movie") {
+    return `${meta.type}-${meta.tmdbId}`;
+  }
+
+  // For shows, include season and episode IDs for per-episode tracking
+  if (meta.type === "show" && meta.season && meta.episode) {
+    return `${meta.type}-${meta.tmdbId}-${meta.season.tmdbId}-${meta.episode.tmdbId}`;
+  }
+
+  // Fallback if show data is incomplete
+  return `${meta.type}-${meta.tmdbId}`;
+}
+
 export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   source: null,
   sourceId: null,
@@ -148,8 +169,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   currentAudioTrack: null,
   status: playerStatus.IDLE,
   meta: null,
-  failedSources: [],
-  failedEmbeds: {},
+  failedSourcesPerMedia: {},
+  failedEmbedsPerMedia: {},
   caption: {
     selected: null,
     asTrack: false,
@@ -172,12 +193,21 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     });
   },
   setMeta(meta, newStatus) {
+    const oldMediaKey = getMediaKey(get().meta);
+    const newMediaKey = getMediaKey(meta);
+
     set((s) => {
       s.meta = meta;
       s.embedId = null;
       s.sourceId = null;
       s.interface.hideNextEpisodeBtn = false;
       if (newStatus) s.status = newStatus;
+
+      // Clear failed sources/embeds for the new media when media changes
+      if (newMediaKey && oldMediaKey && oldMediaKey !== newMediaKey) {
+        delete s.failedSourcesPerMedia[newMediaKey];
+        delete s.failedEmbedsPerMedia[newMediaKey];
+      }
     });
   },
   setCaption(caption) {
@@ -267,30 +297,56 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     });
   },
   addFailedSource(sourceId: string) {
+    const mediaKey = getMediaKey(get().meta);
+    if (!mediaKey) return; // Skip tracking if no media is set
+
     set((s) => {
-      if (!s.failedSources.includes(sourceId)) {
-        s.failedSources = [...s.failedSources, sourceId];
+      if (!s.failedSourcesPerMedia[mediaKey]) {
+        s.failedSourcesPerMedia[mediaKey] = [];
+      }
+      if (!s.failedSourcesPerMedia[mediaKey].includes(sourceId)) {
+        s.failedSourcesPerMedia[mediaKey] = [
+          ...s.failedSourcesPerMedia[mediaKey],
+          sourceId,
+        ];
       }
     });
   },
   addFailedEmbed(sourceId: string, embedId: string) {
+    const mediaKey = getMediaKey(get().meta);
+    if (!mediaKey) return; // Skip tracking if no media is set
+
     set((s) => {
-      if (!s.failedEmbeds[sourceId]) {
-        s.failedEmbeds[sourceId] = [];
+      if (!s.failedEmbedsPerMedia[mediaKey]) {
+        s.failedEmbedsPerMedia[mediaKey] = {};
       }
-      if (!s.failedEmbeds[sourceId].includes(embedId)) {
-        s.failedEmbeds[sourceId] = [...s.failedEmbeds[sourceId], embedId];
+      if (!s.failedEmbedsPerMedia[mediaKey][sourceId]) {
+        s.failedEmbedsPerMedia[mediaKey][sourceId] = [];
+      }
+      if (!s.failedEmbedsPerMedia[mediaKey][sourceId].includes(embedId)) {
+        s.failedEmbedsPerMedia[mediaKey][sourceId] = [
+          ...s.failedEmbedsPerMedia[mediaKey][sourceId],
+          embedId,
+        ];
       }
     });
   },
-  clearFailedSources() {
+  clearFailedSources(mediaKey?: string) {
     set((s) => {
-      s.failedSources = [];
+      if (mediaKey) {
+        delete s.failedSourcesPerMedia[mediaKey];
+      } else {
+        s.failedSourcesPerMedia = {};
+      }
     });
   },
-  clearFailedEmbeds() {
+  clearFailedEmbeds(mediaKey?: string) {
     set((s) => {
-      s.failedEmbeds = {};
+      if (mediaKey) {
+        delete s.failedEmbedsPerMedia[mediaKey];
+      } else {
+        s.failedEmbedsPerMedia = {};
+      }
     });
   },
   reset() {
@@ -306,8 +362,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.currentAudioTrack = null;
       s.status = playerStatus.IDLE;
       s.meta = null;
-      s.failedSources = [];
-      s.failedEmbeds = {};
+      s.failedSourcesPerMedia = {};
+      s.failedEmbedsPerMedia = {};
       s.caption = {
         selected: null,
         asTrack: false,

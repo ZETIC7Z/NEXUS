@@ -26,7 +26,7 @@ export function LoginFormPart(props: LoginFormPartProps) {
   const { login, restore, importData } = useAuth();
   const progressItems = useProgressStore((store) => store.items);
   const bookmarkItems = useBookmarkStore((store) => store.bookmarks);
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   const [result, execute] = useAsyncFn(
     async (inputUsername: string, inputPassword: string) => {

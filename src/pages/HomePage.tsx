@@ -55,7 +55,7 @@ export function HomePage() {
   const { t: randomT } = useRandomTranslation();
   const emptyText = randomT(`home.search.empty`);
   const navigate = useNavigate();
-  const [showBg, setShowBg] = useState<boolean>(false);
+  const [_showBg, setShowBg] = useState<boolean>(false);
   const searchParams = useSearchQuery();
   const [search] = searchParams;
   const s = useSearch(search);
@@ -147,7 +147,7 @@ export function HomePage() {
   };
 
   return (
-    <HomeLayout showBg={showBg}>
+    <HomeLayout>
       <div className="mb-2">
         <Helmet>
           <style type="text/css">{`

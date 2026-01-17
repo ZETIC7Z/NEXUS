@@ -4,10 +4,11 @@ import { FooterView } from "@/components/layout/Footer";
 import { Navigation } from "@/components/layout/Navigation";
 import { usePreferencesStore } from "@/stores/preferences";
 
-export function HomeLayout(props: {
-  showBg: boolean;
+interface HomeLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+export function HomeLayout({ children }: HomeLayoutProps) {
   const enableFeatured = usePreferencesStore((state) => state.enableFeatured);
   const [, setClearBackground] = useState(false);
 
@@ -25,8 +26,8 @@ export function HomeLayout(props: {
 
   return (
     <FooterView>
-      <Navigation bg={enableFeatured ? true : props.showBg} />
-      {props.children}
+      <Navigation />
+      {children}
     </FooterView>
   );
 }

@@ -1,0 +1,104 @@
+/* Glow Button Animations */
+@keyframes animate1 {
+    0% {
+        left: -100%;
+    }
+
+    50%,
+    100% {
+        left: 100%;
+    }
+}
+
+@keyframes animate2 {
+    0% {
+        top: -100%;
+    }
+
+    50%,
+    100% {
+        top: 100%;
+    }
+}
+
+@keyframes animate3 {
+    0% {
+        right: -100%;
+    }
+
+    50%,
+    100% {
+        right: 100%;
+    }
+}
+
+@keyframes animate4 {
+    0% {
+        bottom: -100%;
+    }
+
+    50%,
+    100% {
+        bottom: 100%;
+    }
+}
+
+/* Futuristic Animated Card */
+.futuristic-card {
+    position: relative;
+    z-index: 2;
+    border-radius: 20px;
+}
+
+.futuristic-card .card-content {
+    width: 100%;
+    height: 100%;
+    background-color: #0c1016;
+    border-radius: 17px;
+    padding: 2rem;
+}
+
+.futuristic-card::before,
+.futuristic-card::after {
+    content: "";
+    display: block;
+    position: absolute;
+    z-index: -1;
+    border-radius: 20px;
+    background-image: linear-gradient(0deg, #ff00aa, #00FFF1);
+    background-size: 100% 200%;
+    background-position: center center;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    animation: cardGradient 3s infinite alternate;
+}
+
+.futuristic-card::after {
+    filter: blur(40px);
+    opacity: 0.6;
+}
+
+@keyframes cardGradient {
+    0% {
+        background-position: top center;
+    }
+
+    100% {
+        background-position: bottom center;
+    }
+}
+
+/* Starfield animation */
+@keyframes starPulse {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}

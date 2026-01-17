@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 
 import { getMediaPoster } from "@/backend/metadata/tmdb";
 import { ThinContainer } from "@/components/layout/ThinContainer";
-import { useIsMobile } from "@/hooks/useIsMobile";
 import { useSearchQuery } from "@/hooks/useSearchQuery";
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
@@ -297,7 +296,7 @@ export function HeroPart({
   const account = useAuthStore((s) => s.account);
   const isLoggedIn = !!account;
 
-  const stickStateChanged = useCallback(
+  const _stickStateChanged = useCallback(
     (isFixed: boolean) => {
       setIsSticky(isFixed);
     },

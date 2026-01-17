@@ -4,16 +4,12 @@
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "any",
-  "background_color": "#141414",
-  "theme_color": "#E50914",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "en",
   "scope": "/",
   "description": "Stream movies, TV shows, and anime in high quality - NEXUS. Watch unlimited content in HD quality. No ads, no sign-up required.",
-  "categories": [
-    "entertainment",
-    "video",
-    "streaming"
-  ],
+  "categories": ["entertainment", "video", "streaming"],
   "icons": [
     {
       "src": "/pwa-logo.svg",
@@ -76,10 +72,6 @@
       ]
     }
   ],
-  "display_override": [
-    "fullscreen",
-    "standalone",
-    "minimal-ui"
-  ],
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "prefer_related_applications": false
 }

@@ -149,7 +149,6 @@ function VideoIntro({ onComplete }: { onComplete: () => void }) {
   const [fadeOut, setFadeOut] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const [countdown, setCountdown] = useState(5);
 
   // Start the intro with audio
   const startIntro = () => {
@@ -166,39 +165,12 @@ function VideoIntro({ onComplete }: { onComplete: () => void }) {
         video.play().catch(() => onComplete());
       });
 
-      audio.play().catch(() => { });
+      audio.play().catch(() => {});
     }
   };
 
-  // Countdown timer - auto enter after 5 seconds
-  useEffect(() => {
-    if (!showSplash) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Inline startIntro logic to satisfy ESLint
-          const video = videoRef.current;
-          const audio = audioRef.current;
-          if (video && audio) {
-            setShowSplash(false);
-            video.muted = false;
-            audio.volume = 1.0;
-            video.play().catch(() => {
-              video.muted = true;
-              video.play().catch(() => { });
-            });
-            audio.play().catch(() => { });
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [showSplash]);
+  // Video intro - no countdown, user clicks to start
+  // (Removed auto-countdown timer per user request)
 
   // Video event handlers
   useEffect(() => {
@@ -248,48 +220,21 @@ function VideoIntro({ onComplete }: { onComplete: () => void }) {
             />
           </div>
 
-          {/* Circular countdown with Enter button */}
+          {/* Play button - click to enter */}
           <button
             type="button"
             onClick={startIntro}
-            className="relative group mb-8"
+            className="relative group mb-8 w-28 h-28 rounded-full bg-gray-800/50 hover:bg-red-600/30 border-2 border-gray-700 hover:border-red-600 flex items-center justify-center transition-all"
           >
-            {/* Circular progress ring */}
             <svg
-              className="w-28 h-28 transform -rotate-90"
-              viewBox="0 0 100 100"
+              className="w-12 h-12 text-white ml-2"
+              fill="currentColor"
+              viewBox="0 0 24 24"
             >
-              <circle
-                className="text-gray-800"
-                strokeWidth="4"
-                stroke="currentColor"
-                fill="transparent"
-                r="45"
-                cx="50"
-                cy="50"
-              />
-              <circle
-                className="text-red-600 transition-all duration-1000"
-                strokeWidth="4"
-                stroke="currentColor"
-                fill="transparent"
-                r="45"
-                cx="50"
-                cy="50"
-                strokeDasharray={283}
-                strokeDashoffset={283 * (countdown / 5)}
-                strokeLinecap="round"
-              />
+              <path d="M8 5v14l11-7z" />
             </svg>
-            {/* Center content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-white">{countdown}</span>
-              <span className="text-xs text-gray-400 uppercase tracking-wider">
-                sec
-              </span>
-            </div>
             {/* Glow effect on hover */}
-            <div className="absolute inset-0 rounded-full bg-red-600/0 group-hover:bg-red-600/20 transition-colors" />
+            <div className="absolute inset-0 rounded-full bg-red-600/0 group-hover:bg-red-600/10 transition-colors" />
           </button>
 
           {/* Enter Site button */}
@@ -490,8 +435,9 @@ export function LandingPage() {
 
       {/* Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 md:px-12 py-4 transition-opacity duration-500 ${contentVisible ? "opacity-100" : "opacity-0"
-          }`}
+        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 md:px-12 py-4 transition-opacity duration-500 ${
+          contentVisible ? "opacity-100" : "opacity-0"
+        }`}
       >
         <img
           src="/nexus-logo-full.png"
@@ -509,14 +455,16 @@ export function LandingPage() {
 
       {/* Main content - centered */}
       <div
-        className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500 ${contentVisible ? "opacity-100" : "opacity-0"
-          }`}
+        className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500 ${
+          contentVisible ? "opacity-100" : "opacity-0"
+        }`}
       >
         <div
-          className={`text-center max-w-4xl transition-all duration-700 ${contentVisible
+          className={`text-center max-w-4xl transition-all duration-700 ${
+            contentVisible
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-8"
-            }`}
+          }`}
         >
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
             Unlimited movies, TV shows, and more
@@ -540,8 +488,9 @@ export function LandingPage() {
 
       {/* Bottom section - fixed at bottom */}
       <div
-        className={`relative z-10 pb-4 transition-opacity duration-500 ${contentVisible ? "opacity-100" : "opacity-0"
-          }`}
+        className={`relative z-10 pb-4 transition-opacity duration-500 ${
+          contentVisible ? "opacity-100" : "opacity-0"
+        }`}
       >
         {/* Static info section - Technology + Developer */}
         <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-4 px-4">

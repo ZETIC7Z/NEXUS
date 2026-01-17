@@ -1,7 +1,24 @@
 import { proxiedFetch } from "@/backend/helpers/fetch";
 import { usePreferencesStore } from "@/stores/preferences";
-import { useRegionStore } from "@/utils/detectRegion";
 
+export interface FemboxSource {
+  url: string;
+  quality: string;
+  type?: string;
+}
+
+export interface FemboxSubtitle {
+  language: string;
+  url: string;
+  name?: string;
+}
+
+export interface FemboxResponse {
+  sources: FemboxSource[];
+  subtitles: FemboxSubtitle[];
+}
+
+// Legacy interface for backwards compatibility
 export interface FemboxStream {
   url: string;
   quality: string;
@@ -10,70 +27,40 @@ export interface FemboxStream {
   size: string;
 }
 
-export interface FemboxSubtitle {
-  language: string;
-  url: string;
-  name: string;
-}
-
-export interface FemboxResponse {
-  success: boolean;
-  links: FemboxStream[];
-  subtitles: FemboxSubtitle[];
-}
-
 /**
- * Scrape movie from Fembox API
+ * Scrape movie from Fembox API (fembox.aether.mom)
  */
 export async function scrapeFemboxMovie(
   tmdbId: string,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
-  const sharedToken = (window as any).__CONFIG__?.VITE_SHARED_FEBBOX_TOKEN;
+  const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
 
   // Use user's token if available, otherwise use shared token
   const febboxKey = userToken || sharedToken;
 
   if (!febboxKey) {
-    console.log("Fembox: No febbox token available (neither user nor shared)");
     return null;
   }
 
-  if (userToken) {
-    console.log("Fembox: Using user's personal token");
-  } else {
-    console.log(
-      "Fembox: Using shared token (user doesn't have personal token)",
-    );
-  }
-
-  const url = `https://fembox.lordflix.club/api/media/movie/${tmdbId}?cookie=${febboxKey}`;
-
-  console.log(`Fembox: Fetching movie ${tmdbId} via proxy`);
+  const url = `https://fembox.aether.mom/movie/${tmdbId}?ui=${febboxKey}`;
 
   try {
     // Use proxiedFetch to bypass CORS
     const data = await proxiedFetch<FemboxResponse>(url, {});
 
-    console.log("Fembox: Raw response:", JSON.stringify(data).substring(0, 500));
-
-    if (data && data.success && data.links && data.links.length > 0) {
-      console.log(
-        `Fembox: Found ${data.links.length} streams for movie ${tmdbId}`,
-      );
+    if (data && data.sources && data.sources.length > 0) {
       return data;
     }
 
-    console.log(`Fembox: No streams found for movie ${tmdbId}`, data);
     return null;
-  } catch (error) {
-    console.error(`Fembox: Error scraping movie ${tmdbId}:`, error);
+  } catch {
     return null;
   }
 }
 
 /**
- * Scrape TV show episode from Fembox API
+ * Scrape TV show episode from Fembox API (fembox.aether.mom)
  */
 export async function scrapeFemboxTV(
   tmdbId: string,
@@ -81,51 +68,27 @@ export async function scrapeFemboxTV(
   episode: number,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
-  const sharedToken = (window as any).__CONFIG__?.VITE_SHARED_FEBBOX_TOKEN;
+  const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
 
   // Use user's token if available, otherwise use shared token
   const febboxKey = userToken || sharedToken;
 
   if (!febboxKey) {
-    console.log("Fembox: No febbox token available (neither user nor shared)");
     return null;
   }
 
-  if (userToken) {
-    console.log("Fembox: Using user's personal token for TV");
-  } else {
-    console.log(
-      "Fembox: Using shared token for TV (user doesn't have personal token)",
-    );
-  }
-
-  const url = `https://fembox.lordflix.club/api/media/tv/${tmdbId}/${season}/${episode}?cookie=${febboxKey}`;
-
-  console.log(`Fembox: Fetching TV ${tmdbId} S${season}E${episode} via proxy`);
+  const url = `https://fembox.aether.mom/tv/${tmdbId}-${season}-${episode}?ui=${febboxKey}`;
 
   try {
     // Use proxiedFetch to bypass CORS
     const data = await proxiedFetch<FemboxResponse>(url, {});
 
-    console.log("Fembox: Raw TV response:", JSON.stringify(data).substring(0, 500));
-
-    if (data && data.success && data.links && data.links.length > 0) {
-      console.log(
-        `Fembox: Found ${data.links.length} streams for TV ${tmdbId} S${season}E${episode}`,
-      );
+    if (data && data.sources && data.sources.length > 0) {
       return data;
     }
 
-    console.log(
-      `Fembox: No streams found for TV ${tmdbId} S${season}E${episode}`,
-      data
-    );
     return null;
-  } catch (error) {
-    console.error(
-      `Fembox: Error scraping TV ${tmdbId} S${season}E${episode}:`,
-      error,
-    );
+  } catch {
     return null;
   }
 }
@@ -134,13 +97,12 @@ export async function scrapeFemboxTV(
  * Convert Fembox response to standard stream format
  */
 export function convertFemboxToStream(femboxData: FemboxResponse) {
-  if (!femboxData || !femboxData.links || femboxData.links.length === 0) {
-    console.log("Fembox: No links to convert");
+  if (!femboxData || !femboxData.sources || femboxData.sources.length === 0) {
     return null;
   }
 
-  // Sort links by quality - prefer higher quality
-  const sortedLinks = [...femboxData.links].sort((a, b) => {
+  // Sort sources by quality - prefer higher quality
+  const sortedSources = [...femboxData.sources].sort((a, b) => {
     const qualityOrder: Record<string, number> = {
       "4K": 4,
       "2160p": 4,
@@ -156,9 +118,8 @@ export function convertFemboxToStream(femboxData: FemboxResponse) {
     return bQuality - aQuality;
   });
 
-  // Use the highest quality link
-  const primaryLink = sortedLinks[0];
-  console.log(`Fembox: Using primary link with quality: ${primaryLink.quality}, url: ${primaryLink.url.substring(0, 100)}...`);
+  // Use the highest quality source
+  const primarySource = sortedSources[0];
 
   // Map Fembox quality to standard quality
   const mapQuality = (q: string): string => {
@@ -170,14 +131,18 @@ export function convertFemboxToStream(femboxData: FemboxResponse) {
     return "unknown";
   };
 
+  // Determine stream type - HLS or MP4
+  const isHls = primarySource.url.includes(".m3u8");
+
   // Build qualities object with all available qualities
-  const qualities: Record<string, { type: "mp4"; url: string }> = {};
-  for (const link of sortedLinks) {
-    const quality = mapQuality(link.quality);
+  const qualities: Record<string, { type: "mp4" | "hls"; url: string }> = {};
+  for (const source of sortedSources) {
+    const quality = mapQuality(source.quality);
+    const sourceIsHls = source.url.includes(".m3u8");
     if (!qualities[quality]) {
       qualities[quality] = {
-        type: "mp4" as const,
-        url: link.url,
+        type: sourceIsHls ? ("hls" as const) : ("mp4" as const),
+        url: source.url,
       };
     }
   }
@@ -185,23 +150,22 @@ export function convertFemboxToStream(femboxData: FemboxResponse) {
   // Ensure at least one quality exists
   if (Object.keys(qualities).length === 0) {
     qualities.unknown = {
-      type: "mp4" as const,
-      url: primaryLink.url,
+      type: isHls ? ("hls" as const) : ("mp4" as const),
+      url: primarySource.url,
     };
   }
 
-  console.log(`Fembox: Created stream with qualities: ${Object.keys(qualities).join(", ")}`);
-
   return {
     type: "file" as const,
+    id: "fembox",
     flags: [],
     qualities,
     captions: (femboxData.subtitles || []).map((sub) => ({
       id: sub.language,
-      language: sub.language.toLowerCase().split(" ")[0], // Take first word for language code
-      hasCorsRestrictions: false,
-      type: "srt" as const,
       url: sub.url,
+      type: "vtt" as const,
+      hasCorsRestrictions: true,
+      language: sub.language,
     })),
   };
 }

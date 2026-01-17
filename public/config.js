@@ -2,8 +2,8 @@ window.__CONFIG__ = {
   // The URL for the CORS proxy (Worker Proxy), the URL must NOT end with a slash!
   VITE_CORS_PROXY_URL: "https://prism.pstream.mov,https://prozy.aether.mom",
 
-  // M3U8 Proxy URLs for video streaming
-  VITE_M3U8_PROXY_URL: "https://prism.pstream.mov,https://prozy.aether.mom",
+  // M3U8 Proxy URLs for video streaming (multiple for load balancing)
+  VITE_M3U8_PROXY_URL: "https://gkaflfvriifxaikoyjwlnis.lordflix.club,https://ps-proxy-pps.flather.online,https://prism.pstream.mov,https://prozy.aether.mom",
 
   // The READ API key to access TMDB (v4 Read Access Token)
   VITE_TMDB_READ_API_KEY: "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkNGJmMGMyMTY1Y2E3Y2VjMDFkNjFiNjMyZjgxMjkwZCIsIm5iZiI6MTc2MTc4MDcxNi40MDcsInN1YiI6IjY5MDJhM2VjYmRmMDRhNGI2NTZiMmZhZSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.eVJ_v1IzpxWhtA54DUDp_8R08fmKDmciQ1aLVV0kUx4",
@@ -14,8 +14,8 @@ window.__CONFIG__ = {
   // Whether to disable hash-based routing
   VITE_NORMAL_ROUTER: "true",
 
-  // The backend URL to communicate with
-  VITE_BACKEND_URL: "https://backend.aether.mom",
+  // The backend URL to communicate with (CB's Community Backend)
+  VITE_BACKEND_URL: "https://backend.pstream.online",
 
   // A comma separated list of disallowed IDs in the case of a DMCA claim
   VITE_DISALLOWED_IDS: "",

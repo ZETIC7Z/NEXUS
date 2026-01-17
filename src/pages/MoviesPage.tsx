@@ -14,7 +14,7 @@ export function MoviesPage() {
   const { showModal } = useOverlayStack();
   const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const progressItems = useProgressStore((state) => state.items);
-  const [showBg, setShowBg] = useState(false);
+  const [_showBg, _setShowBg] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -33,7 +33,7 @@ export function MoviesPage() {
   );
 
   return (
-    <HomeLayout showBg={showBg}>
+    <HomeLayout>
       <div className="mb-2">
         <Helmet>
           <title>Movies - NEXUS</title>

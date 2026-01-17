@@ -9,6 +9,7 @@ import { Menu } from "@/components/player/internals/ContextMenu";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { usePlayerStore } from "@/stores/player/store";
 import { qualityToString } from "@/stores/player/utils/qualities";
+import { useQualityStore } from "@/stores/quality";
 import { useSubtitleStore } from "@/stores/subtitles";
 import { getPrettyLanguageNameFromLocale } from "@/utils/language";
 
@@ -27,10 +28,21 @@ export function SettingsMenu({ id }: { id: string }) {
   );
   const sourceName = useMemo(() => {
     if (!currentSourceId) return "...";
+
+    // Custom source name mappings for sources not in provider metadata
+    const customSourceNames: Record<string, string> = {
+      zeticuz: "Zeticuz 🔥",
+      febbox: "FebBox (4K) ⭐",
+    };
+
+    if (customSourceNames[currentSourceId]) {
+      return customSourceNames[currentSourceId];
+    }
+
     const source = getCachedMetadata().find(
       (src) => src.id === currentSourceId,
     );
-    return source?.name ?? "...";
+    return source?.name ?? currentSourceId;
   }, [currentSourceId]);
   const embedName = useMemo(() => {
     if (!currentEmbedId) return undefined;
@@ -38,6 +50,16 @@ export function SettingsMenu({ id }: { id: string }) {
     return meta?.name;
   }, [currentEmbedId]);
   const { toggleLastUsed } = useCaptions();
+
+  // Get auto quality setting from quality store
+  const autoQuality = useQualityStore((s) => s.quality.automaticQuality);
+
+  // Show "Auto" when auto quality is enabled, otherwise show current quality
+  const qualityDisplayText = autoQuality
+    ? t("player.menus.quality.auto")
+    : currentQuality
+      ? qualityToString(currentQuality)
+      : t("player.menus.quality.auto");
 
   const selectedLanguagePretty = selectedCaptionLanguage
     ? (getPrettyLanguageNameFromLocale(selectedCaptionLanguage) ??
@@ -60,13 +82,11 @@ export function SettingsMenu({ id }: { id: string }) {
         <Menu.ChevronLink
           box
           onClick={() => router.navigate("/quality")}
-          rightText={currentQuality ? qualityToString(currentQuality) : ""}
+          rightText={qualityDisplayText}
         >
           {t("player.menus.settings.qualityItem")}
           <span className="text-type-secondary text-sm">
-            {currentQuality
-              ? qualityToString(currentQuality)
-              : t("player.menus.quality.auto")}
+            {qualityDisplayText}
           </span>
         </Menu.ChevronLink>
         <Menu.ChevronLink

@@ -15,15 +15,18 @@ export type Region =
 
 interface RegionStore {
   region: Region | null;
+  countryCode: string | null;
   lastChecked: number | null;
   userPicked: boolean;
   setRegion: (region: Region, userPicked?: boolean) => void;
+  setCountryCode: (countryCode: string) => void;
 }
 
 export const useRegionStore = create<RegionStore>()(
   persist(
     (set) => ({
       region: null,
+      countryCode: null,
       lastChecked: null,
       userPicked: false,
       setRegion: (region, userPicked = false) => {
@@ -32,6 +35,9 @@ export const useRegionStore = create<RegionStore>()(
           lastChecked: Math.floor(Date.now() / 1000),
           userPicked,
         });
+      },
+      setCountryCode: (countryCode) => {
+        set({ countryCode });
       },
     }),
     {
@@ -123,12 +129,20 @@ export async function detectRegion(): Promise<Region> {
     const response = await fetch("https://ipapi.co/json/");
     const data = await response.json();
 
+    if (data.country_code) {
+      store.setCountryCode(data.country_code);
+    }
+
     if (
       typeof data.latitude !== "number" ||
       typeof data.longitude !== "number"
     ) {
       const backupResponse = await fetch("https://ipinfo.io/json");
       const backupData = await backupResponse.json();
+
+      if (backupData.country) {
+        store.setCountryCode(backupData.country);
+      }
 
       if (backupData.loc) {
         const [latitude, longitude] = backupData.loc.split(",").map(Number);

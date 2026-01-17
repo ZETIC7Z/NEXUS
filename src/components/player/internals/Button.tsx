@@ -29,7 +29,7 @@ export const VideoPlayerButton = forwardRef<
       ])}
     >
       {props.icon && (
-        <Icon className={props.iconSizeClass || "text-2xl"} icon={props.icon} />
+        <Icon className={props.iconSizeClass || "text-xl"} icon={props.icon} />
       )}
       {props.children}
     </button>

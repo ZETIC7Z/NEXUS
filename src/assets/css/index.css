@@ -12,6 +12,11 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   font-size: 1.0248em;
+  /* PWA safe-area support for edge-to-edge display */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 html[data-full],
@@ -256,6 +261,18 @@ body:has([data-player-page]) *::-webkit-scrollbar {
 body:has([data-player-page]) * {
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+/* Hide scrollbars on mobile and tablet devices */
+@media (max-width: 1024px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .grecaptcha-badge {
@@ -623,4 +640,28 @@ img.loaded:not(.no-fade) {
 /* For images that are already cached/loaded, show them immediately */
 img[complete]:not(.no-fade):not([src=""]) {
   opacity: 1;
+}
+/* Mobile Player Enhancements */
+.is-mobile-player {
+  @apply fixed inset-0 z-[9999] bg-black overflow-hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.is-mobile-player .player-container {
+  @apply w-full h-full relative overflow-hidden;
+}
+
+/* Landscape Fullscreen Logo */
+.mobile-landscape-logo {
+  @apply transition-opacity duration-300;
+}
+
+/* Lock Screen Button */
+.mobile-lock-button {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Ensure no scroll on mobile player */
+body.player-open {
+  @apply overflow-hidden fixed w-full h-full;
 }

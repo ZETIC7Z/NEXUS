@@ -470,10 +470,22 @@ export function FebboxSetup({
                 (() => {
                   if (!quota?.data?.flow) return null;
                   const {
-                    traffic_usage: used,
-                    traffic_limit: limit,
-                    reset_at: reset,
+                    traffic_usage: usedBytes,
+                    traffic_limit: limitBytes,
+                    reset_at: resetTimestamp,
                   } = quota.data.flow;
+
+                  const used = `${(usedBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                  const limit = `${(limitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
+
+                  const resetDate = new Date(resetTimestamp * 1000);
+                  const now = new Date();
+                  const diffTime = Math.abs(
+                    resetDate.getTime() - now.getTime(),
+                  );
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  const reset = `${diffDays} Days`;
+
                   return (
                     <>
                       <p className="text-sm text-green-500 mt-2">
@@ -486,6 +498,24 @@ export function FebboxSetup({
                   );
                 })()}
             </>
+          ) : null}
+          {/* MP4 Toggle */}
+          {isFebboxVisible && status === "success" ? (
+            <div className="flex justify-between items-center gap-4 mt-6">
+              <div className="my-3">
+                <p className="max-w-[32rem] font-medium">
+                  {t("fedapi.setup.useMp4")}
+                </p>
+              </div>
+              <div>
+                <Toggle
+                  onClick={() =>
+                    preferences.setFebboxUseMp4(!preferences.febboxUseMp4)
+                  }
+                  enabled={preferences.febboxUseMp4}
+                />
+              </div>
+            </div>
           ) : null}
         </SettingsCard>
         <Modal id={exampleModal.id}>
@@ -685,13 +715,16 @@ export function ConnectionsPart(
     <div>
       <Heading1 border>{t("settings.connections.title")}</Heading1>
       <div className="space-y-6">
-        <SetupPart /> {/* I was wondering what happened to this badddev >:( */}
-        <ProxyEdit
-          proxyUrls={props.proxyUrls}
-          setProxyUrls={props.setProxyUrls}
-          proxyTmdb={props.proxyTmdb}
-          setProxyTmdb={props.setProxyTmdb}
-        />
+        <SetupPart />
+        {/* Only show proxy settings if not hidden */}
+        {!conf().HIDE_PROXY_SETTINGS && (
+          <ProxyEdit
+            proxyUrls={props.proxyUrls}
+            setProxyUrls={props.setProxyUrls}
+            proxyTmdb={props.proxyTmdb}
+            setProxyTmdb={props.setProxyTmdb}
+          />
+        )}
         <BackendEdit
           backendUrl={props.backendUrl}
           setBackendUrl={props.setBackendUrl}

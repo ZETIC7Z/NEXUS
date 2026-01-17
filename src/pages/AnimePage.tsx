@@ -162,7 +162,7 @@ function ContinueWatchingCarousel({
 
 export function AnimePage() {
   const { showModal } = useOverlayStack();
-  const [showBg, setShowBg] = useState(false);
+  const [_showBg, _setShowBg] = useState(false);
   const [loading, setLoading] = useState(true);
   const progressItems = useProgressStore((state) => state.items);
 
@@ -230,7 +230,7 @@ export function AnimePage() {
     .slice(0, 10);
 
   return (
-    <HomeLayout showBg={showBg}>
+    <HomeLayout>
       <div className="mb-2">
         <Helmet>
           <title>Anime - NEXUS</title>

@@ -32,6 +32,12 @@ type ScraperEvent<Event extends keyof FullScraperEvents> = Parameters<
   NonNullable<FullScraperEvents[Event]>
 >[0];
 
+// Custom sources that should appear in the spinner (defined outside to avoid recreating on every render)
+const customSources: ScrapingSegment[] = [
+  { id: "zeticuz", name: "Zeticuz", status: "waiting", percentage: 0 },
+  { id: "febbox", name: "Febbox", status: "waiting", percentage: 0 },
+];
+
 function useBaseScrape() {
   const [sources, setSources] = useState<Record<string, ScrapingSegment>>({});
   const [sourceOrder, setSourceOrder] = useState<ScrapingItems[]>([]);
@@ -39,36 +45,63 @@ function useBaseScrape() {
   const lastId = useRef<string | null>(null);
 
   const initEvent = useCallback((evt: ScraperEvent<"init">) => {
-    setSources(
-      evt.sourceIds
-        .map((v) => {
-          // Special handling for FED API source (not in cached metadata)
-          if (v === "fedapi") {
-            const out: ScrapingSegment = {
-              name: "FED API (4K) 🔥",
-              id: "fedapi",
-              status: "waiting",
-              percentage: 0,
-            };
-            return out;
-          }
+    // PRESERVE existing custom sources (they may be processing) and ADD provider sources
+    setSources((existingSources) => {
+      const allSources: Record<string, ScrapingSegment> = {};
 
-          const source = getCachedMetadata().find((s) => s.id === v);
-          if (!source) throw new Error("invalid source id");
-          const out: ScrapingSegment = {
-            name: source.name,
-            id: source.id,
-            status: "waiting",
-            percentage: 0,
-          };
-          return out;
-        })
-        .reduce<Record<string, ScrapingSegment>>((a, v) => {
-          a[v.id] = v;
-          return a;
-        }, {}),
-    );
-    setSourceOrder(evt.sourceIds.map((v) => ({ id: v, children: [] })));
+      // First, add custom sources (preserve existing status if already processing)
+      customSources.forEach((source) => {
+        if (existingSources[source.id]) {
+          allSources[source.id] = existingSources[source.id];
+        } else {
+          allSources[source.id] = { ...source };
+        }
+      });
+
+      // Add regular provider sources
+      evt.sourceIds.forEach((v) => {
+        const source = getCachedMetadata().find((s) => s.id === v);
+        if (!source) return;
+        const out: ScrapingSegment = {
+          name: source.name,
+          id: source.id,
+          status: "waiting",
+          percentage: 0,
+        };
+        allSources[v] = out;
+      });
+
+      return allSources;
+    });
+
+    setSourceOrder((existingOrder) => {
+      const allSourceOrder: ScrapingItems[] = [];
+
+      // Add custom sources first (if not already in order)
+      customSources.forEach((source) => {
+        if (!existingOrder.find((o) => o.id === source.id)) {
+          allSourceOrder.push({ id: source.id, children: [] });
+        }
+      });
+
+      // Keep existing custom source order
+      existingOrder
+        .filter((o) => customSources.some((c) => c.id === o.id))
+        .forEach((o) => {
+          if (!allSourceOrder.find((ao) => ao.id === o.id)) {
+            allSourceOrder.push(o);
+          }
+        });
+
+      // Add provider sources
+      evt.sourceIds.forEach((v) => {
+        if (!allSourceOrder.find((o) => o.id === v)) {
+          allSourceOrder.push({ id: v, children: [] });
+        }
+      });
+
+      return allSourceOrder;
+    });
   }, []);
 
   const startEvent = useCallback((id: ScraperEvent<"start">) => {
@@ -149,6 +182,9 @@ function useBaseScrape() {
     sources,
     sourceOrder,
     currentSource,
+    setSources,
+    setSourceOrder,
+    setCurrentSource,
   };
 }
 
@@ -163,12 +199,18 @@ export function useScrape() {
     getResult,
     startEvent,
     startScrape,
+    setSources,
+    setSourceOrder,
+    setCurrentSource,
   } = useBaseScrape();
 
   const preferredSourceOrder = usePreferencesStore((s) => s.sourceOrder);
   const enableSourceOrder = usePreferencesStore((s) => s.enableSourceOrder);
   const lastSuccessfulSource = usePreferencesStore(
     (s) => s.lastSuccessfulSource,
+  );
+  const setLastSuccessfulSource = usePreferencesStore(
+    (s) => s.setLastSuccessfulSource,
   );
   const enableLastSuccessfulSource = usePreferencesStore(
     (s) => s.enableLastSuccessfulSource,
@@ -183,79 +225,26 @@ export function useScrape() {
       const providerInstance = getProviders();
       const allSources = providerInstance.listSources();
       const playerState = usePlayerStore.getState();
-      const failedSources = playerState.failedSources;
-      const failedEmbeds = playerState.failedEmbeds;
 
-      // Check if user has Febbox token for FED API
-      const febboxKey = usePreferencesStore.getState().febboxKey;
-      const hasFebboxKey = febboxKey && febboxKey.length > 0;
-
-      // Try FED API (Fembox) FIRST if user has token
-      if (hasFebboxKey && !startFromSourceId) {
-        console.log("FED API: User has token, trying FED API first...");
-
-        // Initialize FED API source in UI
-        const fedApiSource: ScrapingSegment = {
-          name: "FED API (4K) 🔥",
-          id: "fedapi",
-          status: "pending",
-          percentage: 0,
-        };
-
-        // Add FED API to sources display
-        initEvent({
-          sourceIds: ["fedapi", ...allSources.filter(s =>
-            !(disabledSources || []).includes(s.id) && !failedSources.includes(s.id)
-          ).map(s => s.id)]
-        });
-
-        startEvent("fedapi");
-        updateEvent({ id: "fedapi", status: "pending", percentage: 50 });
-
-        try {
-          const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
-            await import("@/backend/providers/fembox");
-
-          let femboxData = null;
-          if (media.type === "movie") {
-            femboxData = await scrapeFemboxMovie(media.tmdbId);
-          } else if (media.type === "show" && media.episode && media.season) {
-            femboxData = await scrapeFemboxTV(
-              media.tmdbId,
-              media.season.number,
-              media.episode.number,
-            );
-          }
-
-          if (femboxData && femboxData.links && femboxData.links.length > 0) {
-            const stream = convertFemboxToStream(femboxData);
-            if (stream) {
-              console.log("FED API: Found 4K stream!");
-              updateEvent({ id: "fedapi", status: "success", percentage: 100 });
-
-              const femboxOutput = {
-                stream: {
-                  ...stream,
-                  id: "fedapi-stream",
-                },
-                sourceId: "fedapi",
-                embedId: undefined,
-              };
-
-              if (isExtensionActiveCached())
-                await prepareStream(femboxOutput.stream);
-              return getResult(femboxOutput);
-            }
-          }
-
-          // FED API didn't find content, mark as not found and continue
-          console.log("FED API: No streams found, trying other sources...");
-          updateEvent({ id: "fedapi", status: "notfound", percentage: 100 });
-        } catch (error) {
-          console.error("FED API: Error", error);
-          updateEvent({ id: "fedapi", status: "failure", percentage: 100, error });
+      // Get media-specific failed sources/embeds using the new per-media tracking
+      const { getMediaKey } = await import("@/stores/player/slices/source");
+      let mediaKey = getMediaKey(playerState.meta);
+      if (!mediaKey) {
+        // Derive media key from ScrapeMedia if meta is not set yet
+        if (media.type === "movie") {
+          mediaKey = `movie-${media.tmdbId}`;
+        } else if (media.type === "show" && media.season && media.episode) {
+          mediaKey = `show-${media.tmdbId}-${media.season.tmdbId}-${media.episode.tmdbId}`;
+        } else if (media.type === "show") {
+          mediaKey = `show-${media.tmdbId}`;
         }
       }
+      const failedSources = mediaKey
+        ? playerState.failedSourcesPerMedia[mediaKey] || []
+        : [];
+      const failedEmbeds = mediaKey
+        ? playerState.failedEmbedsPerMedia[mediaKey] || {}
+        : {};
 
       // Start with all available sources (filtered by disabled and failed ones)
       let baseSourceOrder = allSources
@@ -310,12 +299,170 @@ export function useScrape() {
       // Filter out disabled and failed embeds from the embed order
       const filteredEmbedOrder = enableEmbedOrder
         ? (preferredEmbedOrder || []).filter(
-          (id) =>
-            !(disabledEmbeds || []).includes(id) &&
-            !allFailedEmbedIds.includes(id),
-        )
+            (id) =>
+              !(disabledEmbeds || []).includes(id) &&
+              !allFailedEmbedIds.includes(id),
+          )
         : undefined;
 
+      // Initialize ALL sources in spinner at once (custom + extension sources)
+      // Order by lastSuccessfulSource first (if it's a custom source)
+      const allSourcesInit: Record<string, ScrapingSegment> = {};
+      const allSourceOrder: ScrapingItems[] = [];
+
+      // Combine custom sources + provider sources
+      const combinedSources: ScrapingSegment[] = [
+        ...customSources.map((s) => ({ ...s, status: "waiting" as const })),
+        ...allSources
+          .filter(
+            (source) =>
+              !(disabledSources || []).includes(source.id) &&
+              !failedSources.includes(source.id) &&
+              !customSources.some((c) => c.id === source.id),
+          )
+          .map((source) => ({
+            id: source.id,
+            name: source.name,
+            status: "waiting" as const,
+            percentage: 0,
+          })),
+      ];
+
+      // Sort: lastSuccessfulSource first, then others
+      const orderedAllSources = combinedSources.sort((a, b) => {
+        if (enableLastSuccessfulSource && lastSuccessfulSource) {
+          if (a.id === lastSuccessfulSource) return -1;
+          if (b.id === lastSuccessfulSource) return 1;
+        }
+        return 0;
+      });
+
+      // Build the sources and order for the spinner
+      orderedAllSources.forEach((source) => {
+        allSourcesInit[source.id] = { ...source };
+        allSourceOrder.push({ id: source.id, children: [] });
+      });
+
+      setSources(allSourcesInit);
+      setSourceOrder(allSourceOrder);
+
+      // Keep reference to ordered custom sources for trying them first
+      const orderedCustomSources = orderedAllSources.filter((s) =>
+        customSources.some((c) => c.id === s.id),
+      );
+
+      // Try custom sources in order (lastSuccessfulSource first)
+      for (const source of orderedCustomSources) {
+        if (source.id === "zeticuz") {
+          // Try Zeticuz
+          setCurrentSource("zeticuz");
+          setSources((s) => ({
+            ...s,
+            zeticuz: { ...s.zeticuz, status: "pending", percentage: 50 },
+          }));
+          try {
+            const {
+              scrapeZeticuzMovie,
+              scrapeZeticuzTV,
+              convertZeticuzToStream,
+            } = await import("@/backend/providers/zeticuz");
+
+            let zeticuzData = null;
+            if (media.type === "movie") {
+              zeticuzData = await scrapeZeticuzMovie(media.tmdbId);
+            } else if (media.type === "show" && media.episode && media.season) {
+              zeticuzData = await scrapeZeticuzTV(
+                media.tmdbId,
+                media.season.number,
+                media.episode.number,
+              );
+            }
+
+            if (zeticuzData) {
+              const stream = convertZeticuzToStream(zeticuzData);
+              if (stream) {
+                setSources((s) => ({
+                  ...s,
+                  zeticuz: {
+                    ...s.zeticuz,
+                    status: "success",
+                    percentage: 100,
+                  },
+                }));
+                setLastSuccessfulSource("zeticuz");
+                const zeticuzOutput = {
+                  stream: { ...stream, id: "zeticuz-stream" },
+                  sourceId: "zeticuz",
+                  embedId: undefined,
+                };
+                return getResult(zeticuzOutput);
+              }
+            }
+            setSources((s) => ({
+              ...s,
+              zeticuz: { ...s.zeticuz, status: "failure", percentage: 100 },
+            }));
+          } catch {
+            setSources((s) => ({
+              ...s,
+              zeticuz: { ...s.zeticuz, status: "failure", percentage: 100 },
+            }));
+          }
+        } else if (source.id === "febbox") {
+          // Try Febbox
+          setCurrentSource("febbox");
+          setSources((s) => ({
+            ...s,
+            febbox: { ...s.febbox, status: "pending", percentage: 50 },
+          }));
+          try {
+            const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
+              await import("@/backend/providers/fembox");
+
+            let femboxData = null;
+            if (media.type === "movie") {
+              femboxData = await scrapeFemboxMovie(media.tmdbId);
+            } else if (media.type === "show" && media.episode && media.season) {
+              femboxData = await scrapeFemboxTV(
+                media.tmdbId,
+                media.season.number,
+                media.episode.number,
+              );
+            }
+
+            if (femboxData) {
+              const stream = convertFemboxToStream(femboxData);
+              if (stream) {
+                setSources((s) => ({
+                  ...s,
+                  febbox: { ...s.febbox, status: "success", percentage: 100 },
+                }));
+                setLastSuccessfulSource("febbox");
+                const femboxOutput = {
+                  stream: { ...stream, id: "febbox-stream" },
+                  sourceId: "febbox",
+                  embedId: undefined,
+                };
+                if (isExtensionActiveCached()) {
+                  await prepareStream(femboxOutput.stream);
+                }
+                return getResult(femboxOutput);
+              }
+            }
+            setSources((s) => ({
+              ...s,
+              febbox: { ...s.febbox, status: "failure", percentage: 100 },
+            }));
+          } catch {
+            setSources((s) => ({
+              ...s,
+              febbox: { ...s.febbox, status: "failure", percentage: 100 },
+            }));
+          }
+        }
+      }
+
+      // Continue with regular providers
       const providerApiUrl = getLoadbalancedProviderApiUrl();
       if (providerApiUrl && !isExtensionActiveCached()) {
         startScrape();
@@ -353,42 +500,6 @@ export function useScrape() {
         },
       });
 
-      // If no output from regular providers, try fembox as fallback (if not tried already)
-      if (!output && !hasFebboxKey) {
-        console.log("No streams from regular providers, trying fembox...");
-        const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
-          await import("@/backend/providers/fembox");
-
-        let femboxData = null;
-        if (media.type === "movie") {
-          femboxData = await scrapeFemboxMovie(media.tmdbId);
-        } else if (media.type === "show" && media.episode && media.season) {
-          femboxData = await scrapeFemboxTV(
-            media.tmdbId,
-            media.season.number,
-            media.episode.number,
-          );
-        }
-
-        if (femboxData) {
-          const stream = convertFemboxToStream(femboxData);
-          if (stream) {
-            console.log("Fembox: Successfully found stream");
-            const femboxOutput = {
-              stream: {
-                ...stream,
-                id: "fembox-stream",
-              },
-              sourceId: "fembox",
-              embedId: undefined,
-            };
-            if (isExtensionActiveCached())
-              await prepareStream(femboxOutput.stream);
-            return getResult(femboxOutput);
-          }
-        }
-      }
-
       if (output && isExtensionActiveCached())
         await prepareStream(output.stream);
       return getResult(output);
@@ -404,10 +515,14 @@ export function useScrape() {
       enableSourceOrder,
       lastSuccessfulSource,
       enableLastSuccessfulSource,
+      setLastSuccessfulSource,
       disabledSources,
       preferredEmbedOrder,
       enableEmbedOrder,
       disabledEmbeds,
+      setSources,
+      setSourceOrder,
+      setCurrentSource,
     ],
   );
 

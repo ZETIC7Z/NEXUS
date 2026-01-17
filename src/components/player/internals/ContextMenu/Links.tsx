@@ -87,8 +87,8 @@ export function Link(props: {
   disabled?: boolean;
 }) {
   const classes = classNames(
-    "flex py-2 transition-colors duration-100 rounded-lg",
-    props.box ? "bg-video-context-light/10 h-20" : "",
+    "flex py-1.5 md:py-2 transition-colors duration-100 rounded-lg text-sm md:text-base",
+    props.box ? "bg-video-context-light/10 h-16 md:h-20" : "",
     {
       "cursor-default": !props.clickable,
       "hover:bg-video-context-light hover:bg-opacity-20 cursor-pointer tabbable":

@@ -5,8 +5,8 @@ import { isTVDevice } from "@/utils/isTVDevice";
  * This enables TV-specific CSS styles
  */
 export function initializeTVMode() {
-    if (isTVDevice()) {
-        document.documentElement.setAttribute("data-tv-mode", "true");
-        console.log("[TV Mode] TV device detected, enabling TV optimizations");
-    }
+  if (isTVDevice()) {
+    document.documentElement.setAttribute("data-tv-mode", "true");
+    console.log("[TV Mode] TV device detected, enabling TV optimizations");
+  }
 }

@@ -2,12 +2,15 @@ import { ReactNode, useRef, useState } from "react";
 
 import { BrandPill } from "@/components/layout/BrandPill";
 import { Player } from "@/components/player";
+import { MobileLockButton } from "@/components/player/atoms/MobileLockButton";
+import { MobileLockScreen } from "@/components/player/atoms/MobileLockScreen";
+import { MobilePlayerLogo } from "@/components/player/atoms/MobilePlayerLogo";
 import { SkipIntroButton } from "@/components/player/atoms/SkipIntroButton";
 import { UnreleasedEpisodeOverlay } from "@/components/player/atoms/UnreleasedEpisodeOverlay";
 import { WatchPartyStatus } from "@/components/player/atoms/WatchPartyStatus";
 import { useShouldShowControls } from "@/components/player/hooks/useShouldShowControls";
 import { useSkipTime } from "@/components/player/hooks/useSkipTime";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { useMobileFeatures } from "@/hooks/useMobileFeatures";
 import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
@@ -25,7 +28,7 @@ export interface PlayerPartProps {
 export function PlayerPart(props: PlayerPartProps) {
   const { showTargets, showTouchTargets } = useShouldShowControls();
   const status = usePlayerStore((s) => s.status);
-  const { isMobile } = useIsMobile();
+  const { isMobile, isIOS, isPWA } = useMobileFeatures();
   const manualSourceSelection = usePreferencesStore(
     (s) => s.manualSourceSelection,
   );
@@ -34,13 +37,9 @@ export function PlayerPart(props: PlayerPartProps) {
 
   const inControl = !enabled || isHost;
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isPWA = window.matchMedia("(display-mode: standalone)").matches;
-
   const [isShifting, setIsShifting] = useState(false);
   const [isHoldingFullscreen, setIsHoldingFullscreen] = useState(false);
   const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   document.addEventListener("keydown", (event) => {
     if (event.key === "Shift") {
       setIsShifting(true);
@@ -95,6 +94,10 @@ export function PlayerPart(props: PlayerPartProps) {
         </Player.CenterControls>
       ) : null}
 
+      {/* Mobile logo and lock screen - positioned independently outside center controls */}
+      <MobilePlayerLogo />
+      <MobileLockScreen />
+
       <Player.CenterMobileControls
         className="text-white"
         show={showTouchTargets && status === playerStatus.PLAYING}
@@ -125,6 +128,9 @@ export function PlayerPart(props: PlayerPartProps) {
             <Player.InfoButton />
 
             <Player.BookmarkButton />
+
+            {/* Chromecast in top bar - next to bookmark (Image 3 request) */}
+            <Player.Chromecast />
           </div>
           <div className="text-center hidden xl:flex justify-center items-center">
             <Player.EpisodeTitle />
@@ -133,13 +139,9 @@ export function PlayerPart(props: PlayerPartProps) {
             <BrandPill large />
           </div>
 
-          <div className="flex lg:hidden items-center justify-end">
-            {status === playerStatus.PLAYING ? (
-              <>
-                <Player.Airplay />
-                <Player.Chromecast />
-              </>
-            ) : null}
+          <div className="flex lg:hidden items-center justify-end space-x-2">
+            <Player.Airplay />
+            <Player.Chromecast />
           </div>
         </div>
       </Player.TopControls>
@@ -195,7 +197,10 @@ export function PlayerPart(props: PlayerPartProps) {
           </div>
         </div>
         <div className="grid grid-cols-[2.5rem,1fr,2.5rem] gap-3 lg:hidden">
-          <div />
+          {/* Lock button - leftmost position (Image 2 request) */}
+          <div className="flex items-center justify-start">
+            <MobileLockButton />
+          </div>
           <div className="flex justify-center space-x-3">
             {/* Disable PiP for iOS PWA */}
             {!(isPWA && isIOS) && status === playerStatus.PLAYING && (

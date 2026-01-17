@@ -82,10 +82,40 @@ function BaseContainer(props: { children?: ReactNode }) {
 }
 
 export function Container(props: PlayerProps) {
+  const isFullscreen = usePlayerStore((s) => s.interface.isFullscreen);
   const propRef = useRef(props.onLoad);
+
   useEffect(() => {
     propRef.current?.();
   }, []);
+
+  // Auto-rotation for mobile fullscreen
+  useEffect(() => {
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      ) || window.innerWidth <= 768;
+
+    if (isMobile && isFullscreen) {
+      if (
+        window.screen.orientation &&
+        (window.screen.orientation as any).lock
+      ) {
+        (window.screen.orientation as any)
+          .lock("landscape")
+          .catch((err: any) => {
+            console.error("Failed to lock orientation:", err);
+          });
+      }
+    } else if (isMobile && !isFullscreen) {
+      if (
+        window.screen.orientation &&
+        (window.screen.orientation as any).unlock
+      ) {
+        window.screen.orientation.unlock();
+      }
+    }
+  }, [isFullscreen]);
 
   return (
     <div className="relative">

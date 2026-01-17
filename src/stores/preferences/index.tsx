@@ -31,6 +31,7 @@ export interface PreferencesStore {
   manualSourceSelection: boolean;
   enableDoubleClickToSeek: boolean;
   enableAutoResumeOnPlaybackError: boolean;
+  febboxUseMp4: boolean;
 
   setEnableThumbnails(v: boolean): void;
   setEnableAutoplay(v: boolean): void;
@@ -60,6 +61,7 @@ export interface PreferencesStore {
   setManualSourceSelection(v: boolean): void;
   setEnableDoubleClickToSeek(v: boolean): void;
   setEnableAutoResumeOnPlaybackError(v: boolean): void;
+  setFebboxUseMp4(v: boolean): void;
 }
 
 export const usePreferencesStore = create(
@@ -77,7 +79,7 @@ export const usePreferencesStore = create(
       sourceOrder: [],
       enableSourceOrder: false,
       lastSuccessfulSource: null,
-      enableLastSuccessfulSource: false,
+      enableLastSuccessfulSource: true,
       disabledSources: [],
       embedOrder: [],
       enableEmbedOrder: false,
@@ -93,6 +95,7 @@ export const usePreferencesStore = create(
       manualSourceSelection: false,
       enableDoubleClickToSeek: false,
       enableAutoResumeOnPlaybackError: true,
+      febboxUseMp4: false,
       setEnableThumbnails(v) {
         set((s) => {
           s.enableThumbnails = v;
@@ -236,6 +239,11 @@ export const usePreferencesStore = create(
       setEnableAutoResumeOnPlaybackError(v) {
         set((s) => {
           s.enableAutoResumeOnPlaybackError = v;
+        });
+      },
+      setFebboxUseMp4(v) {
+        set((s) => {
+          s.febboxUseMp4 = v;
         });
       },
     })),

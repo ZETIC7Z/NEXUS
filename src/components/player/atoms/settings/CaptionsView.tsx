@@ -21,10 +21,7 @@ import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { CaptionListItem } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { useSubtitleStore } from "@/stores/subtitles";
-import {
-  getPrettyLanguageNameFromLocale,
-  sortLangCodes,
-} from "@/utils/language";
+import { getPrettyLanguageNameFromLocale } from "@/utils/language";
 
 export function CaptionOption(props: {
   countryCode?: string;
@@ -120,7 +117,15 @@ export function CaptionOption(props: {
               <FlagIcon langCode={props.countryCode} />
             </span>
           ) : null}
-          <span>{props.children}</span>
+          <span
+            className={
+              props.flag || props.subtitleUrl || props.subtitleSource
+                ? "truncate max-w-[100px]"
+                : ""
+            }
+          >
+            {props.children}
+          </span>
           {props.subtitleType && (
             <span className="ml-2 px-2 py-0.5 rounded bg-video-context-hoverColor bg-opacity-80 text-video-context-type-main text-xs font-semibold">
               {props.subtitleType.toUpperCase()}
@@ -165,14 +170,117 @@ export function useSubtitleList(subs: CaptionListItem[], searchQuery: string) {
   const { t: translate } = useTranslation();
   const unknownChoice = translate("player.menus.subtitles.unknownLanguage");
   return useMemo(() => {
-    const input = subs.map((t) => ({
-      ...t,
-      languageName:
-        getPrettyLanguageNameFromLocale(t.language) ?? unknownChoice,
-    }));
-    const sorted = sortLangCodes(input.map((t) => t.language));
+    const input = subs.map((t) => {
+      let languageName = getPrettyLanguageNameFromLocale(t.language);
+
+      // Try to detect language from URL or filename if unknown
+      if (!languageName && t.url) {
+        const urlLower = t.url.toLowerCase();
+        // Common language patterns in subtitle filenames
+        if (
+          urlLower.includes("english") ||
+          urlLower.includes(".en.") ||
+          urlLower.includes("_en.") ||
+          urlLower.includes("/en/")
+        ) {
+          languageName = "English";
+        } else if (
+          urlLower.includes("spanish") ||
+          urlLower.includes(".es.") ||
+          urlLower.includes("_es.")
+        ) {
+          languageName = "Spanish";
+        } else if (
+          urlLower.includes("french") ||
+          urlLower.includes(".fr.") ||
+          urlLower.includes("_fr.")
+        ) {
+          languageName = "French";
+        } else if (
+          urlLower.includes("german") ||
+          urlLower.includes(".de.") ||
+          urlLower.includes("_de.")
+        ) {
+          languageName = "German";
+        } else if (
+          urlLower.includes("portuguese") ||
+          urlLower.includes(".pt.") ||
+          urlLower.includes("_pt.")
+        ) {
+          languageName = "Portuguese";
+        } else if (
+          urlLower.includes("italian") ||
+          urlLower.includes(".it.") ||
+          urlLower.includes("_it.")
+        ) {
+          languageName = "Italian";
+        } else if (
+          urlLower.includes("japanese") ||
+          urlLower.includes(".ja.") ||
+          urlLower.includes("_ja.")
+        ) {
+          languageName = "Japanese";
+        } else if (
+          urlLower.includes("korean") ||
+          urlLower.includes(".ko.") ||
+          urlLower.includes("_ko.")
+        ) {
+          languageName = "Korean";
+        } else if (
+          urlLower.includes("chinese") ||
+          urlLower.includes(".zh.") ||
+          urlLower.includes("_zh.")
+        ) {
+          languageName = "Chinese";
+        } else if (
+          urlLower.includes("arabic") ||
+          urlLower.includes(".ar.") ||
+          urlLower.includes("_ar.")
+        ) {
+          languageName = "Arabic";
+        } else if (
+          urlLower.includes("russian") ||
+          urlLower.includes(".ru.") ||
+          urlLower.includes("_ru.")
+        ) {
+          languageName = "Russian";
+        }
+      }
+
+      return {
+        ...t,
+        languageName: languageName ?? unknownChoice,
+      };
+    });
+
+    // Custom sorting: VTT first, then SRT, then English at top, then alphabetical
     let results = input.sort((a, b) => {
-      return sorted.indexOf(a.language) - sorted.indexOf(b.language);
+      // 1. VTT before SRT (best format first)
+      const typeOrder: Record<string, number> = { vtt: 0, srt: 1 };
+      const typeA = typeOrder[a.type?.toLowerCase() ?? ""] ?? 2;
+      const typeB = typeOrder[b.type?.toLowerCase() ?? ""] ?? 2;
+      if (typeA !== typeB) return typeA - typeB;
+
+      // 2. English at top
+      const isEngA =
+        a.languageName?.toLowerCase().includes("english") ||
+        a.language?.startsWith("en")
+          ? 0
+          : 1;
+      const isEngB =
+        b.languageName?.toLowerCase().includes("english") ||
+        b.language?.startsWith("en")
+          ? 0
+          : 1;
+      if (isEngA !== isEngB) return isEngA - isEngB;
+
+      // 3. Known languages before Unknown
+      const isUnknownA = a.languageName === unknownChoice ? 1 : 0;
+      const isUnknownB = b.languageName === unknownChoice ? 1 : 0;
+      if (isUnknownA !== isUnknownB) return isUnknownA - isUnknownB;
+
+      // 4. Alphabetical by language name
+      return (a.languageName ?? "").localeCompare(b.languageName ?? "");
     });
 
     if (searchQuery.trim().length > 0) {

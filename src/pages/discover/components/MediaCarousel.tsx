@@ -304,10 +304,10 @@ export function MediaCarousel({
 
   return (
     <div>
-      <div className="flex items-center justify-between ml-2 md:ml-8 mt-2">
-        <div className="flex flex-col pl-2 lg:pl-[68px]">
+      <div className="flex items-center justify-between ml-1 md:ml-4 mt-2">
+        <div className="flex flex-col pl-1 lg:pl-4">
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl cursor-default font-bold text-white md:text-2xl pl-0 text-balance">
+            <h2 className="text-lg cursor-default font-bold text-white md:text-xl pl-0 text-balance">
               {sectionTitle}
             </h2>
             {showRecommendations &&
@@ -471,13 +471,13 @@ export function MediaCarousel({
       <div className="relative overflow-hidden carousel-container md:pb-4">
         <div
           id={`carousel-${categorySlug}`}
-          className="grid grid-flow-col auto-cols-max gap-4 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-8 md:pr-8"
+          className="grid grid-flow-col auto-cols-max gap-3 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-4 md:pr-4"
           ref={(el) => {
             carouselRefs.current[categorySlug] = el;
           }}
           onWheel={handleWheel}
         >
-          <div className="lg:w-12" />
+          <div className="w-1 lg:w-2" />
 
           {media.length > 0
             ? media.map((item) => (
@@ -486,7 +486,7 @@ export function MediaCarousel({
                     e.preventDefault()
                   }
                   key={item.id}
-                  className="relative mt-4 group cursor-pointer user-select-none rounded-xl p-2 bg-transparent transition-colors duration-300 w-[10rem] md:w-[11.5rem] h-auto"
+                  className="relative mt-3 group cursor-pointer user-select-none rounded-xl p-1 bg-transparent transition-colors duration-300 w-[8.5rem] md:w-[10rem] h-auto"
                 >
                   <MediaCard
                     linkable
@@ -515,7 +515,7 @@ export function MediaCarousel({
                 .map((_, index) => (
                   <div
                     key={`skeleton-${categorySlug}-${Math.random().toString(36).substring(2)}`}
-                    className="relative mt-4 group cursor-default user-select-none rounded-xl p-2 bg-transparent transition-colors duration-300 w-[10rem] md:w-[11.5rem] h-auto"
+                    className="relative mt-3 group cursor-default user-select-none rounded-xl p-1 bg-transparent transition-colors duration-300 w-[8.5rem] md:w-[10rem] h-auto"
                   >
                     <MediaCard
                       media={{
@@ -533,7 +533,7 @@ export function MediaCarousel({
             <MoreCard link={generatedMoreLink} />
           )}
 
-          <div className="lg:w-12" />
+          <div className="w-1 lg:w-2" />
         </div>
 
         {!isMobile && (

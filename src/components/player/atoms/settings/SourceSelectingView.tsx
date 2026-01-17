@@ -166,7 +166,7 @@ export function SourceSelectionView({
   );
   const disabledSources = usePreferencesStore((s) => s.disabledSources);
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
-  const hasFebboxKey = febboxKey && febboxKey.length > 0;
+  const _hasFebboxKey = febboxKey && febboxKey.length > 0; // Hidden for now
 
   const sources = useMemo(() => {
     if (!metaType) return [];
@@ -175,15 +175,29 @@ export function SourceSelectionView({
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id));
 
-    // Create FED API source if user has febbox token
-    const fedApiSource = hasFebboxKey
-      ? {
-        id: "fedapi",
-        name: "FED API (4K) 🔥",
-        type: "source" as const,
-        mediaTypes: ["movie", "show"],
-      }
-      : null;
+    // Create Zeticuz source (always available - no token needed)
+    const zeticuzSource = {
+      id: "zeticuz",
+      name: "Zeticuz 🔥",
+      type: "source" as const,
+      mediaTypes: ["movie", "show"] as ("movie" | "show")[],
+      rank: 0, // Highest priority
+    };
+
+    // Create FebBox API source (always available with shared token)
+    const febboxSource = {
+      id: "febbox",
+      name: "FebBox (4K) ⭐",
+      type: "source" as const,
+      mediaTypes: ["movie", "show"] as ("movie" | "show")[],
+      rank: 1, // Second highest priority after Zeticuz
+    };
+
+    // Premium sources list - Zeticuz and FebBox
+    const premiumSources: typeof allSources = [
+      zeticuzSource as (typeof allSources)[number],
+      febboxSource as (typeof allSources)[number],
+    ];
 
     if (!enableSourceOrder || preferredSourceOrder.length === 0) {
       // Even without custom source order, prioritize last successful source if enabled
@@ -194,12 +208,12 @@ export function SourceSelectionView({
         if (lastSourceIndex !== -1) {
           const lastSource = allSources.splice(lastSourceIndex, 1)[0];
           const result = [lastSource, ...allSources];
-          // Add FED API at the very top if available
-          return fedApiSource ? [fedApiSource, ...result] : result;
+          // Add premium sources at the very top
+          return [...premiumSources, ...result];
         }
       }
-      // Add FED API at the top if available
-      return fedApiSource ? [fedApiSource, ...allSources] : allSources;
+      // Add premium sources at the top
+      return [...premiumSources, ...allSources];
     }
 
     // Sort sources according to preferred order, but prioritize last successful source
@@ -229,8 +243,8 @@ export function SourceSelectionView({
     // Add remaining sources that weren't in the preferred order
     orderedSources.push(...remainingSources);
 
-    // Add FED API at the very top if available
-    return fedApiSource ? [fedApiSource, ...orderedSources] : orderedSources;
+    // Add premium sources at the top, then ordered sources
+    return [...premiumSources, ...orderedSources];
   }, [
     metaType,
     preferredSourceOrder,
@@ -238,7 +252,6 @@ export function SourceSelectionView({
     disabledSources,
     lastSuccessfulSource,
     enableLastSuccessfulSource,
-    hasFebboxKey,
   ]);
 
   return (

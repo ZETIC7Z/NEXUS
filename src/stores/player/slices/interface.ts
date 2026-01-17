@@ -34,6 +34,7 @@ export interface InterfaceSlice {
     timeFormat: VideoPlayerTimeFormat; // Time format of the video player
     isSpeedBoosted: boolean; // is playback speed temporarily boosted to 2x
     showSpeedIndicator: boolean; // should the speed indicator be shown
+    isScreenLocked: boolean; // Netflix-style screen lock - hides controls and blocks touches
   };
   updateInterfaceHovering(newState: PlayerHoverState): void;
   setSeeking(seeking: boolean): void;
@@ -46,6 +47,7 @@ export interface InterfaceSlice {
   setShouldStartFromBeginning(val: boolean): void;
   setSpeedBoosted(state: boolean): void;
   setShowSpeedIndicator(state: boolean): void;
+  setScreenLocked(state: boolean): void;
 }
 
 export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
@@ -67,6 +69,7 @@ export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
     shouldStartFromBeginning: false,
     isSpeedBoosted: false,
     showSpeedIndicator: false,
+    isScreenLocked: false,
   },
 
   setShouldStartFromBeginning(val) {
@@ -126,6 +129,11 @@ export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
   setShowSpeedIndicator(state) {
     set((s) => {
       s.interface.showSpeedIndicator = state;
+    });
+  },
+  setScreenLocked(state) {
+    set((s) => {
+      s.interface.isScreenLocked = state;
     });
   },
 });

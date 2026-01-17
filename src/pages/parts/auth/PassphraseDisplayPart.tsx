@@ -16,7 +16,7 @@ interface PassphraseDisplayPartProps {
 }
 
 export function PassphraseDisplayPart(props: PassphraseDisplayPartProps) {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const words = props.mnemonic.split(" ");

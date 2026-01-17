@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/buttons/Button";
 import { Icon, Icons } from "@/components/Icon";
-import { Stepper } from "@/components/layout/Stepper";
 import { CenterContainer } from "@/components/layout/ThinContainer";
 import { Heading1, Heading2, Paragraph } from "@/components/utils/Text";
 import { MinimalPageLayout } from "@/pages/layouts/MinimalPageLayout";
@@ -187,7 +186,7 @@ export function HelpPage() {
                       <li>
                         {browser.userscriptManager.name} will open automatically
                       </li>
-                      <li>You'll see the NEXUS script details</li>
+                      <li>You&apos;ll see the NEXUS script details</li>
                       <li>
                         Click &quot;Install&quot; button in{" "}
                         {browser.userscriptManager.name}

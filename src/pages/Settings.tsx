@@ -13,8 +13,6 @@ import { getSettings, updateSettings } from "@/backend/accounts/settings";
 import { editUser } from "@/backend/accounts/user";
 import { getAllProviders } from "@/backend/providers/providers";
 import { Button } from "@/components/buttons/Button";
-import { SearchBarInput } from "@/components/form/SearchBar";
-import { ThinContainer } from "@/components/layout/ThinContainer";
 import { WideContainer } from "@/components/layout/WideContainer";
 import { UserIcons } from "@/components/UserIcon";
 import { Divider } from "@/components/utils/Divider";
@@ -48,16 +46,14 @@ import { PreferencesPart } from "./parts/settings/PreferencesPart";
 function SettingsLayout(props: {
   className?: string;
   children: React.ReactNode;
-  searchQuery: string;
-  onSearchChange: (value: string, force: boolean) => void;
-  onSearchUnFocus: (newSearch?: string) => void;
+  searchQuery?: string;
   selectedCategory: string | null;
   setSelectedCategory: (category: string | null) => void;
 }) {
   const { className } = props;
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const { isMobile } = useIsMobile();
-  const searchRef = useRef<HTMLInputElement>(null);
+  const _searchRef = useRef<HTMLInputElement>(null);
   const bannerSize = useBannerSize();
 
   const isPWA = useIsPWA();
@@ -68,31 +64,13 @@ function SettingsLayout(props: {
   const navbarHeight = 80;
   // On desktop: inline with navbar (same top position + 14px adjustment)
   // On mobile: below navbar (navbar height + banner)
-  const topOffset = isMobile
+  const _topOffset = isMobile
     ? navbarHeight + bannerSize + (isIOSPWA ? 34 : 0)
     : bannerSize + 14;
 
   return (
     <WideContainer ultraWide classNames="overflow-visible">
-      {/* Floating Search Bar - starts in sticky state */}
-      <div
-        className="fixed left-0 right-0 z-50"
-        style={{
-          top: `${topOffset}px`,
-        }}
-      >
-        <ThinContainer>
-          <SearchBarInput
-            ref={searchRef}
-            onChange={props.onSearchChange}
-            value={props.searchQuery}
-            onUnFocus={props.onSearchUnFocus}
-            placeholder={t("settings.search.placeholder")}
-            isSticky
-            hideTooltip
-          />
-        </ThinContainer>
-      </div>
+      {/* Floating Search Bar - Moved to Navigation */}
 
       <div
         className={classNames(
@@ -104,7 +82,7 @@ function SettingsLayout(props: {
         <SidebarPart
           selectedCategory={props.selectedCategory}
           setSelectedCategory={props.setSelectedCategory}
-          searchQuery={props.searchQuery}
+          searchQuery={props.searchQuery || ""}
         />
         <div className={className}>{props.children}</div>
         <div className="block lg:hidden">
@@ -780,12 +758,15 @@ export function SettingsPage() {
     setEnableAutoResumeOnPlaybackError,
   ]);
   return (
-    <SubPageLayout>
+    <SubPageLayout
+      searchQuery={searchQuery}
+      onSearchChange={handleSearchChange}
+      onSearchUnFocus={handleSearchUnFocus}
+      showSettingsSearch
+    >
       <PageTitle subpage k="global.pages.settings" />
       <SettingsLayout
         searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        onSearchUnFocus={handleSearchUnFocus}
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
         className="space-y-28"

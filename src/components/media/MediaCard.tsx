@@ -324,7 +324,7 @@ function MediaCardContent({
 export function MediaCard(props: MediaCardProps) {
   const { media, onShowDetails, forceSkeleton } = props;
   const { showModal } = useOverlayStack();
-  const enableDetailsModal = usePreferencesStore(
+  const _enableDetailsModal = usePreferencesStore(
     (state) => state.enableDetailsModal,
   );
 

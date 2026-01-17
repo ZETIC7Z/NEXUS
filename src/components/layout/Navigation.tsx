@@ -1,8 +1,15 @@
 import classNames from "classnames";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, To, useLocation, useNavigate } from "react-router-dom";
 
 import { NoUserAvatar, UserAvatar } from "@/components/Avatar";
+import { SearchBarInput } from "@/components/form/SearchBar";
 import { Icon, Icons } from "@/components/Icon";
 import { LinksDropdown } from "@/components/LinksDropdown";
 import { useNotifications } from "@/components/overlays/notificationsModal";
@@ -12,36 +19,117 @@ import { useBannerSize } from "@/stores/banner";
 
 import { BrandPill } from "./BrandPill";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface NavigationProps {
-  bg?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (value: string, force: boolean) => void;
+  onSearchUnFocus?: (newSearch?: string) => void;
+  showSettingsSearch?: boolean;
 }
 
-interface NavLinkProps {
-  to: string;
-  children: React.ReactNode;
-  isActive?: boolean;
+interface NavItem {
+  path: string;
+  label: string;
+  icon?: Icons;
 }
 
-function NavLink({ to, children, isActive }: NavLinkProps) {
+const navItems: NavItem[] = [
+  { path: "/discover", label: "Home", icon: Icons.HOME },
+  { path: "/movies", label: "Movies", icon: Icons.FILM },
+  { path: "/tv", label: "TV Series", icon: Icons.DISPLAY },
+  { path: "/anime", label: "Anime", icon: Icons.STAR },
+  { path: "/my-bookmarks", label: "My Bookmarks", icon: Icons.BOOKMARK },
+];
+
+// Pill Navigation Component with sliding indicator
+function PillNavigation() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
 
-  const handleClick = (e: React.MouseEvent) => {
+  // Determine active path
+  const getActivePath = useCallback(() => {
+    const currentPath = location.pathname;
+
+    // Check if current path starts with any nav item path
+    for (const item of navItems) {
+      if (item.path === "/discover") {
+        // Home is active for "/" and "/discover"
+        if (
+          currentPath === "/" ||
+          currentPath === "/discover" ||
+          currentPath.startsWith("/discover")
+        ) {
+          return item.path;
+        }
+      } else if (currentPath.startsWith(item.path)) {
+        return item.path;
+      }
+    }
+
+    // Default to home
+    return "/discover";
+  }, [location.pathname]);
+
+  const activePath = getActivePath();
+
+  // Update indicator position when active item changes
+  useLayoutEffect(() => {
+    const activeElement = itemRefs.current.get(activePath);
+    const indicator = indicatorRef.current;
+
+    if (activeElement && indicator) {
+      const width = activeElement.offsetWidth;
+      const left = activeElement.offsetLeft;
+
+      indicator.style.width = `${width}px`;
+      indicator.style.left = `${left}px`;
+    }
+  }, [activePath]);
+
+  const handleClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => {
     e.preventDefault();
     window.scrollTo(0, 0);
-    navigate(to);
+    navigate(path);
   };
 
   return (
-    <a
-      href={to}
-      onClick={handleClick}
-      className={classNames(
-        "text-sm font-medium transition-colors duration-200 hover:text-white whitespace-nowrap",
-        isActive ? "text-white" : "text-gray-300",
-      )}
+    <nav
+      ref={navRef}
+      className="relative hidden lg:flex items-center bg-black/80 rounded-full px-2 py-1.5 border border-white/10"
     >
-      {children}
-    </a>
+      {/* Sliding Indicator */}
+      <div
+        ref={indicatorRef}
+        className="absolute h-[calc(100%-12px)] rounded-full bg-white/20 transition-all duration-300 ease-in-out pointer-events-none"
+        style={{ top: "6px" }}
+      />
+
+      {/* Nav Items */}
+      {navItems.map((item) => (
+        <a
+          key={item.path}
+          ref={(el) => {
+            if (el) itemRefs.current.set(item.path, el);
+          }}
+          href={item.path}
+          onClick={(e) => handleClick(e, item.path)}
+          className={classNames(
+            "relative z-10 px-5 py-2.5 text-base font-medium whitespace-nowrap transition-all duration-200 rounded-full",
+            activePath === item.path
+              ? "text-white"
+              : "text-gray-400 hover:text-white",
+          )}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -50,7 +138,7 @@ export function Navigation(props: NavigationProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { loggedIn } = useAuth();
-  const [scrollPosition, setScrollPosition] = useState(0);
+  const [_scrollPosition, setScrollPosition] = useState(0);
   const { openNotifications, getUnreadCount } = useNotifications();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -139,12 +227,6 @@ export function Navigation(props: NavigationProps) {
     navigate(path);
   };
 
-  // Calculate background opacity based on scroll position
-  const getBackgroundOpacity = () => {
-    const maxScroll = 100;
-    return Math.min(scrollPosition, maxScroll) / maxScroll;
-  };
-
   // Check which nav item is active
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -166,15 +248,10 @@ export function Navigation(props: NavigationProps) {
           top: `${bannerHeight}px`,
         }}
       >
-        <div
-          className={classNames("transition-colors duration-300 ease-in-out")}
-          style={{
-            backgroundColor: `rgba(20, 20, 20, ${props.bg || scrollPosition > 50 ? getBackgroundOpacity() : 0})`,
-          }}
-        >
-          <div className="px-4 md:px-12 py-3 flex items-center justify-between">
-            {/* Left side - Logo and Nav Links */}
-            <div className="flex items-center space-x-6 md:space-x-8">
+        <div className="transition-all duration-300 ease-in-out">
+          <div className="px-4 md:px-8 lg:px-12 py-3 flex items-center justify-between">
+            {/* Left side - Logo */}
+            <div className="flex items-center">
               <Link
                 className="block tabbable rounded-full text-xs ssm:text-base"
                 to="/"
@@ -182,49 +259,34 @@ export function Navigation(props: NavigationProps) {
               >
                 <BrandPill clickable header />
               </Link>
-
-              {/* Navigation Links - Hidden on mobile */}
-              <nav className="hidden md:flex items-center space-x-5">
-                <NavLink
-                  to="/discover"
-                  isActive={
-                    isActive("/discover") ||
-                    (isActive("/") &&
-                      !isActive("/movies") &&
-                      !isActive("/tv") &&
-                      !isActive("/anime") &&
-                      !isActive("/my-bookmarks"))
-                  }
-                >
-                  Home
-                </NavLink>
-                <NavLink to="/movies" isActive={isActive("/movies")}>
-                  Movies
-                </NavLink>
-                <NavLink to="/tv" isActive={isActive("/tv")}>
-                  TV Series
-                </NavLink>
-                <NavLink to="/anime" isActive={isActive("/anime")}>
-                  Anime
-                </NavLink>
-                <NavLink
-                  to="/my-bookmarks"
-                  isActive={isActive("/my-bookmarks")}
-                >
-                  My Bookmarks
-                </NavLink>
-              </nav>
-
-              {/* Mobile Hamburger Menu Button - COMPLETELY HIDDEN */}
-              <button
-                type="button"
-                className="hidden"
-                onClick={() => setMobileMenuOpen(true)}
-                aria-label="Open menu"
-              >
-                <Icon icon={Icons.MENU} className="text-xl" />
-              </button>
             </div>
+
+            {/* Center - Pill Navigation or Settings Search */}
+            {!location.pathname.startsWith("/settings") &&
+              !location.pathname.startsWith("/register") &&
+              !location.pathname.startsWith("/login") &&
+              !location.pathname.startsWith("/onboarding") && (
+                <div className="hidden lg:flex flex-1 justify-center">
+                  <PillNavigation />
+                </div>
+              )}
+
+            {/* Settings Search */}
+            {location.pathname.startsWith("/settings") &&
+              props.showSettingsSearch &&
+              props.onSearchChange && (
+                <div className="hidden lg:flex flex-1 justify-center max-w-xl mx-auto">
+                  <div className="w-full">
+                    <SearchBarInput
+                      value={props.searchQuery || ""}
+                      onChange={props.onSearchChange}
+                      onUnFocus={props.onSearchUnFocus || (() => {})}
+                      placeholder="Search settings..."
+                      hideTooltip
+                    />
+                  </div>
+                </div>
+              )}
 
             {/* Right side - Icons */}
             <div className="flex items-center space-x-3">

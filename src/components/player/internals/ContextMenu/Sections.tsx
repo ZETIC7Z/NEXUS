@@ -26,7 +26,9 @@ export function Section(props: {
   return (
     <div
       className={classNames(
-        props.grid ? "grid grid-cols-2 gap-3 pt-6" : "pt-4 space-y-1",
+        props.grid
+          ? "grid grid-cols-2 gap-2 md:gap-3 pt-4 md:pt-6"
+          : "pt-3 md:pt-4 space-y-1",
         props.className,
       )}
     >

@@ -23,7 +23,13 @@ export function BlurEllipsis(props: { positionClass?: string }) {
   );
 }
 
-export function SubPageLayout(props: { children: React.ReactNode }) {
+export function SubPageLayout(props: {
+  children: React.ReactNode;
+  searchQuery?: string;
+  onSearchChange?: (value: string, force: boolean) => void;
+  onSearchUnFocus?: (newSearch?: string) => void;
+  showSettingsSearch?: boolean;
+}) {
   return (
     <div
       className="bg-background-main"
@@ -35,7 +41,12 @@ export function SubPageLayout(props: { children: React.ReactNode }) {
       <BlurEllipsis />
       {/* Main page */}
       <FooterView>
-        <Navigation bg />
+        <Navigation
+          searchQuery={props.searchQuery}
+          onSearchChange={props.onSearchChange}
+          onSearchUnFocus={props.onSearchUnFocus}
+          showSettingsSearch={props.showSettingsSearch}
+        />
 
         <div className="mt-40 relative">{props.children}</div>
       </FooterView>

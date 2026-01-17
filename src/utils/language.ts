@@ -257,3 +257,35 @@ export function getTmdbLanguageCode(language: string): string {
   // Last resort fallback
   return "en-US";
 }
+
+/**
+ * Get the default language code based on country code
+ * @param countryCode ISO 3166-1 alpha-2 country code
+ * @returns ISO 639-1 language code
+ */
+export function getDefaultLanguageByCountry(
+  countryCode: string | null,
+): string {
+  if (!countryCode) return "en";
+
+  const countryToLanguage: Record<string, string> = {
+    PH: "tl", // Philippines -> Tagalog
+    IN: "hi", // India -> Hindi
+    FR: "fr", // France -> French
+    DE: "de", // Germany -> German
+    ES: "es", // Spain -> Spanish
+    IT: "it", // Italy -> Italian
+    BR: "pt", // Brazil -> Portuguese
+    PT: "pt", // Portugal -> Portuguese
+    JP: "ja", // Japan -> Japanese
+    KR: "ko", // South Korea -> Korean
+    CN: "zh", // China -> Chinese
+    VN: "vi", // Vietnam -> Vietnamese
+    TH: "th", // Thailand -> Thai
+    ID: "id", // Indonesia -> Indonesian
+    RU: "ru", // Russia -> Russian
+    SA: "ar", // Saudi Arabia -> Arabic
+  };
+
+  return countryToLanguage[countryCode.toUpperCase()] || "en";
+}

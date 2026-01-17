@@ -36,6 +36,7 @@ interface Config {
   HIDE_PROXY_ONBOARDING: boolean;
   SHOW_SUPPORT_BAR: boolean;
   SUPPORT_BAR_VALUE: string;
+  HIDE_PROXY_SETTINGS: boolean;
 }
 
 export interface RuntimeConfig {
@@ -68,6 +69,7 @@ export interface RuntimeConfig {
   HIDE_PROXY_ONBOARDING: boolean;
   SHOW_SUPPORT_BAR: boolean;
   SUPPORT_BAR_VALUE: string;
+  HIDE_PROXY_SETTINGS: boolean;
 }
 
 const env: Record<keyof Config, undefined | string> = {
@@ -103,6 +105,7 @@ const env: Record<keyof Config, undefined | string> = {
   HIDE_PROXY_ONBOARDING: import.meta.env.VITE_HIDE_PROXY_ONBOARDING,
   SHOW_SUPPORT_BAR: import.meta.env.VITE_SHOW_SUPPORT_BAR,
   SUPPORT_BAR_VALUE: import.meta.env.VITE_SUPPORT_BAR_VALUE,
+  HIDE_PROXY_SETTINGS: import.meta.env.VITE_HIDE_PROXY_SETTINGS,
 };
 
 function coerceUndefined(value: string | null | undefined): string | undefined {
@@ -181,5 +184,6 @@ export function conf(): RuntimeConfig {
     HIDE_PROXY_ONBOARDING: getKey("HIDE_PROXY_ONBOARDING", "false") === "true",
     SHOW_SUPPORT_BAR: getKey("SHOW_SUPPORT_BAR", "false") === "true",
     SUPPORT_BAR_VALUE: getKey("SUPPORT_BAR_VALUE") ?? "",
+    HIDE_PROXY_SETTINGS: getKey("HIDE_PROXY_SETTINGS", "false") === "true",
   };
 }

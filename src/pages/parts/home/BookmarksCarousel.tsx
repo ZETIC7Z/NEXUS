@@ -41,7 +41,7 @@ const MAX_ITEMS_PER_SECTION = 20; // Limit items per section
 
 function MediaCardSkeleton() {
   return (
-    <div className="relative mt-4 group cursor-default rounded-xl p-2 bg-transparent transition-colors duration-300 w-[10rem] md:w-[11.5rem] h-auto">
+    <div className="relative mt-3 group cursor-default rounded-xl p-1 bg-transparent transition-colors duration-300 w-[8.5rem] md:w-[10rem] h-auto">
       <div className="animate-pulse">
         <div className="w-full aspect-[2/3] bg-mediaCard-hoverBackground rounded-lg" />
         <div className="mt-2 h-4 bg-mediaCard-hoverBackground rounded w-3/4" />
@@ -54,7 +54,7 @@ function MoreBookmarksCard() {
   const { t } = useTranslation();
 
   return (
-    <div className="relative mt-4 group cursor-pointer rounded-xl p-2 bg-transparent transition-colors duration-300 w-[10rem] md:w-[11.5rem] h-auto">
+    <div className="relative mt-3 group cursor-pointer rounded-xl p-1 bg-transparent transition-colors duration-300 w-[8.5rem] md:w-[10rem] h-auto">
       <Link to="/bookmarks" className="block">
         <Flare.Base className="group -m-[0.705em] h-[20rem] hover:scale-95 transition-all rounded-xl bg-background-main duration-300 hover:bg-mediaCard-hoverBackground tabbable">
           <Flare.Light
@@ -299,9 +299,9 @@ export function BookmarksCarousel({
                     <UserIcon icon={icon} className="w-full h-full" />
                   </span>
                 }
-                className="ml-4 lg:ml-12 mt-2 -mb-5 lg:pl-[48px]"
+                className="ml-2 lg:ml-4 mt-2 -mb-5 lg:pl-2"
               >
-                <div className="mr-4 lg:mr-[88px] flex items-center gap-2">
+                <div className="mr-2 lg:mr-4 flex items-center gap-2">
                   {editing && section.group && (
                     <EditButtonWithText
                       editing={editing}
@@ -323,13 +323,13 @@ export function BookmarksCarousel({
               <div className="relative overflow-hidden carousel-container md:pb-4">
                 <div
                   id={`carousel-${section.group}`}
-                  className="grid grid-flow-col auto-cols-max gap-4 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-8 md:pr-8"
+                  className="grid grid-flow-col auto-cols-max gap-3 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-4 md:pr-4"
                   ref={(el) => {
                     carouselRefs.current[section.group || "bookmarks"] = el;
                   }}
                   onWheel={handleWheel}
                 >
-                  <div className="lg:w-12" />
+                  <div className="w-1 lg:w-2" />
 
                   {section.items
                     .slice(0, MAX_ITEMS_PER_SECTION)
@@ -339,7 +339,7 @@ export function BookmarksCarousel({
                         onContextMenu={(e: React.MouseEvent<HTMLDivElement>) =>
                           e.preventDefault()
                         }
-                        className="relative mt-4 group cursor-pointer rounded-xl p-2 bg-transparent transition-colors duration-300 w-[10rem] md:w-[11.5rem] h-auto"
+                        className="relative mt-3 group cursor-pointer rounded-xl p-1 bg-transparent transition-colors duration-300 w-[8.5rem] md:w-[10rem] h-auto"
                       >
                         <WatchedMediaCard
                           key={media.id}
@@ -357,7 +357,7 @@ export function BookmarksCarousel({
                     <MoreBookmarksCard />
                   )}
 
-                  <div className="lg:w-12" />
+                  <div className="w-1 lg:w-2" />
                 </div>
 
                 {!isMobile && (
@@ -375,9 +375,9 @@ export function BookmarksCarousel({
             <SectionHeading
               title={t("home.bookmarks.sectionTitle")}
               icon={Icons.BOOKMARK}
-              className="ml-4 md:ml-12 mt-2 -mb-5"
+              className="ml-2 md:ml-4 mt-2 -mb-5"
             >
-              <div className="mr-4 lg:mr-[88px] flex items-center gap-2">
+              <div className="mr-2 lg:mr-4 flex items-center gap-2">
                 <EditButton
                   editing={editing}
                   onEdit={setEditing}
@@ -388,13 +388,13 @@ export function BookmarksCarousel({
             <div className="relative overflow-hidden carousel-container md:pb-4">
               <div
                 id={`carousel-${categorySlug}`}
-                className="grid grid-flow-col auto-cols-max gap-4 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-8 md:pr-8"
+                className="grid grid-flow-col auto-cols-max gap-3 pt-0 overflow-x-scroll scrollbar-none rounded-xl overflow-y-hidden md:pl-4 md:pr-4"
                 ref={(el) => {
                   carouselRefs.current[categorySlug] = el;
                 }}
                 onWheel={handleWheel}
               >
-                <div className="lg:w-12" />
+                <div className="w-1 lg:w-2" />
 
                 {section.items.length > 0
                   ? section.items
@@ -428,7 +428,7 @@ export function BookmarksCarousel({
                   <MoreBookmarksCard />
                 )}
 
-                <div className="lg:w-12" />
+                <div className="w-1 lg:w-2" />
               </div>
 
               {!isMobile && (

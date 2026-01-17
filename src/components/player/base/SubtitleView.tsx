@@ -167,7 +167,7 @@ export function SubtitleView(props: { controlsShown: boolean }) {
   return (
     <Transition animation="slide-up" show>
       <div
-        className="text-white absolute w-full flex flex-col items-center transition-[bottom]"
+        className="text-white absolute w-full flex flex-col items-center transition-[bottom] z-[80]"
         style={{
           bottom: props.controlsShown
             ? "6rem"

@@ -63,10 +63,20 @@ export async function fetchFebboxQuota(febboxKey: string | null): Promise<any> {
     return null;
   }
 
-  console.log("SetupPart.tsx: Fetching Febbox quota");
+  console.log("SetupPart.tsx: Fetching Febbox quota from Fembox API");
   try {
-    // Fembox doesn't have a quota endpoint, return null
-    // The validation will be done in testFebboxKey
+    const url = `https://fembox.lordflix.club/api/user/quota?cookie=${febboxKey}`;
+    const data = await proxiedFetch<any>(url, {});
+
+    if (data && data.success && data.data) {
+      console.log("SetupPart.tsx: Successfully fetched Febbox quota");
+      return data;
+    }
+
+    console.log(
+      "SetupPart.tsx: Failed to fetch Febbox quota or invalid response",
+      data,
+    );
     return null;
   } catch (error) {
     console.error("SetupPart.tsx: Error fetching Febbox quota:", error);
@@ -89,7 +99,6 @@ export async function testFebboxKey(febboxKey: string | null): Promise<Status> {
   console.log("Febbox token format is valid (JWT)");
   return "success";
 }
-
 
 export async function testdebridToken(
   debridToken: string | null,

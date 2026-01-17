@@ -6,7 +6,6 @@ import { useAsyncFn } from "react-use";
 import { generatePassphraseFromCredentials } from "@/backend/accounts/crypto";
 import { Button } from "@/components/buttons/Button";
 import { Icon, Icons } from "@/components/Icon";
-import { BrandPill } from "@/components/layout/BrandPill";
 import {
   LargeCard,
   LargeCardButtons,
@@ -42,7 +41,7 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
   const progressItems = useProgressStore((store) => store.items);
   const bookmarkItems = useBookmarkStore((store) => store.bookmarks);
   const backendUrl = useBackendUrl();
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const { executeRecaptcha } = useGoogleReCaptcha();
   const setAccountFullName = useAuthStore((s) => s.setAccountFullName);
   const setAccountUsername = useAuthStore((s) => s.setAccountUsername);
@@ -134,7 +133,7 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
   );
 
   return (
-    <LargeCard top={<BrandPill backgroundClass="bg-[#141414]" />}>
+    <LargeCard>
       <LargeCardText title="Create Account">
         Create your NEXUS account to start watching.
       </LargeCardText>

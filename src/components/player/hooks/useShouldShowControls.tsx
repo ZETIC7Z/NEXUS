@@ -11,9 +11,18 @@ export function useShouldShowControls() {
   const isHoveringControls = usePlayerStore(
     (s) => s.interface.isHoveringControls,
   );
+  const isScreenLocked = usePlayerStore((s) => s.interface.isScreenLocked);
 
   const isUsingTouch = lastHoveringState === PlayerHoverState.MOBILE_TAPPED;
   const isHovering = hovering !== PlayerHoverState.NOT_HOVERING;
+
+  // NETFLIX-STYLE: When screen is locked, hide all controls
+  if (isScreenLocked) {
+    return {
+      showTouchTargets: false,
+      showTargets: false,
+    };
+  }
 
   // when using touch, pause screens can be dismissed by tapping
   const showTargetsWithoutPause =
