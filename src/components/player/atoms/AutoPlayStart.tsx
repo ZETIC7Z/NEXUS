@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { usePreferencesStore } from "@/stores/preferences";
 
 import { Icon, Icons } from "@/components/Icon";
 import { playerStatus } from "@/stores/player/slices/source";
@@ -14,6 +15,21 @@ export function AutoPlayStart() {
   const handleClick = useCallback(() => {
     display?.play();
   }, [display]);
+
+  const enableAutoplay = usePreferencesStore((s) => s.enableAutoplay);
+
+  useEffect(() => {
+    if (
+      enableAutoplay &&
+      !hasPlayedOnce &&
+      !isPlaying &&
+      !isLoading &&
+      status === playerStatus.PLAYING &&
+      display
+    ) {
+      display.play();
+    }
+  }, [enableAutoplay, hasPlayedOnce, isPlaying, isLoading, status, display]);
 
   if (hasPlayedOnce) return null;
   if (isPlaying) return null;

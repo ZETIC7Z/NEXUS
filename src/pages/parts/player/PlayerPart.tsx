@@ -74,7 +74,17 @@ export function PlayerPart(props: PlayerPartProps) {
     }, 1000);
   };
 
+  const [thumbsFeedbackData, setThumbsFeedbackData] = useState<{
+    key: string;
+    item: SegmentData;
+  } | null>(null);
+
+  const handleThumbsFeedback = (key: string, item: SegmentData) => {
+    setThumbsFeedbackData({ key, item });
+  };
+
   const skiptime = useSkipTime();
+
 
   return (
     <Player.Container
