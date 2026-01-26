@@ -9,6 +9,79 @@
     <atom:link href="https://pstream.mov/notifications.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <guid>notification-059</guid>
+      <title>P-Stream desktop app is now available!</title>
+      <description>The P-Stream desktop app is now available for download! You can now stream movies and TV shows separately from your browser!
+
+The app has the extension built in, so all the best sources are already configured and ready to use! You can still set up FED API from the settings page as well!
+
+The app is available for Windows, macOS, and Linux. You can download it from the link below!
+      </description>
+      <link>https://github.com/p-stream/p-stream-desktop/releases</link>
+      <pubDate>Mon, 26 Jan 2026 15:20:00 MST</pubDate>
+      <category>announcement</category>
+    </item>
+
+    <item>
+      <guid>notification-058</guid>
+      <title>New TheIntroDB Skip Segments feature!</title>
+      <description>You can now quickly leave feedback, correct, and submit skip times for movies and TV shows using your TheIntroDB API key right within P-Stream!
+
+If you haven't made an account on TheIntroDB yet, you can do so below! Generate your API key and add it to your P-Stream connections settings!
+
+Then, the next time you encounter a skip button, you can leave feedback and correct the skip time if it's incorrect!
+
+And if an episode does't have a segment yet, you can submit it yourself from the new Skip Segments menu on the player!
+      </description>
+      <link>https://theintrodb.org/sign-up</link>
+      <pubDate>Mon, 19 Jan 2026 17:40:00 MST</pubDate>
+      <category>feature</category>
+    </item>
+
+    <item>
+      <guid>notification-057</guid>
+      <title>P-Stream v5.3.4 released!</title>
+      <description>I know it's been a while, but there's finally new features and fixes that many people have been waiting for!
+
+- Added a new Watch History page! Separate from the currently watching section. Accessible from the dropdown menu.
+- Added subtitle translation! Thanks to @vlOd2 you can now translate any subtitle to any other language!
+- Added passkey support for new account creation.
+- Added a button to quickly find the next available source!
+- Added support for multiple skip segment types including recaps and credits!
+- Added a new total watched percentage and watched count to the details modal!
+- Added support for multiple backend servers.
+- Added more keyboard shortcuts!
+- Fixed uploading and downloading captions on some devices.
+- Fixed auto quality not working.
+- Fixed some Airplay issues
+- Fixed many other bugs and issues!
+
+Thanks to everyone who has supported and we'll be working hard to bring you new great things!
+
+Also, my new project, TheIntroDB, is now available to everyone, please submit intros, recaps, and credits for all your favorite movies and shows! Signup below!
+      </description>
+      <link>https://theintrodb.org</link>
+      <pubDate>Sat, 17 Jan 2026 14:10:00 MST</pubDate>
+      <category>update</category>
+    </item>
+
+    <item>
+      <guid>notification-056</guid>
+      <title>New Skip Intro Time API!</title>
+      <description>Introducing TheIntroDB, a new skip intro time API! TheIntroDB is a free, community-driven platform that provides skip intro times for thousands of movies and TV shows.
+
+TheIntroDB is powered by the community. You can contribute by adding skip intro times for movies and TV shows to the database!
+
+It's now available to P-Stream users and soon to available as a separate free API! 
+
+Join the waitlist below to get access to the API when it's ready!
+      </description>
+      <link>https://theintrodb.org/waitlist</link>
+      <pubDate>Mon, 12 Jan 2026 17:10:00 MST</pubDate>
+      <category>announcement</category>
+    </item>
+
+    <item>
       <guid>notification-055</guid>
       <title>Backend issues have been fixed!</title>
       <description>You are now able to log into your account again! Hopefully less downtime going forward!
