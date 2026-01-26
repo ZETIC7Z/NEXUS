@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSkipTracking } from "@/components/player/hooks/useSkipTracking";
+import { SkipTimeData } from "@/components/player/hooks/useSkipTime";
 import { usePlayerStore } from "@/stores/player/store";
 
 // Import SkipEvent type
@@ -21,7 +22,7 @@ interface PendingSkip {
   timer: ReturnType<typeof setTimeout>;
 }
 
-export function SkipTracker() {
+export function SkipTracker(props: { skipTimeData: SkipTimeData | null }) {
   const { latestSkip } = useSkipTracking(20);
   const lastLoggedSkipRef = useRef<number>(0);
   const [pendingSkips, setPendingSkips] = useState<PendingSkip[]>([]);
@@ -30,10 +31,18 @@ export function SkipTracker() {
   // Player metadata for context
   const meta = usePlayerStore((s) => s.meta);
   const progress = usePlayerStore((s) => s.progress);
-  const turnstileToken = "";
+  const turnstileToken = ""; // Placeholder for turnstile token if needed
+
+  // Only send analytics for auto-generated sources
+  const shouldSendAnalytics =
+    props.skipTimeData?.source === "fed-skips" ||
+    props.skipTimeData?.source === "introdb";
 
   const sendSkipAnalytics = useCallback(
     async (skip: SkipEvent, adjustedConfidence: number) => {
+      // Don't send if we shouldn't
+      if (!shouldSendAnalytics) return;
+
       try {
         await fetch("https://skips.pstream.mov/send", {
           method: "POST",
@@ -48,13 +57,14 @@ export function SkipTracker() {
             episode_id: meta?.episode?.tmdbId,
             confidence: adjustedConfidence,
             turnstile_token: turnstileToken ?? "",
+            source: props.skipTimeData?.source,
           }),
         });
       } catch (error) {
         console.error("Failed to send skip analytics:", error);
       }
     },
-    [meta, turnstileToken],
+    [meta, turnstileToken, shouldSendAnalytics, props.skipTimeData?.source],
   );
 
   const createPendingSkip = useCallback(
@@ -96,10 +106,6 @@ export function SkipTracker() {
 
     // Avoid processing the same skip multiple times
     if (latestSkip.timestamp === lastLoggedSkipRef.current) return;
-
-    // Log completed skip session
-    // eslint-disable-next-line no-console
-    console.log(`Skip session completed: ${latestSkip.skipDuration}s total`);
 
     // Create pending skip with 5-second delay
     const pendingSkip = createPendingSkip(latestSkip);

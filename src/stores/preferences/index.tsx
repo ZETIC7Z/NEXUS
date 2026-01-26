@@ -23,6 +23,7 @@ export interface PreferencesStore {
   proxyTmdb: boolean;
   febboxKey: string | null;
   debridToken: string | null;
+  tidbKey: string | null;
   debridService: string;
   enableLowPerformanceMode: boolean;
   enableNativeSubtitles: boolean;
@@ -62,6 +63,7 @@ export interface PreferencesStore {
   setEnableDoubleClickToSeek(v: boolean): void;
   setEnableAutoResumeOnPlaybackError(v: boolean): void;
   setFebboxUseMp4(v: boolean): void;
+  setTIDBKey(v: string | null): void;
 }
 
 export const usePreferencesStore = create(
@@ -87,6 +89,7 @@ export const usePreferencesStore = create(
       proxyTmdb: false,
       febboxKey: null,
       debridToken: null,
+      tidbKey: null,
       debridService: "realdebrid",
       enableLowPerformanceMode: false,
       enableNativeSubtitles: false,
@@ -244,6 +247,11 @@ export const usePreferencesStore = create(
       setFebboxUseMp4(v) {
         set((s) => {
           s.febboxUseMp4 = v;
+        });
+      },
+      setTIDBKey(v) {
+        set((s) => {
+          s.tidbKey = v;
         });
       },
     })),
