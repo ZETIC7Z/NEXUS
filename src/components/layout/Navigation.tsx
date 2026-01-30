@@ -10,6 +10,7 @@ import { Link, To, useLocation, useNavigate } from "react-router-dom";
 
 import { NoUserAvatar, UserAvatar } from "@/components/Avatar";
 import { SearchBarInput } from "@/components/form/SearchBar";
+import { HeaderSearchBar } from "@/components/HeaderSearchBar";
 import { Icon, Icons } from "@/components/Icon";
 import { LinksDropdown } from "@/components/LinksDropdown";
 import { useNotifications } from "@/components/overlays/notificationsModal";
@@ -38,7 +39,8 @@ const navItems: NavItem[] = [
   { path: "/movies", label: "Movies", icon: Icons.FILM },
   { path: "/tv", label: "TV Series", icon: Icons.DISPLAY },
   { path: "/anime", label: "Anime", icon: Icons.STAR },
-  { path: "/my-bookmarks", label: "My Bookmarks", icon: Icons.BOOKMARK },
+  { path: "/my-bookmarks", label: "My Favorites", icon: Icons.HEART },
+  { path: "/watch-history", label: "Recent Watch", icon: Icons.CLOCK },
 ];
 
 // Pill Navigation Component with sliding indicator
@@ -139,88 +141,45 @@ export function Navigation(props: NavigationProps) {
   const location = useLocation();
   const { loggedIn } = useAuth();
   const [_scrollPosition, setScrollPosition] = useState(0);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
   const { openNotifications, getUnreadCount } = useNotifications();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Hide navigation on landing page for non-logged-in users
   const isLandingPage = location.pathname === "/" && !loggedIn;
 
-  // Search bar state
-  const [searchExpanded, setSearchExpanded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const autoFoldTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Handle scroll - hide header on scroll down, show on scroll up
   useEffect(() => {
     const handleScroll = () => {
-      setScrollPosition(window.scrollY);
+      const currentScrollY = window.scrollY;
+      setScrollPosition(currentScrollY);
+
+      // Only apply hide behavior on mobile
+      if (window.innerWidth < 768) {
+        // Show header when at top or scrolling up
+        if (currentScrollY < 50) {
+          setIsHeaderHidden(false);
+        } else if (
+          currentScrollY > lastScrollY.current &&
+          currentScrollY > 100
+        ) {
+          // Scrolling down and past threshold - hide header
+          setIsHeaderHidden(true);
+        } else if (currentScrollY < lastScrollY.current) {
+          // Scrolling up - show header
+          setIsHeaderHidden(false);
+        }
+      } else {
+        setIsHeaderHidden(false);
+      }
+
+      lastScrollY.current = currentScrollY;
     };
 
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // Auto-fold search after 5 seconds of no input
-  useEffect(() => {
-    if (searchExpanded && searchQuery === "") {
-      // Clear any existing timeout
-      if (autoFoldTimeoutRef.current) {
-        clearTimeout(autoFoldTimeoutRef.current);
-      }
-
-      // Set new timeout to fold after 5 seconds
-      autoFoldTimeoutRef.current = setTimeout(() => {
-        setSearchExpanded(false);
-      }, 5000);
-    }
-
-    return () => {
-      if (autoFoldTimeoutRef.current) {
-        clearTimeout(autoFoldTimeoutRef.current);
-      }
-    };
-  }, [searchExpanded, searchQuery]);
-
-  // Focus input when search expands
-  useEffect(() => {
-    if (searchExpanded && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchExpanded]);
-
-  const handleSearchClick = useCallback(() => {
-    if (searchExpanded) {
-      // If already expanded and has query, navigate to search
-      if (searchQuery.trim()) {
-        navigate(`/browse/${encodeURIComponent(searchQuery.trim())}`);
-        setSearchExpanded(false);
-        setSearchQuery("");
-      } else {
-        setSearchExpanded(false);
-      }
-    } else {
-      setSearchExpanded(true);
-    }
-  }, [searchExpanded, searchQuery, navigate]);
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && searchQuery.trim()) {
-      navigate(`/browse/${encodeURIComponent(searchQuery.trim())}`);
-      setSearchExpanded(false);
-      setSearchQuery("");
-    } else if (e.key === "Escape") {
-      setSearchExpanded(false);
-      setSearchQuery("");
-    }
-  };
-
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    // Reset timer when user types
-    if (autoFoldTimeoutRef.current) {
-      clearTimeout(autoFoldTimeoutRef.current);
-    }
-  };
 
   const handleClick = (path: To) => {
     window.scrollTo(0, 0);
@@ -243,13 +202,19 @@ export function Navigation(props: NavigationProps) {
     <>
       {/* Netflix-style navigation header */}
       <div
-        className="fixed left-0 right-0 z-[500] top-0"
+        className={classNames(
+          "fixed left-0 right-0 z-[500] transition-transform duration-300 ease-out",
+          isHeaderHidden ? "-translate-y-full" : "translate-y-0",
+        )}
         style={{
           top: `${bannerHeight}px`,
         }}
       >
-        <div className="transition-all duration-300 ease-in-out">
-          <div className="px-4 md:px-8 lg:px-12 py-3 flex items-center justify-between">
+        <div
+          className="transition-all duration-300 ease-in-out"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
+          <div className="px-4 md:px-8 lg:px-12 py-0 md:py-3 flex items-center justify-between">
             {/* Left side - Logo */}
             <div className="flex items-center">
               <Link
@@ -289,47 +254,13 @@ export function Navigation(props: NavigationProps) {
               )}
 
             {/* Right side - Icons */}
-            <div className="flex items-center space-x-3">
-              {/* Expandable Search Bar */}
-              <div className="relative flex items-center">
-                <div
-                  className={classNames(
-                    "flex items-center transition-all duration-300 ease-in-out overflow-hidden",
-                    searchExpanded
-                      ? "bg-black/80 border border-white/50 rounded"
-                      : "bg-transparent border-transparent",
-                  )}
-                  style={{
-                    width: searchExpanded ? "280px" : "40px",
-                  }}
-                >
-                  {/* Search Icon Button */}
-                  <button
-                    type="button"
-                    onClick={handleSearchClick}
-                    className="flex items-center justify-center w-10 h-10 text-white hover:text-gray-300 transition-colors flex-shrink-0"
-                    aria-label="Search"
-                  >
-                    <Icon icon={Icons.SEARCH} className="text-xl" />
-                  </button>
-
-                  {/* Search Input */}
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearchInputChange}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder="What do you want to watch?"
-                    className={classNames(
-                      "bg-transparent text-white placeholder-gray-400 outline-none text-sm transition-all duration-300",
-                      searchExpanded
-                        ? "w-full pr-3 opacity-100"
-                        : "w-0 opacity-0",
-                    )}
-                  />
-                </div>
-              </div>
+            <div className="flex items-center space-x-2 md:space-x-3">
+              {/* Animated Search Bar - Works on both mobile and desktop */}
+              <HeaderSearchBar
+                onSearch={(query) => {
+                  navigate(`/browse/${encodeURIComponent(query)}`);
+                }}
+              />
 
               {/* Notifications */}
               <button

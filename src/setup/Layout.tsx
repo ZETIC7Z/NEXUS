@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useBannerSize, useBannerStore } from "@/stores/banner";
 import { BannerLocation } from "@/stores/banner/BannerLocation";
 
@@ -22,15 +21,10 @@ export function Layout(props: { children: ReactNode }) {
         style={{
           paddingTop: location === null ? `${bannerSize}px` : "0px",
         }}
-        className={
-          isPlayerPage
-            ? "flex min-h-screen flex-col overflow-hidden"
-            : "flex min-h-screen flex-col pb-20 md:pb-0"
-        }
+        className="flex min-h-screen flex-col"
       >
         {props.children}
       </div>
-      {!isPlayerPage && <MobileBottomNav />}
     </div>
   );
 }

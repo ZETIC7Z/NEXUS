@@ -55,6 +55,33 @@
 
 ## 🆕 What's New (Latest Update)
 
+### v5.4.0 - January 2026
+
+#### 🎨 Landing Page Redesign
+
+- **Single Viewport Layout** - All content fits in one screen without scrolling
+- **Bigger NEXUS Branding** - Enhanced logo visibility for better brand recognition
+- **Responsive Design** - Optimized for mobile, tablet, and desktop views
+
+#### 🔍 New Animated Search Bar
+
+- **Expand/Collapse Animation** - Clean search bar that expands on click
+- **Auto-Close Feature** - Automatically collapses when empty
+- **Header Integration** - Search bar integrated into main navigation
+
+#### 🎞️ Streaming Partners Carousel
+
+- **Infinite Loop Animation** - Seamless continuous scrolling
+- **TMDB CDN Logos** - Reliable logo loading for all streaming partners
+- **Responsive Sizing** - Cards adapt to screen size
+
+#### 🧹 Navigation Improvements
+
+- **Removed Bottom Nav Bar** - Cleaner mobile experience
+- **Unified Header Navigation** - Search and notifications in top header
+
+---
+
 ### v5.3.2 - January 2026
 
 #### 🎮 Player Enhancements
@@ -75,6 +102,7 @@
 - **Project Cleanup** - Removed ~4.5MB of unused files
 - **Optimized Build** - Faster load times
 - **New M3U8 Proxies** - Added 3 new proxy servers for reliability
+
 
 ---
 

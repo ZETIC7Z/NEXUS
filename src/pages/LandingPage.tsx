@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { CarouselCards } from "@/components/CarouselCards";
+import { Icon, Icons } from "@/components/Icon";
+import { SocialLink } from "@/components/SocialLink";
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
 
@@ -283,96 +286,6 @@ function VideoIntro({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// Provider logos - continuous smooth loop, logos close together
-function ProviderLogoSlider({ visible }: { visible: boolean }) {
-  const logos = (
-    <>
-      <img
-        src="https://images.justwatch.com/icon/207360008/s100/netflix.webp"
-        alt="Netflix"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/285237061/s100/hbomax.webp"
-        alt="HBO Max"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/147638351/s100/disneyplus.webp"
-        alt="Disney+"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/52449539/s100/amazonprimevideo.webp"
-        alt="Prime"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/116305230/s100/hulu.webp"
-        alt="Hulu"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/190848813/s100/appletvplus.webp"
-        alt="Apple TV+"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="/vivamax-logo.jpg"
-        alt="VMX"
-        className="h-10 w-10 rounded-lg mx-1.5 object-cover"
-      />
-      <img
-        src="https://images.justwatch.com/icon/232697473/s100/paramountplus.webp"
-        alt="Paramount+"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/194625828/s100/peacock.webp"
-        alt="Peacock"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ced904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
-        alt="TMDB"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-      <img
-        src="https://images.justwatch.com/icon/169478387/s100/crunchyroll.webp"
-        alt="Crunchyroll"
-        className="h-10 w-10 rounded-lg mx-1.5"
-      />
-    </>
-  );
-
-  return (
-    <div
-      className={`flex justify-center transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}
-    >
-      <div className="max-w-md overflow-hidden">
-        <style>
-          {`
-            @keyframes smoothSlide {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
-            }
-            .smooth-slide {
-              animation: smoothSlide 15s linear infinite;
-            }
-          `}
-        </style>
-        <div
-          className="flex items-center smooth-slide whitespace-nowrap"
-          style={{ width: "max-content" }}
-        >
-          {logos}
-          {logos}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function LandingPage() {
   const navigate = useNavigate();
   const account = useAuthStore((s) => s.account);
@@ -430,57 +343,63 @@ export function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden flex flex-col">
+    <div className="h-screen bg-black relative overflow-hidden flex flex-col">
       <MovieBackground />
 
-      {/* Header */}
+      {/* Header - Clean minimal header like Netflix */}
       <header
-        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 md:px-12 py-4 transition-opacity duration-500 ${
+        className={`relative z-40 flex items-center justify-between px-3 md:px-6 lg:px-10 py-2 md:py-3 transition-all duration-500 flex-shrink-0 ${
           contentVisible ? "opacity-100" : "opacity-0"
         }`}
       >
+        {/* Logo - Bigger for branding */}
         <img
           src="/nexus-logo-full.png"
           alt="NEXUS"
-          className="h-20 md:h-28 lg:h-32 object-contain"
+          className="h-10 md:h-14 lg:h-16 object-contain"
         />
+
+        {/* Sign In Button */}
         <button
           type="button"
           onClick={handleSignIn}
-          className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded transition-colors"
+          className="px-3 md:px-4 py-1 md:py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded transition-colors"
         >
           Sign In
         </button>
       </header>
 
-      {/* Main content - centered */}
+      {/* Main content - centered in available space */}
       <div
         className={`relative z-10 flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500 ${
           contentVisible ? "opacity-100" : "opacity-0"
         }`}
       >
         <div
-          className={`text-center max-w-4xl transition-all duration-700 ${
+          className={`text-center max-w-4xl mx-auto transition-all duration-1000 ${
             contentVisible
               ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-8"
+              : "opacity-0 translate-y-12"
           }`}
         >
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-            Unlimited movies, TV shows, and more
+          <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black text-white mb-2 md:mb-4 px-2 leading-tight tracking-tighter text-balance">
+            Unlimited movies, <br className="hidden sm:block" /> TV shows, and
+            more
           </h1>
-          <p className="text-lg md:text-xl text-gray-300 mb-8">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-200 mb-4 md:mb-6 font-medium tracking-wide">
             Watch anywhere. Cancel anytime.
           </p>
 
-          <div className="flex justify-center mb-12">
+          <div className="flex justify-center mb-4 md:mb-6">
             <button
               id="get-started-button"
               type="button"
               onClick={handleRegister}
-              className="px-12 py-4 bg-red-600 hover:bg-red-700 text-white text-lg font-bold rounded transition-all hover:scale-105"
+              className="group relative px-8 md:px-10 py-2.5 md:py-3 bg-red-600 overflow-hidden text-white text-sm md:text-base font-black rounded-full transition-all hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
             >
-              Get Started
+              <span className="relative z-10">Get Started</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-red-600 transition-transform duration-300 group-hover:scale-110" />
+              <div className="absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </button>
           </div>
         </div>
@@ -488,113 +407,75 @@ export function LandingPage() {
 
       {/* Bottom section - fixed at bottom */}
       <div
-        className={`relative z-10 pb-4 transition-opacity duration-500 ${
+        className={`relative z-10 pb-2 flex-shrink-0 transition-opacity duration-500 ${
           contentVisible ? "opacity-100" : "opacity-0"
         }`}
       >
-        {/* Static info section - Technology + Developer */}
-        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-4 px-4">
-          {/* Project Technology */}
-          <div className="flex items-center gap-2">
-            <span className="text-white/60 text-xs uppercase tracking-wider">
-              Project Technology
-            </span>
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg"
-              alt="React"
-              className="h-6 w-6"
-            />
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Typescript_logo_2020.svg"
-              alt="TypeScript"
-              className="h-6 w-6"
-            />
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/f/f1/Vitejs-logo.svg"
-              alt="Vite"
-              className="h-6 w-6"
-            />
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg"
-              alt="TailwindCSS"
-              className="h-6 w-6"
-            />
-          </div>
-
-          <span className="text-white/30 hidden md:inline">|</span>
-
-          {/* Site Developer */}
-          <div className="flex items-center gap-2">
-            <span className="text-white/60 text-xs uppercase tracking-wider">
+        {/* Site Developer Info */}
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4 mb-3 md:mb-4 px-2">
+          <div className="flex items-center gap-2 md:gap-3 bg-white/5 border border-white/10 px-3 md:px-4 py-1.5 md:py-2 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors cursor-default group">
+            <span className="text-white/40 text-[8px] md:text-[9px] uppercase tracking-[0.15em] font-black group-hover:text-white/60 transition-colors">
               Site Developer
             </span>
-            <img
-              src="/sam-photo.jpg"
-              alt="Sam"
-              className="h-8 w-8 rounded-full object-cover border border-white/30"
-            />
-            <span className="text-white font-medium text-sm">
-              Sam Pangilinan
-            </span>
-            <img
-              src="/sam-logo.jpg"
-              alt="Logo"
-              className="h-6 w-6 rounded object-cover"
-            />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <img
+                  src="/sam-photo.jpg"
+                  alt="Sam"
+                  className="h-5 w-5 md:h-6 md:w-6 rounded-full object-cover border border-white/20 group-hover:border-red-500/50 transition-colors"
+                />
+              </div>
+              <span className="text-white font-black text-[10px] md:text-xs tracking-tight">
+                Sam Pangilinan
+              </span>
+              <img
+                src="/sam-logo.jpg"
+                alt="Logo"
+                className="h-4 w-4 md:h-5 md:w-5 rounded shadow-lg object-cover"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Provider logos slider */}
-        <div className="mb-4">
-          <span className="text-white/60 text-xs uppercase tracking-wider block text-center mb-3">
-            Movie Providers
+        {/* Carousel Cards - Streaming Sites */}
+        <div className="mb-2">
+          <span className="text-white/60 text-[10px] uppercase tracking-[0.2em] block text-center mb-1 font-bold">
+            Streaming Partners
           </span>
-          <ProviderLogoSlider visible={contentVisible} />
+          <CarouselCards />
         </div>
 
         {/* Footer - Contact, Copyright, DMCA */}
-        <div className="flex flex-col md:flex-row items-center justify-between px-6 md:px-12 py-3 text-xs text-white/50">
+        <div className="flex flex-col md:flex-row items-center justify-between px-3 md:px-8 py-1 text-[10px] text-white/50">
           {/* Contact Developer - Left */}
-          <div className="flex items-center gap-3 mb-2 md:mb-0">
-            <span className="text-white/40 uppercase tracking-wider text-[10px]">
-              Contact Developer
+          <div className="flex items-center gap-2 mb-1 md:mb-0">
+            <span className="text-white/40 uppercase tracking-[0.15em] text-[8px] font-bold">
+              Contact
             </span>
-            <a
-              href="https://www.facebook.com/profile.php?id=61578123735793"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-            >
-              <svg
-                className="h-5 w-5 fill-current text-blue-500"
-                viewBox="0 0 24 24"
-              >
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-            </a>
-            <a
-              href="mailto:samxerz12@gmail.com"
-              className="hover:opacity-80 transition-opacity"
-            >
-              <svg
-                className="h-5 w-5 fill-current text-red-500"
-                viewBox="0 0 24 24"
-              >
-                <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73l-6.545 4.909-6.545-4.909v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.909 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
-              </svg>
-            </a>
+            <div className="flex items-center gap-2">
+              <SocialLink
+                href="https://www.facebook.com/profile.php?id=61578123735793"
+                color="#1877F2"
+                icon={<Icon icon={Icons.FACEBOOK} className="text-xs" />}
+                className="h-6 w-6"
+              />
+              <SocialLink
+                href="mailto:samxerz12@gmail.com"
+                color="#EA4335"
+                icon={<Icon icon={Icons.MAIL} className="text-xs" />}
+                className="h-6 w-6"
+              />
+            </div>
           </div>
 
           {/* Copyright - Center */}
-          <div className="mb-2 md:mb-0 text-center">
+          <div className="mb-1 md:mb-0 text-center text-[9px]">
             © 2025 - 2026 ZETICUZ. All rights reserved.
           </div>
 
           {/* DMCA Disclaimer - Right */}
-          <div className="max-w-xs text-[10px] text-white/40 text-right leading-tight">
-            This platform serves as a content aggregator and does not host any
-            media files directly. All content is streamed through trusted
-            third-party services.
+          <div className="max-w-[200px] text-[8px] text-white/40 text-right leading-tight hidden md:block">
+            Content aggregator. All streams via third-party services.
           </div>
         </div>
       </div>

@@ -13,8 +13,10 @@ import { convertLegacyUrl, isLegacyUrl } from "@/backend/metadata/getmeta";
 import { generateQuickSearchMediaUrl } from "@/backend/metadata/tmdb";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { DetailsModal } from "@/components/overlays/detailsModal";
+import { DisclaimerModal } from "@/components/overlays/DisclaimerModal";
 import { KeyboardCommandsModal } from "@/components/overlays/KeyboardCommandsModal";
 import { NotificationModal } from "@/components/overlays/notificationsModal";
+import { PartnersModal } from "@/components/overlays/PartnersModal";
 import { SupportInfoModal } from "@/components/overlays/SupportInfoModal";
 import { useGlobalKeyboardEvents } from "@/hooks/useGlobalKeyboardEvents";
 import { useOnlineListener } from "@/hooks/usePing";
@@ -46,6 +48,7 @@ import { ProfileSelectionPage } from "@/pages/ProfileSelectionPage";
 import { RegisterPage } from "@/pages/Register";
 import { SupportPage } from "@/pages/Support";
 import { TVSeriesPage } from "@/pages/TVSeriesPage";
+import { WatchHistory } from "@/pages/WatchHistory";
 import { Layout } from "@/setup/Layout";
 import { useHistoryListener } from "@/stores/history";
 import { useClearModalsOnNavigation } from "@/stores/interface/overlayStack";
@@ -135,6 +138,8 @@ function App() {
       <NotificationModal id="notifications" />
       <KeyboardCommandsModal id="keyboard-commands" />
       <SupportInfoModal id="support-info" />
+      <DisclaimerModal id="disclaimer" />
+      <PartnersModal id="partners" />
       <DetailsModal id="details" />
       <DetailsModal id="discover-details" />
       <DetailsModal id="player-details" />
@@ -150,6 +155,7 @@ function App() {
           {shouldHaveLegalPage() ? (
             <Route path="/legal" element={<LegalPage />} />
           ) : null}
+          <Route path="/dmca" element={<LegalPage />} />
 
           {/* Functional routes */}
           <Route path="/s/:query" element={<QuickSearch />} />
@@ -234,6 +240,22 @@ function App() {
             element={
               <AuthGuard>
                 <AllBookmarks />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/watch-history"
+            element={
+              <AuthGuard>
+                <WatchHistory />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <AuthGuard>
+                <WatchHistory />
               </AuthGuard>
             }
           />

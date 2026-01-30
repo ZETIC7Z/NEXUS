@@ -578,6 +578,14 @@ export function SettingsPage() {
     };
   }, [setPreviewTheme]);
 
+  useEffect(() => {
+    if (state.changed) {
+      window.dispatchEvent(new CustomEvent("settings-unsaved"));
+    } else {
+      window.dispatchEvent(new CustomEvent("settings-saved"));
+    }
+  }, [state.changed]);
+
   const setThemeWithPreview = useCallback(
     (theme: string) => {
       state.theme.set(theme === "default" ? null : theme);
@@ -852,7 +860,8 @@ export function SettingsPage() {
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-appearance") && (
-          <div id="settings-appearance">
+          <div id="settings-appearance" className="appearance-settings">
+            <div id="appearance-settings" />
             <AppearancePart
               active={previewTheme ?? "default"}
               inUse={activeTheme ?? "default"}

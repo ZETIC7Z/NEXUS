@@ -78,7 +78,7 @@ export function MobileLockScreen() {
     }
   };
 
-  const handleUnlockedTap = () => {
+  const _handleUnlockedTap = () => {
     // Reset hide timer when tapping
     if (hideTimer) clearTimeout(hideTimer);
     setShowButton(true);

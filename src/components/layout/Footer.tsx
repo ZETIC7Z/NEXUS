@@ -1,85 +1,131 @@
-import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import type { RequireExactlyOne } from "type-fest";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Icon, Icons } from "@/components/Icon";
 import { BrandPill } from "@/components/layout/BrandPill";
 import { WideContainer } from "@/components/layout/WideContainer";
-import { shouldHaveLegalPage } from "@/pages/Legal";
+import { SocialLink } from "@/components/SocialLink";
+import { conf } from "@/setup/config";
+import { useOverlayStack } from "@/stores/interface/overlayStack";
 
-// to and href are mutually exclusive
-type FooterLinkProps = RequireExactlyOne<
-  {
-    children: React.ReactNode;
-    icon: Icons;
-    to: string;
-    href: string;
-  },
-  "to" | "href"
->;
-
-function FooterLink(props: FooterLinkProps) {
-  const navigate = useNavigate();
-
-  const navigateTo = useCallback(() => {
-    if (!props.to) return;
-
-    navigate(props.to);
-  }, [navigate, props.to]);
-
-  return (
-    <a
-      href={props.href}
-      target={props.href ? "_blank" : undefined}
-      rel="noreferrer"
-      className="tabbable rounded py-2 px-3 inline-flex cursor-pointer items-center space-x-3 transition-colors duration-200 hover:text-type-emphasis"
-      onClick={props.to ? navigateTo : undefined}
-    >
-      <Icon icon={props.icon} className="text-2xl" />
-      <span className="font-medium">{props.children}</span>
-    </a>
+function UtilityLink(props: {
+  to?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+  icon: Icons;
+}) {
+  const content = (
+    <div className="group relative flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 transition-all duration-300 hover:border-white/30 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+      <Icon
+        icon={props.icon}
+        className="text-white/70 group-hover:text-white transition-colors"
+      />
+      <span className="text-gray-300 group-hover:text-white text-xs font-bold uppercase tracking-wider transition-colors">
+        {props.children}
+      </span>
+    </div>
   );
-}
 
-function Legal() {
-  const { t } = useTranslation();
-
-  if (!shouldHaveLegalPage()) return null;
-  if (window.location.hash === "#/legal") return null;
-
+  if (props.onClick) {
+    return (
+      <button type="button" onClick={props.onClick} className="cursor-pointer">
+        {content}
+      </button>
+    );
+  }
   return (
-    <FooterLink to="/legal" icon={Icons.DRAGON}>
-      {t("footer.links.legal")}
-    </FooterLink>
+    <Link to={props.to || "#"} className="cursor-pointer">
+      {content}
+    </Link>
   );
 }
 
 export function Footer() {
-  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { showModal } = useOverlayStack();
 
   return (
-    <footer className="mt-16 border-t border-type-divider py-16 md:py-8">
-      <WideContainer ultraWide classNames="grid md:grid-cols-2 gap-16 md:gap-8">
-        <div>
-          <div className="inline-block">
-            <BrandPill />
+    <footer className="mt-auto border-t border-white/10 bg-black/40 backdrop-blur-md w-full">
+      <WideContainer ultraWide classNames="py-8">
+        <div className="flex flex-col gap-8">
+          {/* Main Bar: Logo - Links - Socials */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            {/* Left: Logo */}
+            <div
+              className="cursor-pointer shrink-0 transition-transform hover:scale-105 active:scale-95"
+              onClick={() => {
+                navigate("/");
+                window.scrollTo(0, 0);
+              }}
+            >
+              <BrandPill noBackground />
+            </div>
+
+            {/* Center: Utility Links */}
+            <div className="flex flex-wrap justify-center items-center gap-4">
+              <UtilityLink to="/help" icon={Icons.CIRCLE_QUESTION}>
+                FAQ
+              </UtilityLink>
+              <UtilityLink to="/dmca" icon={Icons.LOCK}>
+                DMCA
+              </UtilityLink>
+              <UtilityLink
+                onClick={() => showModal("disclaimer")}
+                icon={Icons.CIRCLE_EXCLAMATION}
+              >
+                Disclaimer
+              </UtilityLink>
+              <UtilityLink to="/legal" icon={Icons.FILE}>
+                Terms
+              </UtilityLink>
+              <UtilityLink
+                onClick={() => showModal("partners")}
+                icon={Icons.USER}
+              >
+                Partners
+              </UtilityLink>
+            </div>
+
+            {/* Right: Social Media Icons */}
+            <div className="flex items-center gap-4 shrink-0">
+              <SocialLink
+                href="https://facebook.com"
+                color="#1877F2"
+                icon={<Icon icon={Icons.FACEBOOK} className="text-lg" />}
+              />
+              <SocialLink
+                href="https://twitter.com"
+                color="#1DA1F2"
+                icon={<Icon icon={Icons.TWITTER} className="text-lg" />}
+              />
+              <SocialLink
+                href={conf().DISCORD_LINK || "#"}
+                color="#5865F2"
+                icon={<Icon icon={Icons.DISCORD} className="text-lg" />}
+              />
+              <SocialLink
+                href="mailto:samxerz12@gmail.com"
+                color="#EA4335"
+                icon={<Icon icon={Icons.MAIL} className="text-lg" />}
+              />
+            </div>
           </div>
-          <p className="mt-4 lg:max-w-[400px]">{t("footer.tagline")}</p>
-        </div>
-        <div className="md:text-right">
-          <h3 className="font-semibold text-type-emphasis">
-            {t("footer.legal.disclaimer")}
-          </h3>
-          <p className="mt-3">{t("footer.legal.disclaimerText")}</p>
-        </div>
-        <div className="flex flex-wrap gap-[0.5rem] -ml-3">
-          <div className="inline md:hidden">
-            <Legal />
+
+          {/* Disclaimer Text */}
+          <div className="text-center border-t border-white/5 pt-6">
+            <p className="text-gray-500 text-[11px] leading-relaxed max-w-2xl mx-auto">
+              This site does not host or store any movie or media files on our
+              servers. We provide content from third-party services that host
+              such media. All trademarks and copyrights belong to their
+              respective owners.
+            </p>
           </div>
-        </div>
-        <div className="hidden items-center justify-end md:flex -mr-3">
-          <Legal />
+
+          {/* Copyright */}
+          <div className="text-center">
+            <p className="text-gray-600 text-[10px] font-medium tracking-widest flex items-center justify-center gap-2 uppercase">
+              <span>©</span> 2025 - 2026 ZETICUZ · All Rights Reserved
+            </p>
+          </div>
         </div>
       </WideContainer>
     </footer>

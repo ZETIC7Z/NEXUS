@@ -7,6 +7,7 @@ export function BrandPill(props: {
   header?: boolean;
   backgroundClass?: string;
   large?: boolean;
+  noBackground?: boolean;
 }) {
   const isMobile = useIsMobile();
 
@@ -16,7 +17,7 @@ export function BrandPill(props: {
       return "h-18 md:h-20"; // Video player - smaller
     }
     if (isMobile && props.header) {
-      return "h-20"; // Mobile header
+      return "h-24"; // Mobile header - increased from h-20
     }
     return "h-28"; // Desktop header
   };
@@ -32,8 +33,8 @@ export function BrandPill(props: {
     );
   }
 
-  // Video player - NO background, just logo
-  if (props.large) {
+  // Video player or explicitly no background - NO background, just logo
+  if (props.large || props.noBackground) {
     return (
       <img
         src="/nexus-logo-full.png?v=5"

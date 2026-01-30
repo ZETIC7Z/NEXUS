@@ -1,6 +1,6 @@
 {
   "about": {
-    "description": "NEXUS is a fork of movie-web that is ensured to stay up even after the shutdown of movie-web.app. NEXUS runs on a private, self-hosted VPS. I run this site at a loss; there are very minimal ads due to my beliefs in free media.",
+    "description": "NEXUS is a premium streaming platform designed for speed, reliability, and a seamless user experience. Built on a robust, self-hosted infrastructure, we provide high-quality content with a focus on privacy and accessibility.",
     "help": "Can't find an answer? <0>Get support here.</0>",
     "faqTitle": "Common questions",
     "searchPlaceholder": "Search FAQ...",
@@ -221,7 +221,7 @@
       "twitter": "Twitter",
       "funding": "Support us"
     },
-    "tagline": "Watch your favorite shows and movies for free with no ads ever! (っ'ヮ'c)"
+    "tagline": "Your ultimate destination for high-quality streaming. Experience the future of entertainment today."
   },
   "global": {
     "name": "NEXUS",
@@ -334,14 +334,14 @@
         "default": "What do you want to watch?",
         "extra": [
           "What are you in the mood for?",
-          "Should we delete your browser history?",
+          "Discover something new today.",
           "What do you want to stream?",
-          "NEXUS is the best site ever!",
+          "NEXUS - The future of streaming.",
           "What's on your watchlist today?",
-          "How was your day?",
-          "My bad the site never works...",
-          "Isn't NEXUS just the best?",
-          ">ᴗ<"
+          "Search for your favorite content.",
+          "Experience the next generation of streaming.",
+          "Unlimited entertainment awaits.",
+          "Search movies, TV shows, and anime."
         ]
       },
       "empty": {
@@ -556,7 +556,7 @@
     "badge": "Not found",
     "goHome": "Back to home",
     "reloadButton": "Try again",
-    "message": "We looked everywhere: under the bins, in the closet, behind the proxy, but ultimately couldn't find the page you are looking for. (ಥ﹏ಥ)",
+    "message": "We couldn't find the page you're looking for. It might have been moved, deleted, or never existed in the first place.",
     "title": "Couldn't find that page"
   },
   "downtimeNotice": {

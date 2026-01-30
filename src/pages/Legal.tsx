@@ -25,27 +25,52 @@ function LegalCard(props: {
   title: string;
   description: React.ReactNode;
   colorClass: string;
+  gradientClass?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-onboarding-card/40 duration-300 border border-onboarding-border rounded-lg p-7">
-      <div>
-        <Icon
-          icon={props.icon}
-          className={classNames("text-4xl mb-6 block", props.colorClass)}
-        />
+    <div
+      className={classNames(
+        "relative overflow-hidden bg-gradient-to-br from-onboarding-card/60 to-onboarding-card/30",
+        "backdrop-blur-xl border border-white/10 rounded-2xl p-8",
+        "transition-all duration-500 hover:border-white/20 hover:shadow-2xl hover:shadow-white/5",
+        "group",
+      )}
+    >
+      {/* Glassmorphism overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      <div className="relative z-10">
+        {/* 3D Icon with glow effect */}
+        <div
+          className={classNames(
+            "w-16 h-16 rounded-2xl mb-6 flex items-center justify-center",
+            "bg-gradient-to-br shadow-lg",
+            props.gradientClass || "from-white/10 to-white/5",
+          )}
+        >
+          <Icon
+            icon={props.icon}
+            className={classNames("text-3xl drop-shadow-lg", props.colorClass)}
+          />
+        </div>
+
         <Heading3
           className={classNames(
-            "!mt-0 !mb-0 !text-xs uppercase",
+            "!mt-0 !mb-0 !text-xs uppercase tracking-widest font-semibold",
             props.colorClass,
           )}
         >
           {props.subtitle}
         </Heading3>
-        <Heading2 className="!mb-0 !mt-1 !text-base">{props.title}</Heading2>
-        <div className="!my-4 space-y-3 text-gray-300">{props.description}</div>
+        <Heading2 className="!mb-0 !mt-2 !text-xl font-bold text-white">
+          {props.title}
+        </Heading2>
+        <div className="!my-5 space-y-3 text-gray-300 leading-relaxed">
+          {props.description}
+        </div>
       </div>
-      <div>{props.children}</div>
+      <div className="relative z-10">{props.children}</div>
     </div>
   );
 }
@@ -54,36 +79,54 @@ export function LegalPage() {
   return (
     <SubPageLayout>
       <PageTitle subpage k="global.pages.legal" />
-      <BiggerCenterContainer classNames="!pt-0">
-        <Heading1>DMCA + Legal Information</Heading1>
-        <Paragraph className="text-gray-400 text-lg mb-8">
-          Important information about our service, content policies, and user
-          responsibilities.
-        </Paragraph>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+      {/* Background with faded NEXUS logo */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-[0.03]">
+          <img
+            src="/nexus-logo-full.png"
+            alt=""
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+
+      <BiggerCenterContainer classNames="!pt-0 relative z-10">
+        {/* Header with gradient text */}
+        <div className="text-center mb-12">
+          <Heading1 className="!mb-4 bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+            Legal / DMCA
+          </Heading1>
+          <Paragraph className="text-gray-400 text-lg max-w-2xl mx-auto">
+            Important information about our service, content policies, and legal
+            responsibilities. NEXUS is committed to transparency and compliance.
+          </Paragraph>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
           <LegalCard
             icon={Icons.SEARCH}
             subtitle="Service Model"
-            title="How We Operate"
+            title="How NEXUS Operates"
             colorClass="text-blue-400"
+            gradientClass="from-blue-500/20 to-blue-600/10"
             description={
               <>
                 <Paragraph>
                   NEXUS functions as a search engine and content aggregator that
                   indexes publicly available media from across the internet.
-                  <br />
-                  <br />
+                </Paragraph>
+                <Paragraph>
                   We don&apos;t host, store, or control any media files -
                   everything is sourced from external third-party websites that
                   are already publicly accessible.
-                  <br />
-                  <br />
+                </Paragraph>
+                <Paragraph>
                   Our automated systems simply provide links to content
                   that&apos;s already available online, without bypassing any
                   security measures.
                 </Paragraph>
-                <Link to="/about">Learn more about how NEXUS works</Link>
+                <Link to="/about">Learn more about how NEXUS works →</Link>
               </>
             }
           />
@@ -92,7 +135,8 @@ export function LegalPage() {
             icon={Icons.CIRCLE_CHECK}
             subtitle="Copyright Policy"
             title="Content & Copyright"
-            colorClass="text-green-400"
+            colorClass="text-emerald-400"
+            gradientClass="from-emerald-500/20 to-emerald-600/10"
             description={
               <Paragraph>
                 Since we don&apos;t host any content ourselves, all takedown
@@ -106,10 +150,6 @@ export function LegalPage() {
                 <br />
                 For content removal, please contact the original hosting
                 platform - we cannot remove what we don&apos;t control.
-                <br />
-                <br />
-                If you are a copyright holder and want to report a violation, we
-                are more than happy to point you to where we found the content.
               </Paragraph>
             }
           />
@@ -117,21 +157,22 @@ export function LegalPage() {
           <LegalCard
             icon={Icons.EYE_SLASH}
             subtitle="Data Protection"
-            title="Privacy & Data"
-            colorClass="text-purple-400"
+            title="Privacy & Security"
+            colorClass="text-violet-400"
+            gradientClass="from-violet-500/20 to-violet-600/10"
             description={
               <Paragraph>
-                User privacy is important to us. We don&apos;t collect, store,
-                or track any personal information about our users.
+                User privacy is our priority. We don&apos;t collect, store, or
+                track any personal information about our users.
                 <br />
                 <br />
-                Optionally, users can store their bookmarks and watch history in
-                our encrypted backend. But we don&apos;t store any personal
-                information or identifying data.
+                Optional encrypted cloud sync is available for bookmarks and
+                watch history, but we never store personal identifying
+                information.
                 <br />
                 <br />
-                NEXUS is entirely self hostable, and can be run on any server.
-                Even by yourself.
+                NEXUS is fully self-hostable and can be deployed on any server
+                infrastructure.
               </Paragraph>
             }
           />
@@ -140,7 +181,8 @@ export function LegalPage() {
             icon={Icons.USER}
             subtitle="User Responsibilities"
             title="User Guidelines"
-            colorClass="text-yellow-400"
+            colorClass="text-amber-400"
+            gradientClass="from-amber-500/20 to-amber-600/10"
             description={
               <Paragraph>
                 Users are responsible for ensuring their access complies with
@@ -148,7 +190,7 @@ export function LegalPage() {
                 <br />
                 <br />
                 We strongly recommend using VPN services for enhanced privacy
-                and security while browsing. Downloading is not advised.
+                and security while browsing.
                 <br />
                 <br />
                 Please respect intellectual property rights and be mindful of
@@ -156,15 +198,35 @@ export function LegalPage() {
               </Paragraph>
             }
           />
+        </div>
 
+        {/* ZE Logo - Centered between sections */}
+        <div className="flex justify-center my-16">
+          <div className="relative">
+            {/* Glow effect behind logo */}
+            <div className="absolute inset-0 blur-3xl bg-type-link/20 rounded-full scale-150" />
+            <img
+              src="/ze-logo.png"
+              alt="Zeticuz"
+              className="relative h-24 md:h-32 object-contain drop-shadow-2xl filter contrast-125 brightness-110"
+              style={{
+                filter:
+                  "drop-shadow(0 0 30px rgba(229, 9, 20, 0.4)) drop-shadow(0 0 60px rgba(229, 9, 20, 0.2))",
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <LegalCard
             icon={Icons.WARNING}
             subtitle="Terms & Conditions"
             title="Service Terms"
-            colorClass="text-red-400"
+            colorClass="text-rose-400"
+            gradientClass="from-rose-500/20 to-rose-600/10"
             description={
               <Paragraph>
-                NEXUS is licensed under the MIT license.
+                NEXUS is a proprietary streaming platform developed by ZETICUZ.
                 <br />
                 <br />
                 By using our platform, you acknowledge these terms and agree
@@ -183,6 +245,7 @@ export function LegalPage() {
             subtitle="Legal Contact"
             title="Legal Inquiries"
             colorClass="text-cyan-400"
+            gradientClass="from-cyan-500/20 to-cyan-600/10"
             description={
               <Paragraph>
                 For legal matters related to specific content, please contact
@@ -195,19 +258,30 @@ export function LegalPage() {
               </Paragraph>
             }
           >
-            {conf().DMCA_EMAIL && (
-              <div className="flex space-x-3 items-center pt-4">
-                <Icon icon={Icons.MAIL} className="text-white" />
-                <span className="text-gray-300">Contact: </span>
+            <div className="flex items-center gap-3 pt-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                <Icon icon={Icons.MAIL} className="text-cyan-400 text-lg" />
+              </div>
+              <div>
+                <span className="text-gray-400 text-sm block">Contact</span>
                 <a
-                  href={`mailto:${conf().DMCA_EMAIL}`}
-                  className="text-type-link hover:text-white transition-colors duration-300"
+                  href="mailto:samxerz.zeticuz@gmail.com"
+                  className="text-type-link hover:text-white transition-colors duration-300 font-medium"
                 >
-                  {conf().DMCA_EMAIL}
+                  samxerz.zeticuz@gmail.com
                 </a>
               </div>
-            )}
+            </div>
           </LegalCard>
+        </div>
+
+        {/* Footer disclaimer */}
+        <div className="mt-16 text-center text-gray-500 text-sm">
+          <p>© 2024-2026 NEXUS by ZETICUZ. All rights reserved.</p>
+          <p className="mt-2">
+            NEXUS does not host any content. All media is sourced from
+            third-party providers.
+          </p>
         </div>
       </BiggerCenterContainer>
     </SubPageLayout>

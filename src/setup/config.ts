@@ -3,6 +3,7 @@ import {
   BACKEND_URL,
   DISCORD_LINK,
   GITHUB_LINK,
+  TELEGRAM_LINK,
   TWITTER_LINK,
 } from "./constants";
 
@@ -42,6 +43,7 @@ interface Config {
 export interface RuntimeConfig {
   APP_VERSION: string;
   GITHUB_LINK: string;
+  TELEGRAM_LINK: string;
   DISCORD_LINK: string;
   DMCA_EMAIL: string | null;
   TWITTER_LINK: string;
@@ -131,6 +133,7 @@ export function conf(): RuntimeConfig {
   return {
     APP_VERSION,
     GITHUB_LINK: getKey("GITHUB_LINK", GITHUB_LINK),
+    TELEGRAM_LINK,
     DISCORD_LINK,
     TWITTER_LINK: getKey("TWITTER_LINK", TWITTER_LINK),
     DMCA_EMAIL: getKey("DMCA_EMAIL"),

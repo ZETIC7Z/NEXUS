@@ -1,104 +1,40 @@
-/* Glow Button Animations */
-@keyframes animate1 {
-    0% {
-        left: -100%;
-    }
-
-    50%,
-    100% {
-        left: 100%;
-    }
+/* Glow pulse animation */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px hsl(var(--colors-active, 25 95% 53%) / 0.8));
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 20px hsl(var(--colors-active, 25 95% 53%) / 1));
+    opacity: 0.9;
+  }
 }
 
-@keyframes animate2 {
-    0% {
-        top: -100%;
-    }
-
-    50%,
-    100% {
-        top: 100%;
-    }
+.glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
 }
 
-@keyframes animate3 {
-    0% {
-        right: -100%;
-    }
-
-    50%,
-    100% {
-        right: 100%;
-    }
+/* Mobile navbar styles */
+.nav-bg {
+  background: #000000;
 }
 
-@keyframes animate4 {
-    0% {
-        bottom: -100%;
-    }
-
-    50%,
-    100% {
-        bottom: 100%;
-    }
+.nav-text-active {
+  color: hsl(var(--colors-active, 25 95% 53%));
 }
 
-/* Futuristic Animated Card */
-.futuristic-card {
-    position: relative;
-    z-index: 2;
-    border-radius: 20px;
+.nav-text-inactive {
+  color: hsl(var(--colors-buttons-list, 0 0% 60%));
 }
 
-.futuristic-card .card-content {
-    width: 100%;
-    height: 100%;
-    background-color: #0c1016;
-    border-radius: 17px;
-    padding: 2rem;
+.nav-glow {
+  filter: drop-shadow(0 0 8px hsl(var(--colors-active, 25 95% 53%) / 0.8));
 }
 
-.futuristic-card::before,
-.futuristic-card::after {
-    content: "";
-    display: block;
-    position: absolute;
-    z-index: -1;
-    border-radius: 20px;
-    background-image: linear-gradient(0deg, #ff00aa, #00FFF1);
-    background-size: 100% 200%;
-    background-position: center center;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    animation: cardGradient 3s infinite alternate;
-}
-
-.futuristic-card::after {
-    filter: blur(40px);
-    opacity: 0.6;
-}
-
-@keyframes cardGradient {
-    0% {
-        background-position: top center;
-    }
-
-    100% {
-        background-position: bottom center;
-    }
-}
-
-/* Starfield animation */
-@keyframes starPulse {
-
-    0%,
-    100% {
-        opacity: 0.3;
-    }
-
-    50% {
-        opacity: 0.8;
-    }
+.menu-glow {
+  box-shadow:
+    0 0 15px 3px hsl(var(--colors-active, 25 95% 53%)),
+    0 0 30px 8px hsl(var(--colors-active, 25 95% 53%) / 0.5),
+    0 0 45px 12px hsl(var(--colors-active, 25 95% 53%) / 0.3);
 }

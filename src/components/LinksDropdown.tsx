@@ -293,10 +293,10 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
           ) : null}
           <Divider />
           <div className="my-4 flex justify-center items-center gap-4">
-            {conf().GITHUB_LINK && (
+            {conf().TELEGRAM_LINK && (
               <CircleDropdownLink
-                href={conf().GITHUB_LINK}
-                icon={Icons.GITHUB}
+                href={conf().TELEGRAM_LINK}
+                icon={Icons.TELEGRAM}
               />
             )}
             <CircleDropdownLink
@@ -305,7 +305,7 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
             />
             <CircleDropdownLink href="/support" icon={Icons.SUPPORT} />
             <CircleDropdownLink
-              href="https://rentry.co/nnqtas3e"
+              href="https://rentry.co/m6f9fnu2"
               icon={Icons.TIP_JAR}
             />
           </div>
