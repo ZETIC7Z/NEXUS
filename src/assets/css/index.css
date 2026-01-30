@@ -856,3 +856,13 @@ body.player-open {
     background-position: 150% 150%;
   }
 }
+
+/* Shimmer animation for buttons */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}

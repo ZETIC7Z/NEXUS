@@ -245,28 +245,28 @@ function StepButton({
   completed?: boolean;
 }) {
   const baseClasses =
-    "flex items-center gap-3 w-full p-3 rounded-lg transition-all duration-300";
+    "flex items-center gap-3 w-full p-3 rounded-xl transition-all duration-300 backdrop-blur-sm";
   const stateClasses = completed
-    ? "bg-emerald-500/10 border border-emerald-500/30"
+    ? "bg-emerald-500/15 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
     : glowing
-      ? "bg-[#1a1f26] border-2 border-cyan-400 shadow-[0_0_15px_rgba(0,255,241,0.4)]"
-      : "bg-[#1a1f26] border border-white/10 hover:border-white/20";
+      ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border-2 border-cyan-400 shadow-[0_0_25px_rgba(0,255,241,0.5)]"
+      : "bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10";
 
   const content = (
     <>
       <span
-        className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
           completed
-            ? "bg-emerald-500 text-white"
+            ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg"
             : glowing
-              ? "bg-cyan-400 text-black"
+              ? "bg-gradient-to-br from-cyan-400 to-cyan-500 text-black shadow-lg shadow-cyan-500/30"
               : "bg-white/10 text-white/60"
         }`}
       >
         {completed ? "✓" : step}
       </span>
       <span
-        className={`text-sm ${completed ? "text-emerald-400" : "text-white"}`}
+        className={`text-sm font-medium ${completed ? "text-emerald-400" : "text-white"}`}
       >
         {label}
       </span>
@@ -297,6 +297,69 @@ function StepButton({
   );
 }
 
+// Animated Loading Dots
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1.5">
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className="w-2.5 h-2.5 rounded-full bg-white/40 animate-pulse"
+          style={{
+            animationDelay: `${i * 150}ms`,
+            animationDuration: "1s",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Waiting Overlay - Shows while waiting for extension
+function WaitingOverlay({
+  isWaiting,
+  browserName,
+}: {
+  isWaiting: boolean;
+  browserName: string;
+}) {
+  if (!isWaiting) return null;
+
+  return (
+    <div className="space-y-4 mt-6">
+      {/* Waiting Card */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-white/5 p-6 backdrop-blur-xl">
+        {/* Animated gradient border */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-cyan-500/20 to-purple-500/20 opacity-50 animate-pulse" />
+
+        <div className="relative z-10 flex flex-col items-center justify-center py-4">
+          <LoadingDots />
+          <p className="text-gray-400 text-sm mt-4 text-center">
+            Waiting for you to install the extension
+          </p>
+        </div>
+      </div>
+
+      {/* Reload Prompt */}
+      <div className="rounded-2xl bg-gradient-to-br from-gray-900/60 to-gray-800/60 border border-white/5 p-4 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-gray-400 text-xs leading-relaxed">
+            Installed on {browserName}, but the site isn&apos;t detecting it?
+            Try reloading the page!
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="flex-shrink-0 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm font-medium transition-all hover:scale-105"
+          >
+            Reload page
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface ExtensionPageProps {
   status: ExtensionStatus;
 }
@@ -306,84 +369,99 @@ function DefaultExtensionPage(props: ExtensionPageProps) {
   const [device] = useState<DeviceInfo>(detectDevice);
   const [browser] = useState<BrowserInfo>(() => detectBrowser(device));
   const isSuccess = props.status === "success";
+  const isWaiting = props.status !== "success";
 
   return (
     <div className="w-full max-w-sm mx-auto px-4">
-      {/* Header with Device + Browser */}
+      {/* Header with Device + Browser - Improved Design */}
       <div className="text-center mb-6">
-        <div className="flex justify-center gap-3 mb-4">
-          {/* Device Icon */}
-          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
-            <img
-              src={device.icon}
-              alt={device.name}
-              className="w-full h-full object-contain"
-              style={{
-                filter:
-                  device.type === "ios" || device.type === "macos"
-                    ? "invert(1)"
-                    : "none",
-              }}
-            />
+        <div className="flex justify-center gap-4 mb-4">
+          {/* Device Icon - Glassmorphism */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 to-cyan-500/30 rounded-2xl blur-xl opacity-50 group-hover:opacity-80 transition-opacity" />
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 p-3 flex items-center justify-center backdrop-blur-sm">
+              <img
+                src={device.icon}
+                alt={device.name}
+                className="w-full h-full object-contain"
+                style={{
+                  filter:
+                    device.type === "ios" || device.type === "macos"
+                      ? "invert(1)"
+                      : "none",
+                }}
+              />
+            </div>
           </div>
-          {/* Browser Icon */}
-          <div className="w-12 h-12 rounded-full bg-[#1a1f26] border border-white/10 p-2.5 flex items-center justify-center">
-            <img
-              src={browser.icon}
-              alt={browser.name}
-              className="w-full h-full object-contain"
-            />
+          {/* Browser Icon - Glassmorphism */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/30 to-emerald-500/30 rounded-2xl blur-xl opacity-50 group-hover:opacity-80 transition-opacity" />
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 p-3 flex items-center justify-center backdrop-blur-sm">
+              <img
+                src={browser.icon}
+                alt={browser.name}
+                className="w-full h-full object-contain"
+              />
+            </div>
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-gray-400 mb-3 font-medium">
           {device.name} • {browser.name}
         </p>
 
-        <h1 className="text-lg font-bold text-white mb-1">
+        <h1 className="text-xl font-bold text-white mb-2">
           {t("onboarding.extension.title")}
         </h1>
-        <p className="text-gray-400 text-xs">
+        <p className="text-gray-400 text-sm leading-relaxed">
           {t("onboarding.extension.explainer")}
         </p>
       </div>
 
-      {/* Main Install Button */}
+      {/* Main Install Button - Premium Design */}
       {browser.supportsExtensions && browser.extensionUrl && (
         <a
           href={browser.extensionUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg font-medium text-sm transition-all duration-300 mb-3 ${
+          className={`relative overflow-hidden flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mb-4 ${
             isSuccess
-              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-              : "bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+              ? "bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 text-emerald-400 border border-emerald-500/40"
+              : "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-400 hover:to-emerald-500 shadow-lg shadow-emerald-500/30"
           }`}
         >
-          {isSuccess ? (
-            <>
-              <Icon icon={Icons.CHECKMARK} /> Installed
-            </>
-          ) : (
-            `Install ${browser.name} Extension`
+          {!isSuccess && (
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full animate-[shimmer_2s_infinite]" />
           )}
+          <span className="relative z-10 flex items-center gap-2">
+            {isSuccess ? (
+              <>
+                <Icon icon={Icons.CHECKMARK} /> Extension Installed
+              </>
+            ) : (
+              `Install ${browser.name} Extension`
+            )}
+          </span>
         </a>
       )}
 
-      {/* Status */}
+      {/* Success Status */}
       {isSuccess && (
-        <div className="flex items-center justify-center gap-2 text-emerald-400 text-xs py-2 mb-3">
+        <div className="flex items-center justify-center gap-2 text-emerald-400 text-sm py-3 mb-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
           <Icon icon={Icons.CHECKMARK} />
-          Extension working!
+          <span className="font-medium">Extension working!</span>
         </div>
       )}
 
+      {/* Waiting Overlay - Shows when waiting for extension */}
+      <WaitingOverlay isWaiting={isWaiting} browserName={browser.name} />
+
       {/* Alternative Method */}
-      <div className="pt-4 border-t border-white/10">
-        <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3 text-center">
+      <div className="pt-5 border-t border-white/10 mt-4">
+        <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4 text-center font-semibold">
           Alternative
         </p>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <StepButton
             step={1}
             label="Install Violentmonkey"
