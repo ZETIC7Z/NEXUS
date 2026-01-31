@@ -264,12 +264,12 @@ export function useSubtitleList(subs: CaptionListItem[], searchQuery: string) {
       // 2. English at top
       const isEngA =
         a.languageName?.toLowerCase().includes("english") ||
-        a.language?.startsWith("en")
+          a.language?.startsWith("en")
           ? 0
           : 1;
       const isEngB =
         b.languageName?.toLowerCase().includes("english") ||
-        b.language?.startsWith("en")
+          b.language?.startsWith("en")
           ? 0
           : 1;
       if (isEngA !== isEngB) return isEngA - isEngB;
@@ -685,22 +685,6 @@ export function CaptionsView({
             </div>
           )}
 
-          {/* Source Subtitles Section */}
-          {sourceCaptions.length > 0 && (
-            <>
-              <div className="text-sm font-semibold text-video-context-type-secondary pt-2 mb-2">
-                {t("player.menus.subtitles.SourceChoice")}
-              </div>
-              {sourceList.length > 0 ? (
-                sourceList.map(renderSubtitleOption)
-              ) : (
-                <div className="text-center text-video-context-type-secondary py-2">
-                  {t("player.menus.subtitles.notFound")}
-                </div>
-              )}
-            </>
-          )}
-
           {/* External Subtitles Section */}
           {externalCaptions.length > 0 && (
             <>
@@ -709,6 +693,22 @@ export function CaptionsView({
               </div>
               {externalList.length > 0 ? (
                 externalList.map(renderSubtitleOption)
+              ) : (
+                <div className="text-center text-video-context-type-secondary py-2">
+                  {t("player.menus.subtitles.notFound")}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Source Subtitles Section */}
+          {sourceCaptions.length > 0 && (
+            <>
+              <div className="text-sm font-semibold text-video-context-type-secondary pt-2 mb-2">
+                {t("player.menus.subtitles.SourceChoice")}
+              </div>
+              {sourceList.length > 0 ? (
+                sourceList.map(renderSubtitleOption)
               ) : (
                 <div className="text-center text-video-context-type-secondary py-2">
                   {t("player.menus.subtitles.notFound")}
