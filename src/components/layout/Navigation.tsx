@@ -422,10 +422,12 @@ export function Navigation(props: NavigationProps) {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search/movie?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/browse/${encodeURIComponent(searchQuery.trim())}`);
       setSearchBarOpen(false);
       setMobileSearchOpen(false);
       setSearchQuery("");
+      // Force scroll to top on search
+      window.scrollTo(0, 0);
     }
   };
 
@@ -532,7 +534,7 @@ export function Navigation(props: NavigationProps) {
                   <SearchBarInput
                     value={props.searchQuery || ""}
                     onChange={props.onSearchChange}
-                    onUnFocus={props.onSearchUnFocus || (() => {})}
+                    onUnFocus={props.onSearchUnFocus || (() => { })}
                     placeholder="Search settings..."
                     hideTooltip
                   />
