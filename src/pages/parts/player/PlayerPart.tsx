@@ -7,9 +7,13 @@ import { MobileLockScreen } from "@/components/player/atoms/MobileLockScreen";
 import { MobilePlayerLogo } from "@/components/player/atoms/MobilePlayerLogo";
 import { SkipIntroButton } from "@/components/player/atoms/SkipIntroButton";
 import { UnreleasedEpisodeOverlay } from "@/components/player/atoms/UnreleasedEpisodeOverlay";
+import { MobileEpisodeSelector } from "@/components/player/MobileEpisodeSelector";
+import { Settings } from "@/components/player/Settings";
+import { ThumbsFeedback } from "@/components/player/atoms/ThumbsFeedback";
 import { WatchPartyStatus } from "@/components/player/atoms/WatchPartyStatus";
+import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { useShouldShowControls } from "@/components/player/hooks/useShouldShowControls";
-import { useSkipTime } from "@/components/player/hooks/useSkipTime";
+import { SegmentData, useSkipTime } from "@/components/player/hooks/useSkipTime";
 import { useMobileFeatures } from "@/hooks/useMobileFeatures";
 import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
@@ -111,9 +115,8 @@ export function PlayerPart(props: PlayerPartProps) {
       </Player.CenterMobileControls>
 
       <div
-        className={`absolute right-4 z-50 transition-all duration-300 ease-in-out ${
-          showTargets ? "top-4" : "top-1"
-        }`}
+        className={`absolute right-4 z-50 transition-all duration-300 ease-in-out ${showTargets ? "top-4" : "top-1"
+          }`}
       >
         <WatchPartyStatus />
       </div>
@@ -185,7 +188,7 @@ export function PlayerPart(props: PlayerPartProps) {
               </>
             ) : null}
             {status === playerStatus.PLAYBACK_ERROR ||
-            status === playerStatus.PLAYING ? (
+              status === playerStatus.PLAYING ? (
               <Player.Captions />
             ) : null}
             <Player.Settings />
@@ -248,6 +251,12 @@ export function PlayerPart(props: PlayerPartProps) {
         controlsShowing={showTargets}
         skipTime={skiptime}
         inControl={inControl}
+      />
+
+      <ThumbsFeedback
+        controlsShowing={showTargets}
+        feedbackData={thumbsFeedbackData}
+        onAction={handleThumbsFeedback}
       />
     </Player.Container>
   );

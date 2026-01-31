@@ -365,23 +365,33 @@
     "titles": {
       "day": {
         "default": "What would you like to watch this afternoon?",
-        "extra": ["Viva la NEXUS!"]
+        "extra": [
+          "Viva la NEXUS!"
+        ]
       },
       "morning": {
         "default": "What would you like to watch this morning?",
-        "extra": ["Viva la NEXUS!"]
+        "extra": [
+          "Viva la NEXUS!"
+        ]
       },
       "night": {
         "default": "What would you like to watch tonight?",
-        "extra": ["Viva la NEXUS!"]
+        "extra": [
+          "Viva la NEXUS!"
+        ]
       },
       "420": {
         "default": "What would you like to watch this 4/20?",
-        "extra": ["Happy 4/20 🥳!"]
+        "extra": [
+          "Happy 4/20 🥳!"
+        ]
       },
       "69": {
         "default": "Up for something spicy?",
-        "extra": ["Happy 69 day 😘!"]
+        "extra": [
+          "Happy 69 day 😘!"
+        ]
       },
       "halloween": {
         "default": "What spooky movie would you like to watch this Halloween?",
@@ -916,6 +926,64 @@
       "error": "Failed to verify your humanity - stream failed to load. Clear your cache and try again, or switch to a different source (tap the gear).",
       "title": "Are You a Robot 🤖?",
       "verifyingHumanity": "Verifying your humanity... (^▽^)👍"
+    },
+    "skipTime": {
+      "intro": "Skip Intro",
+      "recap": "Skip Recap",
+      "credits": "Skip Credits",
+      "feedback": {
+        "title": "Was this skip correct?",
+        "modal": {
+          "title": "Submit Timestamps to TheIntroDB",
+          "description": "Contribute to TheIntroDB by submitting accurate segment timestamps. All submissions are accepted by the community before being published.",
+          "segmentType": "Segment Type",
+          "types": {
+            "intro": "Intro",
+            "recap": "Recap",
+            "credits": "Credits"
+          },
+          "startTimeLabel": "Start (s)",
+          "endTimeLabel": "End (s)",
+          "placeholders": {
+            "start": {
+              "intro": "2:30 or 150 (leave empty for start at beginning)",
+              "recap": "2:30 or 150 (leave empty for start at beginning)",
+              "credits": "2:30 or 150 (required)"
+            },
+            "end": {
+              "intro": "3:30 or 210 (required)",
+              "recap": "3:30 or 210 (required)",
+              "credits": "3:30 or 210 (leave empty for end of media)"
+            }
+          },
+          "whenToTitle": "Timestamps guide:",
+          "whenToDesc": "Enter timestamps in seconds (e.g. 150), mm:ss format (e.g. 2:30), or hh:mm:ss format (e.g. 1:42:20). We'll automatically convert the format for you.",
+          "guide": {
+            "startLabel": "Start:",
+            "startDesc": "Required - when credits begin rolling",
+            "endLabel": "End:",
+            "endDesc": "Optional - empty if extends to end",
+            "durationLabel": "Duration:",
+            "durationDesc": "Min 5s if end provided",
+            "excludeLabel": "Exclude:",
+            "excludeDesc": "Post-credits scenes"
+          },
+          "cancel": "Cancel",
+          "submit": "Submit",
+          "submitting": "Submitting...",
+          "error": {
+            "tidbKey": "TIDB API key is not set",
+            "mediaInfo": "Media information is not available",
+            "endTime": "End time is required",
+            "startTime": "Start time is required",
+            "submission": "Error submitting timestamps",
+            "segment": "No segment selected"
+          },
+          "success": {
+            "title": "Submission Successful! Thanks!"
+          }
+        }
+      }
     }
   },
   "support": {

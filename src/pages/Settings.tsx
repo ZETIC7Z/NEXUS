@@ -664,6 +664,7 @@ export function SettingsPage() {
     setFebboxKey,
     setdebridToken,
     setdebridService,
+    setTIDBKey,
     state,
     setEnableAutoplay,
     setEnableSkipCredits,
@@ -834,6 +835,8 @@ export function SettingsPage() {
                 setdebridToken={state.debridToken.set}
                 debridService={state.debridService.state}
                 setdebridService={state.debridService.set}
+                tidbKey={state.tidbKey.state}
+                setTIDBKey={state.tidbKey.set}
                 proxyTmdb={state.proxyTmdb.state}
                 setProxyTmdb={state.proxyTmdb.set}
               />
