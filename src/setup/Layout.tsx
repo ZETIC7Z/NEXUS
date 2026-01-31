@@ -13,7 +13,7 @@ export function Layout(props: { children: React.ReactNode }) {
   const { isExpanded } = useSidebarStore();
   const { loggedIn } = useAuth();
 
-  const isPlayerPage = location.startsWith("/watch");
+  const isPlayerPage = location.startsWith("/watch") || location.startsWith("/media");
   const isLandingPage = location === "/" && !loggedIn;
   const isOnboarding = location.startsWith("/onboarding");
   const isLogin = location.startsWith("/login");
@@ -30,7 +30,7 @@ export function Layout(props: { children: React.ReactNode }) {
 
   return (
     <>
-      <Navigation />
+      {!isPlayerPage && <Navigation />}
       {showSidebar && <YouTubeSidebar />}
       <div
         style={{
