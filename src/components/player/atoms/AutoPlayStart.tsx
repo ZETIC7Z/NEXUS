@@ -1,9 +1,9 @@
 import { useCallback, useEffect } from "react";
-import { usePreferencesStore } from "@/stores/preferences";
 
 import { Icon, Icons } from "@/components/Icon";
 import { playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
+import { usePreferencesStore } from "@/stores/preferences";
 
 export function AutoPlayStart() {
   const display = usePlayerStore((s) => s.display);

@@ -54,6 +54,11 @@ interface FebboxKeyProps {
   setFebboxKey: (value: string | null) => void;
 }
 
+interface TIDBEditProps {
+  tidbKey: string | null;
+  setTIDBKey: (value: string | null) => void;
+}
+
 interface DebridProps {
   debridToken: string | null;
   setdebridToken: (value: string | null) => void;
@@ -61,6 +66,11 @@ interface DebridProps {
   setdebridService: (value: string) => void;
   // eslint-disable-next-line react/no-unused-prop-types
   mode?: "onboarding" | "settings";
+}
+
+interface TIDBEditProps {
+  tidbKey: string | null;
+  setTIDBKey: (value: string | null) => void;
 }
 
 function ProxyEdit({
@@ -707,8 +717,47 @@ export function DebridEdit({
   return null;
 }
 
+function TIDBEdit({ tidbKey, setTIDBKey }: TIDBEditProps) {
+  const { t } = useTranslation();
+
+  return (
+    <SettingsCard>
+      <div className="flex justify-between items-center gap-4">
+        <div className="my-3">
+          <p className="text-white font-bold mb-3">TIDB (The Intro DB)</p>
+          <p className="max-w-[30rem] font-medium">
+            API Key for The Intro DB integration.
+          </p>
+        </div>
+        <div>
+          <Toggle
+            onClick={() => setTIDBKey(tidbKey === null ? "" : null)}
+            enabled={tidbKey !== null}
+          />
+        </div>
+      </div>
+      {tidbKey !== null ? (
+        <>
+          <Divider marginClass="my-6 px-8 box-content -mx-8" />
+          <p className="text-white font-bold mb-3">API Key</p>
+          <AuthInputBox
+            onChange={setTIDBKey}
+            value={tidbKey}
+            placeholder="TIDB API Key"
+            passwordToggleable
+          />
+        </>
+      ) : null}
+    </SettingsCard>
+  );
+}
+
 export function ConnectionsPart(
-  props: BackendEditProps & ProxyEditProps & FebboxKeyProps & DebridProps,
+  props: BackendEditProps &
+    ProxyEditProps &
+    FebboxKeyProps &
+    DebridProps &
+    TIDBEditProps,
 ) {
   const { t } = useTranslation();
   return (
@@ -741,6 +790,7 @@ export function ConnectionsPart(
           setdebridService={props.setdebridService}
           mode="settings"
         />
+        <TIDBEdit tidbKey={props.tidbKey} setTIDBKey={props.setTIDBKey} />
       </div>
     </div>
   );

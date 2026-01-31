@@ -48,6 +48,7 @@ export function useSettingsState(
   febboxKey: string | null,
   debridToken: string | null,
   debridService: string,
+  tidbKey: string | null,
   profile:
     | {
         colorA: string;
@@ -99,6 +100,8 @@ export function useSettingsState(
     _resetdebridService,
     debridServiceChanged,
   ] = useDerived(debridService);
+  const [tidbKeyState, setTIDBKey, resetTIDBKey, tidbKeyChanged] =
+    useDerived(tidbKey);
   const [themeState, setTheme, resetTheme, themeChanged] = useDerived(theme);
   const setPreviewTheme = usePreviewThemeStore((s) => s.setPreviewTheme);
   const resetPreviewTheme = useCallback(
@@ -279,6 +282,7 @@ export function useSettingsState(
     resetBackendUrl();
     resetFebboxKey();
     resetdebridToken();
+    resetTIDBKey();
     resetDeviceName();
     resetNickname();
     resetProfile();
@@ -320,6 +324,7 @@ export function useSettingsState(
     febboxKeyChanged ||
     debridTokenChanged ||
     debridServiceChanged ||
+    tidbKeyChanged ||
     profileChanged ||
     enableThumbnailsChanged ||
     enableAutoplayChanged ||
@@ -399,6 +404,11 @@ export function useSettingsState(
       state: debridServiceState,
       set: setdebridService,
       changed: debridServiceChanged,
+    },
+    tidbKey: {
+      state: tidbKeyState,
+      set: setTIDBKey,
+      changed: tidbKeyChanged,
     },
     profile: {
       state: profileState,

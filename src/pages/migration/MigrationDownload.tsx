@@ -168,7 +168,6 @@ export function MigrationDownloadPage() {
 
                   <div className="p-4 bg-background rounded-lg">
                     <div className="flex items-center gap-2">
-
                       <Icon icon={Icons.SETTINGS} className="text-xl" />
                       <span className="font-medium">
                         {t("migration.preview.items.settings")}

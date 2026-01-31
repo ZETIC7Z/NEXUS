@@ -107,10 +107,11 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={icon}
                   onClick={() => setSelectedIcon(icon)}
-                  className={`p-4 rounded-lg border-2 transition-all ${selectedIcon === icon
-                    ? "border-pill-highlight bg-pill-highlight/20"
-                    : "border-dropdown-border hover:border-pill-highlight/50"
-                    }`}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    selectedIcon === icon
+                      ? "border-pill-highlight bg-pill-highlight/20"
+                      : "border-dropdown-border hover:border-pill-highlight/50"
+                  }`}
                 >
                   <Icon icon={icon} className="text-2xl" />
                 </button>
@@ -127,10 +128,11 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={color.value}
                   onClick={() => setColorOne(color.value)}
-                  className={`h-12 rounded-lg border-2 transition-all ${colorOne === color.value
-                    ? "border-white scale-110"
-                    : "border-transparent hover:scale-105"
-                    }`}
+                  className={`h-12 rounded-lg border-2 transition-all ${
+                    colorOne === color.value
+                      ? "border-white scale-110"
+                      : "border-transparent hover:scale-105"
+                  }`}
                   style={{ backgroundColor: color.value }}
                   title={color.name}
                 />
@@ -147,10 +149,11 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={color.value}
                   onClick={() => setColorTwo(color.value)}
-                  className={`h-12 rounded-lg border-2 transition-all ${colorTwo === color.value
-                    ? "border-white scale-110"
-                    : "border-transparent hover:scale-105"
-                    }`}
+                  className={`h-12 rounded-lg border-2 transition-all ${
+                    colorTwo === color.value
+                      ? "border-white scale-110"
+                      : "border-transparent hover:scale-105"
+                  }`}
                   style={{ backgroundColor: color.value }}
                   title={color.name}
                 />

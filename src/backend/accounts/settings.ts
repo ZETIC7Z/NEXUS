@@ -36,6 +36,7 @@ export interface SettingsInput {
   manualSourceSelection?: boolean;
   enableDoubleClickToSeek?: boolean;
   enableAutoResumeOnPlaybackError?: boolean;
+  tidbKey?: string | null;
 }
 
 export interface SettingsResponse {
@@ -71,6 +72,7 @@ export interface SettingsResponse {
   manualSourceSelection?: boolean;
   enableDoubleClickToSeek?: boolean;
   enableAutoResumeOnPlaybackError?: boolean;
+  tidbKey?: string | null;
 }
 
 export function updateSettings(

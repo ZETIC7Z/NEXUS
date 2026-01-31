@@ -532,7 +532,7 @@ export function Navigation(props: NavigationProps) {
                   <SearchBarInput
                     value={props.searchQuery || ""}
                     onChange={props.onSearchChange}
-                    onUnFocus={props.onSearchUnFocus || (() => { })}
+                    onUnFocus={props.onSearchUnFocus || (() => {})}
                     placeholder="Search settings..."
                     hideTooltip
                   />

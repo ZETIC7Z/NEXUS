@@ -118,9 +118,9 @@ export function SidebarPart(props: {
           isMobile
             ? undefined
             : {
-              // Use CSS transform for better performance
-              transform: "translateZ(0)",
-            }
+                // Use CSS transform for better performance
+                transform: "translateZ(0)",
+              }
         }
       >
         {/* Exit Settings Button */}
