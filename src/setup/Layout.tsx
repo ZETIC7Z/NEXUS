@@ -13,7 +13,11 @@ export function Layout(props: { children: React.ReactNode }) {
   const { isExpanded } = useSidebarStore();
   const { loggedIn } = useAuth();
 
-  const isPlayerPage = location.startsWith("/watch") || location.startsWith("/media");
+  const lowerLoc = location.toLowerCase();
+  const isPlayerPage =
+    lowerLoc.startsWith("/watch") ||
+    lowerLoc.startsWith("/media") ||
+    lowerLoc.startsWith("/dev/video");
   const isLandingPage = location === "/" && !loggedIn;
   const isOnboarding = location.startsWith("/onboarding");
   const isLogin = location.startsWith("/login");
