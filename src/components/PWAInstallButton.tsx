@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/buttons/Button";
 import { Icon, Icons } from "@/components/Icon";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -42,13 +41,13 @@ export function PWAInstallButton() {
   if (!showInstallButton) return null;
 
   return (
-    <Button
-      theme="purple"
+    <button
+      type="button"
       onClick={handleInstallClick}
-      className="flex items-center gap-2"
+      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[hsl(var(--colors-active))] hover:bg-[hsl(var(--colors-active))]/80 text-white text-xs font-medium rounded-lg transition-all duration-300 hover:scale-105 shadow-lg shadow-black/20"
     >
-      <Icon icon={Icons.DOWNLOAD} />
-      Install App
-    </Button>
+      <Icon icon={Icons.DOWNLOAD} className="text-xs" />
+      <span className="hidden sm:inline">Install App</span>
+    </button>
   );
 }

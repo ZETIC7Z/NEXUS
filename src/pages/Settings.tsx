@@ -266,77 +266,7 @@ export function SettingsPage() {
   const previewTheme = usePreviewThemeStore((s) => s.previewTheme);
   const setPreviewTheme = usePreviewThemeStore((s) => s.setPreviewTheme);
 
-  // Simple text search with highlighting
-  const handleSearchChange = useCallback((value: string, _force: boolean) => {
-    setSearchQuery(value);
-    // When searching, clear category selection to show all sections
-    if (value.trim()) {
-      setSelectedCategory(null);
-    }
 
-    // Remove existing highlights
-    const existingHighlights = document.querySelectorAll(".search-highlight");
-    existingHighlights.forEach((el) => {
-      const parent = el.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(el.textContent || ""), el);
-        parent.normalize();
-      }
-    });
-
-    if (value.trim()) {
-      // Find and highlight matching text
-      const walker = document.createTreeWalker(
-        document.querySelector("[data-settings-content]") || document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-      );
-
-      let node = walker.nextNode();
-
-      while (node) {
-        const text = node.textContent || "";
-        const lowerText = text.toLowerCase();
-        const lowerValue = value.toLowerCase();
-
-        if (lowerText.includes(lowerValue)) {
-          const regex = new RegExp(
-            `(${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-            "gi",
-          );
-          const highlightedText = text.replace(
-            regex,
-            '<span class="search-highlight bg-yellow-200 text-black px-1 rounded">$1</span>',
-          );
-
-          if (highlightedText !== text) {
-            const wrapper = document.createElement("div");
-            wrapper.innerHTML = highlightedText;
-            const parent = node.parentNode;
-            if (parent) {
-              while (wrapper.firstChild) {
-                parent.insertBefore(wrapper.firstChild, node);
-              }
-              parent.removeChild(node);
-            }
-          }
-        }
-        node = walker.nextNode();
-      }
-
-      // Scroll to first highlighted element
-      scrollToElement(".search-highlight", {
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, []);
-
-  const handleSearchUnFocus = useCallback((newSearch?: string) => {
-    if (newSearch !== undefined) {
-      setSearchQuery(newSearch);
-    }
-  }, []);
 
   const appLanguage = useLanguageStore((s) => s.language);
   const setAppLanguage = useLanguageStore((s) => s.setLanguage);
@@ -766,15 +696,10 @@ export function SettingsPage() {
     setEnableAutoResumeOnPlaybackError,
   ]);
   return (
-    <SubPageLayout
-      searchQuery={searchQuery}
-      onSearchChange={handleSearchChange}
-      onSearchUnFocus={handleSearchUnFocus}
-      showSettingsSearch
-    >
+    <SubPageLayout>
       <PageTitle subpage k="global.pages.settings" />
       <SettingsLayout
-        searchQuery={searchQuery}
+
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
         className="space-y-28"
@@ -782,138 +707,138 @@ export function SettingsPage() {
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-account") && (
-          <div id="settings-account">
-            <Heading1 border className="!mb-0">
-              {t("settings.account.title")}
-            </Heading1>
-            {user.account && state.profile.state ? (
-              <AccountSettings
-                account={user.account}
-                deviceName={state.deviceName.state}
-                setDeviceName={state.deviceName.set}
-                nickname={state.nickname.state}
-                setNickname={state.nickname.set}
-                colorA={state.profile.state.colorA}
-                setColorA={(v) => {
-                  state.profile.set((s) =>
-                    s ? { ...s, colorA: v } : undefined,
-                  );
-                }}
-                colorB={state.profile.state.colorB}
-                setColorB={(v) =>
-                  state.profile.set((s) =>
-                    s ? { ...s, colorB: v } : undefined,
-                  )
-                }
-                userIcon={state.profile.state.icon as any}
-                setUserIcon={(v) =>
-                  state.profile.set((s) => (s ? { ...s, icon: v } : undefined))
-                }
-              />
-            ) : (
-              <RegisterCalloutPart />
-            )}
-          </div>
-        )}
+            <div id="settings-account">
+              <Heading1 border className="!mb-0">
+                {t("settings.account.title")}
+              </Heading1>
+              {user.account && state.profile.state ? (
+                <AccountSettings
+                  account={user.account}
+                  deviceName={state.deviceName.state}
+                  setDeviceName={state.deviceName.set}
+                  nickname={state.nickname.state}
+                  setNickname={state.nickname.set}
+                  colorA={state.profile.state.colorA}
+                  setColorA={(v) => {
+                    state.profile.set((s) =>
+                      s ? { ...s, colorA: v } : undefined,
+                    );
+                  }}
+                  colorB={state.profile.state.colorB}
+                  setColorB={(v) =>
+                    state.profile.set((s) =>
+                      s ? { ...s, colorB: v } : undefined,
+                    )
+                  }
+                  userIcon={state.profile.state.icon as any}
+                  setUserIcon={(v) =>
+                    state.profile.set((s) => (s ? { ...s, icon: v } : undefined))
+                  }
+                />
+              ) : (
+                <RegisterCalloutPart />
+              )}
+            </div>
+          )}
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-preferences") && (
-          <div id="settings-preferences">
-            <PreferencesPart
-              language={state.appLanguage.state}
-              setLanguage={state.appLanguage.set}
-              enableThumbnails={state.enableThumbnails.state}
-              setEnableThumbnails={state.enableThumbnails.set}
-              enableAutoplay={state.enableAutoplay.state}
-              setEnableAutoplay={state.enableAutoplay.set}
-              enableSkipCredits={state.enableSkipCredits.state}
-              setEnableSkipCredits={state.enableSkipCredits.set}
-              sourceOrder={availableSources}
-              setSourceOrder={state.sourceOrder.set}
-              enableSourceOrder={state.enableSourceOrder.state}
-              setenableSourceOrder={state.enableSourceOrder.set}
-              enableLastSuccessfulSource={
-                state.enableLastSuccessfulSource.state
-              }
-              setEnableLastSuccessfulSource={
-                state.enableLastSuccessfulSource.set
-              }
-              disabledSources={state.disabledSources.state}
-              setDisabledSources={state.disabledSources.set}
-              enableLowPerformanceMode={state.enableLowPerformanceMode.state}
-              setEnableLowPerformanceMode={state.enableLowPerformanceMode.set}
-              enableHoldToBoost={state.enableHoldToBoost.state}
-              setEnableHoldToBoost={state.enableHoldToBoost.set}
-              manualSourceSelection={state.manualSourceSelection.state}
-              setManualSourceSelection={state.manualSourceSelection.set}
-              enableDoubleClickToSeek={state.enableDoubleClickToSeek.state}
-              setEnableDoubleClickToSeek={state.enableDoubleClickToSeek.set}
-              enableAutoResumeOnPlaybackError={
-                state.enableAutoResumeOnPlaybackError.state
-              }
-              setEnableAutoResumeOnPlaybackError={
-                state.enableAutoResumeOnPlaybackError.set
-              }
-            />
-          </div>
-        )}
+            <div id="settings-preferences">
+              <PreferencesPart
+                language={state.appLanguage.state}
+                setLanguage={state.appLanguage.set}
+                enableThumbnails={state.enableThumbnails.state}
+                setEnableThumbnails={state.enableThumbnails.set}
+                enableAutoplay={state.enableAutoplay.state}
+                setEnableAutoplay={state.enableAutoplay.set}
+                enableSkipCredits={state.enableSkipCredits.state}
+                setEnableSkipCredits={state.enableSkipCredits.set}
+                sourceOrder={availableSources}
+                setSourceOrder={state.sourceOrder.set}
+                enableSourceOrder={state.enableSourceOrder.state}
+                setenableSourceOrder={state.enableSourceOrder.set}
+                enableLastSuccessfulSource={
+                  state.enableLastSuccessfulSource.state
+                }
+                setEnableLastSuccessfulSource={
+                  state.enableLastSuccessfulSource.set
+                }
+                disabledSources={state.disabledSources.state}
+                setDisabledSources={state.disabledSources.set}
+                enableLowPerformanceMode={state.enableLowPerformanceMode.state}
+                setEnableLowPerformanceMode={state.enableLowPerformanceMode.set}
+                enableHoldToBoost={state.enableHoldToBoost.state}
+                setEnableHoldToBoost={state.enableHoldToBoost.set}
+                manualSourceSelection={state.manualSourceSelection.state}
+                setManualSourceSelection={state.manualSourceSelection.set}
+                enableDoubleClickToSeek={state.enableDoubleClickToSeek.state}
+                setEnableDoubleClickToSeek={state.enableDoubleClickToSeek.set}
+                enableAutoResumeOnPlaybackError={
+                  state.enableAutoResumeOnPlaybackError.state
+                }
+                setEnableAutoResumeOnPlaybackError={
+                  state.enableAutoResumeOnPlaybackError.set
+                }
+              />
+            </div>
+          )}
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-appearance") && (
-          <div id="settings-appearance" className="appearance-settings">
-            <div id="appearance-settings" />
-            <AppearancePart
-              active={previewTheme ?? "default"}
-              inUse={activeTheme ?? "default"}
-              setTheme={setThemeWithPreview}
-              enableDiscover={state.enableDiscover.state}
-              setEnableDiscover={state.enableDiscover.set}
-              enableFeatured={state.enableFeatured.state}
-              setEnableFeatured={state.enableFeatured.set}
-              enableDetailsModal={state.enableDetailsModal.state}
-              setEnableDetailsModal={state.enableDetailsModal.set}
-              enableImageLogos={state.enableImageLogos.state}
-              setEnableImageLogos={state.enableImageLogos.set}
-              enableCarouselView={state.enableCarouselView.state}
-              setEnableCarouselView={state.enableCarouselView.set}
-              forceCompactEpisodeView={state.forceCompactEpisodeView.state}
-              setForceCompactEpisodeView={state.forceCompactEpisodeView.set}
-              homeSectionOrder={state.homeSectionOrder.state}
-              setHomeSectionOrder={state.homeSectionOrder.set}
-              enableLowPerformanceMode={state.enableLowPerformanceMode.state}
-            />
-          </div>
-        )}
+            <div id="settings-appearance" className="appearance-settings">
+              <div id="appearance-settings" />
+              <AppearancePart
+                active={previewTheme ?? "default"}
+                inUse={activeTheme ?? "default"}
+                setTheme={setThemeWithPreview}
+                enableDiscover={state.enableDiscover.state}
+                setEnableDiscover={state.enableDiscover.set}
+                enableFeatured={state.enableFeatured.state}
+                setEnableFeatured={state.enableFeatured.set}
+                enableDetailsModal={state.enableDetailsModal.state}
+                setEnableDetailsModal={state.enableDetailsModal.set}
+                enableImageLogos={state.enableImageLogos.state}
+                setEnableImageLogos={state.enableImageLogos.set}
+                enableCarouselView={state.enableCarouselView.state}
+                setEnableCarouselView={state.enableCarouselView.set}
+                forceCompactEpisodeView={state.forceCompactEpisodeView.state}
+                setForceCompactEpisodeView={state.forceCompactEpisodeView.set}
+                homeSectionOrder={state.homeSectionOrder.state}
+                setHomeSectionOrder={state.homeSectionOrder.set}
+                enableLowPerformanceMode={state.enableLowPerformanceMode.state}
+              />
+            </div>
+          )}
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-captions") && (
-          <div id="settings-captions">
-            <CaptionsPart
-              styling={state.subtitleStyling.state}
-              setStyling={state.subtitleStyling.set}
-            />
-          </div>
-        )}
+            <div id="settings-captions">
+              <CaptionsPart
+                styling={state.subtitleStyling.state}
+                setStyling={state.subtitleStyling.set}
+              />
+            </div>
+          )}
         {(searchQuery.trim() ||
           !selectedCategory ||
           selectedCategory === "settings-connection") && (
-          <div id="settings-connection">
-            <ConnectionsPart
-              backendUrl={state.backendUrl.state}
-              setBackendUrl={state.backendUrl.set}
-              proxyUrls={state.proxyUrls.state}
-              setProxyUrls={state.proxyUrls.set}
-              febboxKey={state.febboxKey.state}
-              setFebboxKey={state.febboxKey.set}
-              debridToken={state.debridToken.state}
-              setdebridToken={state.debridToken.set}
-              debridService={state.debridService.state}
-              setdebridService={state.debridService.set}
-              proxyTmdb={state.proxyTmdb.state}
-              setProxyTmdb={state.proxyTmdb.set}
-            />
-          </div>
-        )}
+            <div id="settings-connection">
+              <ConnectionsPart
+                backendUrl={state.backendUrl.state}
+                setBackendUrl={state.backendUrl.set}
+                proxyUrls={state.proxyUrls.state}
+                setProxyUrls={state.proxyUrls.set}
+                febboxKey={state.febboxKey.state}
+                setFebboxKey={state.febboxKey.set}
+                debridToken={state.debridToken.state}
+                setdebridToken={state.debridToken.set}
+                debridService={state.debridService.state}
+                setdebridService={state.debridService.set}
+                proxyTmdb={state.proxyTmdb.state}
+                setProxyTmdb={state.proxyTmdb.set}
+              />
+            </div>
+          )}
       </SettingsLayout>
       <Transition
         animation="fade"

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
-import { Icons } from "@/components/Icon";
+import { Icon, Icons } from "@/components/Icon";
 import { SidebarLink, SidebarSection } from "@/components/layout/Sidebar";
 import { Divider } from "@/components/utils/Divider";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -16,6 +17,7 @@ export function SidebarPart(props: {
   const { t } = useTranslation();
   const { isMobile } = useIsMobile();
   const [activeLink, setActiveLink] = useState("");
+  const navigate = useNavigate();
 
   const settingLinks = useMemo(
     () => [
@@ -116,11 +118,28 @@ export function SidebarPart(props: {
           isMobile
             ? undefined
             : {
-                // Use CSS transform for better performance
-                transform: "translateZ(0)",
-              }
+              // Use CSS transform for better performance
+              transform: "translateZ(0)",
+            }
         }
       >
+        {/* Exit Settings Button */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-3 px-4 py-3 w-full text-left text-type-secondary hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group"
+          >
+            <Icon
+              icon={Icons.ARROW_LEFT}
+              className="text-xl transition-transform group-hover:-translate-x-1"
+            />
+            <span className="font-bold tracking-wider text-sm">
+              EXIT SETTINGS
+            </span>
+          </button>
+        </div>
+
         <SidebarSection title={t("global.pages.settings")}>
           <SidebarLink
             icon={Icons.GEAR}

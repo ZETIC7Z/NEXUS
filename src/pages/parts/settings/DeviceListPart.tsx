@@ -1,3 +1,4 @@
+import { Globe, Laptop, Monitor, Smartphone, Tv } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAsyncFn } from "react-use";
@@ -21,11 +22,44 @@ export const signOutAllDevices = () => {
   });
 };
 
+function getDeviceIcon(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes("tv") || n.includes("smart tv"))
+    return <Tv className="w-5 h-5" />;
+  if (
+    n.includes("android") ||
+    n.includes("mobile") ||
+    n.includes("phone") ||
+    n.includes("samsung") ||
+    n.includes("pixel")
+  )
+    return <Smartphone className="w-5 h-5" />;
+  if (n.includes("ios") || n.includes("iphone") || n.includes("ipad"))
+    return <Smartphone className="w-5 h-5" />;
+  if (
+    n.includes("mac") ||
+    n.includes("windows") ||
+    n.includes("linux") ||
+    n.includes("desktop") ||
+    n.includes("pc")
+  )
+    return <Monitor className="w-5 h-5" />;
+  if (
+    n.includes("chrome") ||
+    n.includes("firefox") ||
+    n.includes("safari") ||
+    n.includes("edge")
+  )
+    return <Globe className="w-5 h-5" />;
+  return <Laptop className="w-5 h-5" />;
+}
+
 export function Device(props: {
   name: string;
   id: string;
   isCurrent?: boolean;
   onRemove?: () => void;
+  icon?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const url = useBackendUrl();
@@ -42,11 +76,18 @@ export function Device(props: {
       className="flex justify-between items-center"
       paddingClass="px-6 py-4"
     >
-      <div className="font-medium">
-        <SecondaryLabel>
-          {t("settings.account.devices.deviceNameLabel")}
-        </SecondaryLabel>
-        <p className="text-white">{props.name}</p>
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-white/5 rounded-full text-white/80">
+          {props.icon || <Laptop className="w-5 h-5" />}
+        </div>
+        <div className="font-medium">
+          <SecondaryLabel>
+            {props.isCurrent
+              ? `${t("settings.account.devices.deviceNameLabel")} (Current)`
+              : t("settings.account.devices.deviceNameLabel")}
+          </SecondaryLabel>
+          <p className="text-white flex items-center gap-2">{props.name}</p>
+        </div>
       </div>
       {!props.isCurrent ? (
         <Button
@@ -72,9 +113,12 @@ export function DeviceListPart(props: {
   const seed = useAuthStore((s) => s.account?.seed);
   const sessions = props.sessions;
   const currentSessionId = useAuthStore((s) => s.account?.sessionId);
+
   const deviceListSorted = useMemo(() => {
     if (!seed) return [];
-    let list = sessions.map((session) => {
+
+    // Decrypt all sessions
+    const allDevices = sessions.map((session) => {
       let decryptedName: string;
       try {
         decryptedName = decryptData(session.device, base64ToBuffer(seed));
@@ -91,6 +135,24 @@ export function DeviceListPart(props: {
         name: decryptedName,
       };
     });
+
+    // Deduplicate logic: Keep the current session, or the first one found for a given name
+    const uniqueDevicesMap = new Map<string, (typeof allDevices)[0]>();
+
+    allDevices.forEach((device) => {
+      // Simple normalization for deduplication key
+      const key = device.name.trim();
+
+      if (!uniqueDevicesMap.has(key)) {
+        uniqueDevicesMap.set(key, device);
+      } else if (device.current) {
+        // If the existing one isn't current, but this one IS, replace it
+        uniqueDevicesMap.set(key, device);
+      }
+    });
+
+    let list = Array.from(uniqueDevicesMap.values());
+
     list = list.sort((a, b) => {
       if (a.current) return -1;
       if (b.current) return 1;
@@ -98,6 +160,7 @@ export function DeviceListPart(props: {
     });
     return list;
   }, [seed, sessions, currentSessionId, t]);
+
   if (!seed) return null;
 
   return (
@@ -118,6 +181,7 @@ export function DeviceListPart(props: {
               key={session.id}
               isCurrent={session.current}
               onRemove={props.onChange}
+              icon={getDeviceIcon(session.name)}
             />
           ))}
         </div>

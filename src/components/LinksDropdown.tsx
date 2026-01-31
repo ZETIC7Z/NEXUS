@@ -14,6 +14,11 @@ import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
 import { usePreferencesStore } from "@/stores/preferences";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 function Divider() {
   return <hr className="border-0 w-full h-px bg-dropdown-border" />;
 }
@@ -202,11 +207,53 @@ function WatchPartyInputLink() {
   );
 }
 
-export function LinksDropdown(props: { children: React.ReactNode }) {
+export function LinksDropdown(props: {
+  children: React.ReactNode;
+  unstyled?: boolean;
+  className?: string;
+  dropUp?: boolean;
+  hideLogout?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const account = useAuthStore((s) => s.account);
   const { logout } = useAuth();
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+      setShowInstallButton(false);
+    }
+  };
+
+  const { onOpenChange } = props;
+
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   useEffect(() => {
     function onWindowClick(evt: MouseEvent) {
@@ -222,35 +269,44 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
     setOpen((s) => !s);
   }, []);
 
-  const enableLowPerformanceMode = usePreferencesStore(
-    (s) => s.enableLowPerformanceMode,
-  );
-
   // Get display name - prefer fullName, then nickname
   const displayName = account?.fullName || account?.nickname || "";
 
   return (
-    <div className="relative is-dropdown">
+    <div className={classNames("relative is-dropdown", props.className)}>
       <div
         className={classNames(
-          "cursor-pointer tabbable rounded-full flex gap-2 text-white items-center py-2 px-3 bg-pill-background hover:bg-pill-backgroundHover backdrop-blur-lg transition-all duration-100 hover:scale-105",
-          open ? "bg-opacity-100" : "bg-opacity-50",
+          "tabbable",
+          props.unstyled
+            ? "cursor-pointer"
+            : "cursor-pointer rounded-full flex gap-2 text-white items-center py-2 px-3 bg-pill-background hover:bg-pill-backgroundHover backdrop-blur-lg transition-all duration-100 hover:scale-105",
+          !props.unstyled && (open ? "bg-opacity-100" : "bg-opacity-50"),
         )}
         tabIndex={0}
         onClick={toggleOpen}
         onKeyUp={(evt) => evt.key === "Enter" && toggleOpen()}
       >
         {props.children}
-        <Icon
-          className={classNames(
-            "text-xl transition-transform duration-100",
-            open ? "rotate-180" : "",
-          )}
-          icon={Icons.CHEVRON_DOWN}
-        />
+        {!props.unstyled && (
+          <Icon
+            className={classNames(
+              "text-xl transition-transform duration-100",
+              open ? "rotate-180" : "",
+            )}
+            icon={Icons.CHEVRON_DOWN}
+          />
+        )}
       </div>
-      <Transition animation="slide-down" show={open}>
-        <div className="rounded-xl absolute w-64 bg-dropdown-altBackground top-full mt-3 right-0">
+      <Transition
+        animation={props.dropUp ? "slide-up" : "slide-down"}
+        show={open}
+      >
+        <div
+          className={classNames(
+            "rounded-xl absolute w-64 bg-dropdown-altBackground right-0 z-50",
+            props.dropUp ? "bottom-full mb-3" : "top-full mt-3",
+          )}
+        >
           {account ? (
             <DropdownLink className="text-white" href="/settings">
               <UserAvatar />
@@ -262,27 +318,26 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
             </DropdownLink>
           )}
           <Divider />
+          {showInstallButton && (
+            <DropdownLink
+              onClick={handleInstallClick}
+              icon={Icons.DOWNLOAD}
+              className="text-[#25D366] hover:text-[#128C7E]" // Example distinct color (WhatsApp green-ish) or something noticeable
+            >
+              Install Nexus App
+            </DropdownLink>
+          )}
           <DropdownLink href="/settings" icon={Icons.SETTINGS}>
             {t("navigation.menu.settings")}
           </DropdownLink>
-          {process.env.NODE_ENV === "development" ? (
-            <DropdownLink href="/dev" icon={Icons.COMPRESS}>
-              {t("navigation.menu.development")}
-            </DropdownLink>
-          ) : null}
           <DropdownLink href="/about" icon={Icons.CIRCLE_QUESTION}>
             {t("navigation.menu.about")}
           </DropdownLink>
           <DropdownLink href="/help" icon={Icons.SUPPORT}>
             Help & Tutorials
           </DropdownLink>
-          {!enableLowPerformanceMode && (
-            <DropdownLink href="/discover" icon={Icons.RISING_STAR}>
-              {t("navigation.menu.discover")}
-            </DropdownLink>
-          )}
           <WatchPartyInputLink />
-          {account ? (
+          {account && !props.hideLogout ? (
             <DropdownLink
               className="!text-type-danger opacity-75 hover:opacity-100"
               icon={Icons.LOGOUT}

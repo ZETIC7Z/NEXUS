@@ -17,16 +17,16 @@ export function BrandPill(props: {
       return "h-18 md:h-20"; // Video player - smaller
     }
     if (isMobile && props.header) {
-      return "h-24"; // Mobile header - increased from h-20
+      return "h-14"; // Mobile header - more compact
     }
-    return "h-28"; // Desktop header
+    return "h-16"; // Default/Desktop header
   };
 
   // On mobile header, NO background - just logo
   if (isMobile && props.header) {
     return (
       <img
-        src="/nexus-logo-full.png?v=5"
+        src="/nexus-logo-full.png"
         alt="NEXUS"
         className={`object-contain ${getLogoSize()}`}
       />
@@ -37,7 +37,7 @@ export function BrandPill(props: {
   if (props.large || props.noBackground) {
     return (
       <img
-        src="/nexus-logo-full.png?v=5"
+        src="/nexus-logo-full.png"
         alt="NEXUS"
         className={`object-contain ${getLogoSize()}`}
       />
@@ -48,15 +48,15 @@ export function BrandPill(props: {
   return (
     <div
       className={classNames(
-        "flex items-center rounded-full px-3 py-1.5 backdrop-blur-lg",
-        props.backgroundClass ?? "bg-pill-background bg-opacity-50",
+        "flex items-center rounded-full px-3 py-1.5",
+        props.backgroundClass,
         props.clickable
-          ? "transition-[transform,background-color] hover:scale-105 hover:bg-pill-backgroundHover active:scale-95"
+          ? "transition-transform hover:scale-105 active:scale-95"
           : "",
       )}
     >
       <img
-        src="/nexus-logo-full.png?v=5"
+        src="/nexus-logo-full.png"
         alt="NEXUS"
         className={`object-contain ${getLogoSize()}`}
       />

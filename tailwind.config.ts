@@ -41,9 +41,17 @@ const config: Config = {
           "0%": { transform: "translateX(0) scale(1)", opacity: "1" },
           "100%": { transform: "translateX(50px) scale(1.2)", opacity: "0" },
         },
-        "slideIn": {
+        slideIn: {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(0)" },
+        },
+        slideRight: {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
       },
       animation: {
@@ -51,7 +59,9 @@ const config: Config = {
         "fade-in": "fade-in 200ms ease-out forwards",
         "seek-left": "seek-left 0.5s cubic-bezier(0, 0, 0.2, 1) forwards",
         "seek-right": "seek-right 0.5s cubic-bezier(0, 0, 0.2, 1) forwards",
-        "slideIn": "slideIn 0.3s ease-out forwards",
+        slideIn: "slideIn 0.3s ease-out forwards",
+        slideRight: "slideRight 0.3s ease-out forwards",
+        fadeIn: "fadeIn 0.3s ease-out forwards",
       },
     },
   },

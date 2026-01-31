@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { editUser } from "@/backend/accounts/user";
 import { Button } from "@/components/buttons/Button";
 import { Icon, Icons } from "@/components/Icon";
 import { Heading1, Paragraph } from "@/components/utils/Text";
+import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
 import { SubPageLayout } from "@/pages/layouts/SubPageLayout";
+import { useAuthStore } from "@/stores/auth";
 
 const PROFILE_ICONS = [
   Icons.USER, // cat
@@ -41,11 +44,33 @@ export function ProfileSelectionPage() {
   const [selectedIcon, setSelectedIcon] = useState(Icons.USER);
   const [colorOne, setColorOne] = useState("#3B82F6");
   const [colorTwo, setColorTwo] = useState("#EC4899");
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
-    // TODO: Save profile settings to account
-    // For now, just navigate to onboarding
-    navigate("/onboarding");
+  const backendUrl = useBackendUrl();
+  const account = useAuthStore((s) => s.account);
+  const updateProfile = useAuthStore((s) => s.setAccountProfile);
+
+  const handleSave = async () => {
+    if (!account || !backendUrl) return;
+
+    setLoading(true);
+    try {
+      const newProfile = {
+        icon: selectedIcon,
+        colorA: colorOne,
+        colorB: colorTwo,
+      };
+
+      await editUser(backendUrl, account, {
+        profile: newProfile,
+      });
+      updateProfile(newProfile);
+      navigate("/onboarding");
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,11 +107,10 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={icon}
                   onClick={() => setSelectedIcon(icon)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    selectedIcon === icon
-                      ? "border-pill-highlight bg-pill-highlight/20"
-                      : "border-dropdown-border hover:border-pill-highlight/50"
-                  }`}
+                  className={`p-4 rounded-lg border-2 transition-all ${selectedIcon === icon
+                    ? "border-pill-highlight bg-pill-highlight/20"
+                    : "border-dropdown-border hover:border-pill-highlight/50"
+                    }`}
                 >
                   <Icon icon={icon} className="text-2xl" />
                 </button>
@@ -103,11 +127,10 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={color.value}
                   onClick={() => setColorOne(color.value)}
-                  className={`h-12 rounded-lg border-2 transition-all ${
-                    colorOne === color.value
-                      ? "border-white scale-110"
-                      : "border-transparent hover:scale-105"
-                  }`}
+                  className={`h-12 rounded-lg border-2 transition-all ${colorOne === color.value
+                    ? "border-white scale-110"
+                    : "border-transparent hover:scale-105"
+                    }`}
                   style={{ backgroundColor: color.value }}
                   title={color.name}
                 />
@@ -115,6 +138,7 @@ export function ProfileSelectionPage() {
             </div>
           </div>
 
+          {/* Color Two Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold">Profile Color Two</h3>
             <div className="grid grid-cols-6 gap-3">
@@ -123,11 +147,10 @@ export function ProfileSelectionPage() {
                   type="button"
                   key={color.value}
                   onClick={() => setColorTwo(color.value)}
-                  className={`h-12 rounded-lg border-2 transition-all ${
-                    colorTwo === color.value
-                      ? "border-white scale-110"
-                      : "border-transparent hover:scale-105"
-                  }`}
+                  className={`h-12 rounded-lg border-2 transition-all ${colorTwo === color.value
+                    ? "border-white scale-110"
+                    : "border-transparent hover:scale-105"
+                    }`}
                   style={{ backgroundColor: color.value }}
                   title={color.name}
                 />
@@ -137,7 +160,12 @@ export function ProfileSelectionPage() {
 
           {/* Save Button */}
           <div className="flex justify-center pt-6">
-            <Button theme="purple" onClick={handleSave} className="px-12">
+            <Button
+              theme="purple"
+              onClick={handleSave}
+              className="px-12"
+              loading={loading}
+            >
               Continue to Setup
             </Button>
           </div>

@@ -103,7 +103,6 @@
 - **Optimized Build** - Faster load times
 - **New M3U8 Proxies** - Added 3 new proxy servers for reliability
 
-
 ---
 
 ## 📦 Installation
@@ -204,14 +203,14 @@ docker-compose up -d
 
 ### On Mobile (iOS/Android)
 
-1. Visit https://www.zeticuz.online
+1. Visit <https://www.zeticuz.online>
 2. Tap the share button
 3. Select "Add to Home Screen"
 4. Tap "Add"
 
 ### On Desktop (Chrome/Edge)
 
-1. Visit https://www.zeticuz.online
+1. Visit <https://www.zeticuz.online>
 2. Click the install icon in the address bar
 3. Click "Install"
 
