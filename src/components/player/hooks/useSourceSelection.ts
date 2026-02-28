@@ -150,56 +150,25 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
     const scrapeMedia = metaToScrapeMedia(meta);
     const providerApiUrl = getLoadbalancedProviderApiUrl();
 
-    // 🔥 Special handling for Zeticuz (primary provider)
-    if (sourceId === "zeticuz") {
-      const { scrapeZeticuzMovie, scrapeZeticuzTV, convertZeticuzToStream } =
-        await import("@/backend/providers/zeticuz");
-
-      let zeticuzData = null;
-      if (scrapeMedia.type === "movie") {
-        zeticuzData = await scrapeZeticuzMovie(scrapeMedia.tmdbId);
-      } else if (
-        scrapeMedia.type === "show" &&
-        scrapeMedia.episode &&
-        scrapeMedia.season
-      ) {
-        zeticuzData = await scrapeZeticuzTV(
-          scrapeMedia.tmdbId,
-          scrapeMedia.season.number,
-          scrapeMedia.episode.number,
-        );
-      }
-
-      if (zeticuzData) {
-        const stream = convertZeticuzToStream(zeticuzData);
-        if (stream) {
-          setEmbedId(null);
-          setCaption(null);
-          setSource(
-            convertRunoutputToSource({ stream }),
-            convertProviderCaption(stream.captions || []),
-            getSavedProgress(progressItems, meta),
-          );
-          setSourceId(sourceId);
-          if (enableLastSuccessfulSource) {
-            setLastSuccessfulSource(sourceId);
-          }
-          router.close();
-          return null;
-        }
-      }
-
-      throw new NotFoundError("No streams found from Zeticuz");
-    }
-
     // Special handling for FebBox API (fembox.aether.mom)
     if (sourceId === "febbox") {
       const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
         await import("@/backend/providers/fembox");
 
+      let turnstileToken = "";
+      try {
+        const { getTurnstileToken } = await import("@/stores/turnstile");
+        turnstileToken = await getTurnstileToken();
+      } catch {
+        // Ignore turnstile error
+      }
+
       let femboxData = null;
       if (scrapeMedia.type === "movie") {
-        femboxData = await scrapeFemboxMovie(scrapeMedia.tmdbId);
+        femboxData = await scrapeFemboxMovie(
+          scrapeMedia.tmdbId,
+          turnstileToken,
+        );
       } else if (
         scrapeMedia.type === "show" &&
         scrapeMedia.episode &&
@@ -209,6 +178,7 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
           scrapeMedia.tmdbId,
           scrapeMedia.season.number,
           scrapeMedia.episode.number,
+          turnstileToken,
         );
       }
 

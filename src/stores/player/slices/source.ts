@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import { ScrapeMedia } from "@p-stream/providers";
 
+import type { SegmentData } from "@/components/player/hooks/useSkipTime";
 import { MakeSlice } from "@/stores/player/slices/types";
 import {
   SourceQuality,
@@ -26,6 +27,7 @@ export interface PlayerMetaEpisode {
   tmdbId: string;
   title: string;
   air_date?: string;
+  overview?: string;
 }
 
 export interface PlayerMeta {
@@ -35,6 +37,7 @@ export interface PlayerMeta {
   imdbId?: string;
   releaseYear: number;
   poster?: string;
+  overview?: string;
   episodes?: PlayerMetaEpisode[];
   episode?: PlayerMetaEpisode;
   season?: {
@@ -89,8 +92,11 @@ export interface SourceSlice {
     asTrack: boolean;
   };
   meta: PlayerMeta | null;
+  skipSegments: SegmentData[];
+  skipSegmentsCacheKey: string | null;
   failedSourcesPerMedia: Record<string, string[]>; // mediaKey -> array of failed sourceIds
   failedEmbedsPerMedia: Record<string, Record<string, string[]>>; // mediaKey -> sourceId -> array of failed embedIds
+  resumeFromSourceId: string | null;
   setStatus(status: PlayerStatus): void;
   setSource(
     stream: SourceSliceSource,
@@ -110,6 +116,8 @@ export interface SourceSlice {
   addFailedEmbed(sourceId: string, embedId: string): void;
   clearFailedSources(mediaKey?: string): void;
   clearFailedEmbeds(mediaKey?: string): void;
+  setSkipSegments(cacheKey: string, segments: SegmentData[]): void;
+  setResumeFromSourceId(id: string | null): void;
   reset(): void;
 }
 
@@ -122,8 +130,15 @@ export function metaToScrapeMedia(meta: PlayerMeta): ScrapeMedia {
       tmdbId: meta.tmdbId,
       type: "show",
       imdbId: meta.imdbId,
-      episode: meta.episode,
-      season: meta.season,
+      episode: {
+        number: meta.episode.number,
+        tmdbId: meta.episode.tmdbId,
+      },
+      season: {
+        number: meta.season.number,
+        title: meta.season.title,
+        tmdbId: meta.season.tmdbId,
+      },
     };
   }
 
@@ -169,8 +184,11 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   currentAudioTrack: null,
   status: playerStatus.IDLE,
   meta: null,
+  skipSegments: [],
+  skipSegmentsCacheKey: null,
   failedSourcesPerMedia: {},
   failedEmbedsPerMedia: {},
+  resumeFromSourceId: null,
   caption: {
     selected: null,
     asTrack: false,
@@ -349,6 +367,17 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       }
     });
   },
+  setSkipSegments(cacheKey: string, segments: SegmentData[]) {
+    set((s) => {
+      s.skipSegmentsCacheKey = cacheKey;
+      s.skipSegments = segments;
+    });
+  },
+  setResumeFromSourceId(id: string | null) {
+    set((s) => {
+      s.resumeFromSourceId = id;
+    });
+  },
   reset() {
     set((s) => {
       s.source = null;
@@ -362,8 +391,11 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.currentAudioTrack = null;
       s.status = playerStatus.IDLE;
       s.meta = null;
+      s.skipSegments = [];
+      s.skipSegmentsCacheKey = null;
       s.failedSourcesPerMedia = {};
       s.failedEmbedsPerMedia = {};
+      s.resumeFromSourceId = null;
       s.caption = {
         selected: null,
         asTrack: false,

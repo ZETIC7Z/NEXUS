@@ -1,3 +1,4 @@
+/* eslint-disable react/forbid-dom-props */
 import classNames from "classnames";
 import { t } from "i18next";
 import { ReactNode, useEffect, useRef, useState } from "react";
@@ -6,10 +7,7 @@ import { useWindowSize } from "react-use";
 
 import { isExtensionActive } from "@/backend/extension/messaging";
 import { get, getMediaLogo } from "@/backend/metadata/tmdb";
-import {
-  getDiscoverContent,
-  getReleaseDetails,
-} from "@/backend/metadata/traktApi";
+import { getReleaseDetails } from "@/backend/metadata/traktApi";
 import { TMDBContentTypes } from "@/backend/metadata/types/tmdb";
 import type { TraktReleaseResponse } from "@/backend/metadata/types/trakt";
 import { Button } from "@/components/buttons/Button";
@@ -67,15 +65,7 @@ function FeaturedCarouselSkeleton({ shorter }: { shorter?: boolean }) {
       )}
     >
       <div className="relative w-full h-full overflow-hidden">
-        <div
-          className="absolute inset-0 bg-gray-900"
-          style={{
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 500px)",
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 500px)",
-          }}
-        />
+        <div className="absolute inset-0 bg-gray-900 carousel-mask-top" />
       </div>
 
       {/* Navigation Buttons Skeleton */}
@@ -215,116 +205,69 @@ export function FeaturedCarousel({
         logoFetchController.current.abort(); // Cancel any in-progress logo fetches
       }
       try {
+        const { getUserRegion } = await import("@/utils/region");
+        const region = await getUserRegion();
+
         if (effectiveCategory === "movies" || effectiveCategory === "tvshows") {
-          // First try to get IDs from Trakt discover endpoint
-          try {
-            const discoverData = await getDiscoverContent();
+          // Fallback to TMDB method
+          if (effectiveCategory === "movies") {
+            // First get the list of popular movies in region
+            const listData = await get<any>("/movie/now_playing", {
+              api_key: conf().TMDB_READ_API_KEY,
+              language: formattedLanguage,
+              region,
+            });
 
-            // Check if discoverData is null or missing required properties
-            if (
-              !discoverData ||
-              !discoverData.movie_tmdb_ids ||
-              !discoverData.tv_tmdb_ids
-            ) {
-              throw new Error("Trakt API returned null or incomplete response");
-            }
-
-            let tmdbIds: number[] = [];
-            if (effectiveCategory === "movies") {
-              tmdbIds = discoverData.movie_tmdb_ids;
-            } else {
-              tmdbIds = discoverData.tv_tmdb_ids;
-            }
-
-            // Then fetch full details for each movie/show to get external_ids
-            const detailPromises = tmdbIds.map((id) =>
-              get<any>(
-                `/${effectiveCategory === "movies" ? "movie" : "tv"}/${id}`,
-                {
+            // Then fetch full details for each movie to get external_ids
+            const moviePromises = listData.results
+              .slice(0, FETCH_QUANTITY)
+              .map((movie: any) =>
+                get<any>(`/movie/${movie.id}`, {
                   api_key: conf().TMDB_READ_API_KEY,
                   language: formattedLanguage,
                   append_to_response: "external_ids",
-                },
-              ),
-            );
+                }),
+              );
 
-            const details = await Promise.all(detailPromises);
-            const mediaItems = details.map((item) => ({
-              ...item,
-              type:
-                effectiveCategory === "movies" ? "movie" : ("show" as const),
+            const movieDetails = await Promise.all(moviePromises);
+            const allMovies = movieDetails.map((movie) => ({
+              ...movie,
+              type: "movie" as const,
             }));
 
-            // Take the first SLIDE_QUANTITY items
-            setMedia(mediaItems.slice(0, SLIDE_QUANTITY));
-          } catch (traktError) {
-            // Expected fallback - Trakt API may be unavailable
-            console.debug(
-              "Using TMDB fallback (Trakt unavailable):",
-
-              traktError,
+            // Shuffle
+            const shuffledMovies = [...allMovies].sort(
+              () => 0.5 - Math.random(),
             );
+            setMedia(shuffledMovies.slice(0, SLIDE_QUANTITY));
+          } else if (effectiveCategory === "tvshows") {
+            // First get the list of popular shows
+            const listData = await get<any>("/tv/on_the_air", {
+              api_key: conf().TMDB_READ_API_KEY,
+              language: formattedLanguage,
+              region,
+            });
 
-            // Fallback to TMDB method
-            if (effectiveCategory === "movies") {
-              // First get the list of popular movies
-              const listData = await get<any>("/movie/popular", {
-                api_key: conf().TMDB_READ_API_KEY,
-                language: formattedLanguage,
-              });
-
-              // Then fetch full details for each movie to get external_ids
-              const moviePromises = listData.results
-                .slice(0, FETCH_QUANTITY)
-                .map((movie: any) =>
-                  get<any>(`/movie/${movie.id}`, {
-                    api_key: conf().TMDB_READ_API_KEY,
-                    language: formattedLanguage,
-                    append_to_response: "external_ids",
-                  }),
-                );
-
-              const movieDetails = await Promise.all(moviePromises);
-              const allMovies = movieDetails.map((movie) => ({
-                ...movie,
-                type: "movie" as const,
-              }));
-
-              // Shuffle
-              const shuffledMovies = [...allMovies].sort(
-                () => 0.5 - Math.random(),
+            // Then fetch full details for each show to get external_ids
+            const showPromises = listData.results
+              .slice(0, FETCH_QUANTITY)
+              .map((show: any) =>
+                get<any>(`/tv/${show.id}`, {
+                  api_key: conf().TMDB_READ_API_KEY,
+                  language: formattedLanguage,
+                  append_to_response: "external_ids",
+                }),
               );
-              setMedia(shuffledMovies.slice(0, SLIDE_QUANTITY));
-            } else if (effectiveCategory === "tvshows") {
-              // First get the list of popular shows
-              const listData = await get<any>("/tv/popular", {
-                api_key: conf().TMDB_READ_API_KEY,
-                language: formattedLanguage,
-              });
 
-              // Then fetch full details for each show to get external_ids
-              const showPromises = listData.results
-                .slice(0, FETCH_QUANTITY)
-                .map((show: any) =>
-                  get<any>(`/tv/${show.id}`, {
-                    api_key: conf().TMDB_READ_API_KEY,
-                    language: formattedLanguage,
-                    append_to_response: "external_ids",
-                  }),
-                );
+            const showDetails = await Promise.all(showPromises);
+            const allShows = showDetails.map((show) => ({
+              ...show,
+              type: "show" as const,
+            }));
 
-              const showDetails = await Promise.all(showPromises);
-              const allShows = showDetails.map((show) => ({
-                ...show,
-                type: "show" as const,
-              }));
-
-              // Shuffle
-              const shuffledShows = [...allShows].sort(
-                () => 0.5 - Math.random(),
-              );
-              setMedia(shuffledShows.slice(0, SLIDE_QUANTITY));
-            }
+            // Shuffle
+            const shuffledShows = [...allShows].sort(() => 0.5 - Math.random());
+            setMedia(shuffledShows.slice(0, SLIDE_QUANTITY));
           }
         } else if (effectiveCategory === "anime") {
           // Fetch anime - Japanese Animation content
@@ -334,6 +277,7 @@ export function FeaturedCarousel({
             with_genres: "16",
             with_original_language: "ja",
             sort_by: "popularity.desc",
+            region,
           });
 
           // Get details for anime shows
@@ -412,6 +356,61 @@ export function FeaturedCarousel({
           }));
 
           setMedia([...movies, ...shows]);
+        } else {
+          // Mixed Trending Logic: fetch trending movies, trending TV shows, and trending Anime
+          const [trendingAll, animeContent] = await Promise.all([
+            get<any>(`/trending/all/day`, {
+              api_key: conf().TMDB_READ_API_KEY,
+              language: formattedLanguage,
+            }),
+            get<any>("/discover/tv", {
+              api_key: conf().TMDB_READ_API_KEY,
+              language: formattedLanguage,
+              with_genres: "16",
+              with_original_language: "ja",
+              sort_by: "popularity.desc",
+            }),
+          ]);
+
+          let combinedResults = [
+            ...(trendingAll?.results || []),
+            ...(animeContent?.results || []),
+          ];
+
+          // Filter duplicates and valid types
+          const seen = new Set();
+          combinedResults = combinedResults.filter((item) => {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+            return (
+              item.media_type === "movie" ||
+              item.media_type === "tv" ||
+              (!item.media_type && item.name)
+            ); // anime typically lacks media_type in discover
+          });
+
+          // Slice and fetch details
+          const itemsToFetch = combinedResults
+            .sort(() => 0.5 - Math.random()) // Shuffle first to grab random items
+            .slice(0, FETCH_QUANTITY);
+
+          const detailPromises = itemsToFetch.map((item: any) => {
+            const type = item.media_type === "movie" ? "movie" : "tv";
+            return get<any>(`/${type}/${item.id}`, {
+              api_key: conf().TMDB_READ_API_KEY,
+              language: formattedLanguage,
+              append_to_response: "external_ids",
+            }).then((details) => ({
+              ...details,
+              type: type === "movie" ? "movie" : "show",
+            }));
+          });
+
+          const mixedDetails = await Promise.all(detailPromises);
+
+          // Final shuffle
+          const finalMixed = [...mixedDetails].sort(() => 0.5 - Math.random());
+          setMedia(finalMixed.slice(0, SLIDE_QUANTITY));
         }
       } catch (error) {
         console.error("Error fetching featured media:", error);
@@ -664,23 +663,24 @@ export function FeaturedCarousel({
           searchClasses,
         )}
       >
-        {media.map((item, index) => (
-          <div
-            key={item.id}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === currentIndex ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              backgroundImage: `url(https://image.tmdb.org/t/p/original${item.backdrop_path})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center top",
-              maskImage:
-                "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 700px)",
-              WebkitMaskImage:
-                "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 700px)",
-            }}
-          />
-        ))}
+        {media.map((item, index) => {
+          // eslint-disable-next-line react/forbid-dom-props
+          return (
+            <div
+              key={item.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                index === currentIndex ? "opacity-100" : "opacity-0"
+              } carousel-mask-both`}
+              ref={(el) => {
+                if (el) {
+                  el.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${item.backdrop_path})`;
+                  el.style.backgroundSize = "cover";
+                  el.style.backgroundPosition = "center top";
+                }
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Navigation Buttons */}
@@ -752,22 +752,30 @@ export function FeaturedCarousel({
       </div>
 
       {/* Content Overlay */}
+      {/* eslint-disable-next-line react/forbid-dom-props */}
       <div
         className={classNames(
           "absolute inset-0 flex items-end pb-20 z-10 transition-opacity duration-150",
           searchClasses,
         )}
-        style={{ opacity: contentOpacity }}
+        ref={(el) => {
+          if (el) el.style.opacity = contentOpacity.toString();
+        }}
       >
         <div className="container mx-auto px-8 lg:px-4 flex justify-between items-end w-full">
           <div className="max-w-3xl">
             {logoUrl && enableImageLogos ? (
-              <img
-                src={logoUrl}
-                alt={mediaTitle}
-                className="max-w-[14rem] md:max-w-[22rem] max-h-[20vh] object-contain drop-shadow-lg bg-transparent mb-6"
-                style={{ background: "none" }}
-              />
+              <>
+                {/* eslint-disable-next-line react/forbid-dom-props */}
+                <img
+                  src={logoUrl}
+                  alt={mediaTitle}
+                  className="max-w-[14rem] md:max-w-[22rem] max-h-[20vh] object-contain drop-shadow-lg bg-transparent mb-6"
+                  ref={(el) => {
+                    if (el) el.style.background = "none";
+                  }}
+                />
+              </>
             ) : (
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
                 {mediaTitle}

@@ -37,7 +37,7 @@ import { useLanguageStore } from "@/stores/language";
 import { usePreferencesStore } from "@/stores/preferences";
 import { useSubtitleStore } from "@/stores/subtitles";
 import { usePreviewThemeStore, useThemeStore } from "@/stores/theme";
-import { scrollToElement, scrollToHash } from "@/utils/scroll";
+import { scrollToHash } from "@/utils/scroll";
 
 import { SubPageLayout } from "./layouts/SubPageLayout";
 import { AppInfoPart } from "./parts/settings/AppInfoPart";
@@ -143,6 +143,7 @@ export function AccountSettings(props: {
 }
 
 export function SettingsPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const prevCategoryRef = useRef<string | null>(null);
@@ -845,10 +846,6 @@ export function SettingsPage() {
               setProxyUrls={state.proxyUrls.set}
               febboxKey={state.febboxKey.state}
               setFebboxKey={state.febboxKey.set}
-              debridToken={state.debridToken.state}
-              setdebridToken={state.debridToken.set}
-              debridService={state.debridService.state}
-              setdebridService={state.debridService.set}
               tidbKey={state.tidbKey.state}
               setTIDBKey={state.tidbKey.set}
               proxyTmdb={state.proxyTmdb.state}

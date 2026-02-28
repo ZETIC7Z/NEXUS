@@ -264,12 +264,12 @@ export function useSubtitleList(subs: CaptionListItem[], searchQuery: string) {
       // 2. English at top
       const isEngA =
         a.languageName?.toLowerCase().includes("english") ||
-          a.language?.startsWith("en")
+        a.language?.startsWith("en")
           ? 0
           : 1;
       const isEngB =
         b.languageName?.toLowerCase().includes("english") ||
-          b.language?.startsWith("en")
+        b.language?.startsWith("en")
           ? 0
           : 1;
       if (isEngA !== isEngB) return isEngA - isEngB;
@@ -315,6 +315,7 @@ export function CustomCaptionOption() {
         ref={fileInput}
         accept={subtitleTypeList.join(",")}
         type="file"
+        title={t("player.menus.subtitles.customChoice", "Upload Custom Option")}
         onChange={(e) => {
           if (!e.target.files) return;
           const reader = new FileReader();
@@ -409,20 +410,19 @@ export function PasteCaptionOption(props: { selected?: boolean }) {
 export function CaptionsView({
   id,
   backLink,
+  onSelectLanguage,
 }: {
   id: string;
   backLink?: true;
+  onSelectLanguage?: (lang: string) => void;
 }) {
   const { t } = useTranslation();
   const router = useOverlayRouter(id);
   const selectedCaptionId = usePlayerStore((s) => s.caption.selected?.id);
-  const { disable, selectCaptionById } = useCaptions();
+  const { disable } = useCaptions();
   const [dragging, setDragging] = useState(false);
   const setCaption = usePlayerStore((s) => s.setCaption);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentlyDownloading, setCurrentlyDownloading] = useState<
-    string | null
-  >(null);
   const videoTime = usePlayerStore((s) => s.progress.time);
   const srtData = usePlayerStore((s) => s.caption.selected?.srtData);
   const language = usePlayerStore((s) => s.caption.selected?.language);
@@ -450,10 +450,6 @@ export function CaptionsView({
     [captions],
   );
 
-  // Filter lists based on search query
-  const sourceList = useSubtitleList(sourceCaptions, searchQuery);
-  const externalList = useSubtitleList(externalCaptions, searchQuery);
-
   // Get current subtitle text preview
   const currentSubtitleText = useMemo(() => {
     if (!srtData || !selectedCaptionId) return null;
@@ -463,15 +459,6 @@ export function CaptionsView({
     );
     return visibleCaption?.content;
   }, [srtData, language, delay, videoTime, selectedCaptionId]);
-
-  // Download handler
-  const [downloadReq, startDownload] = useAsyncFn(
-    async (captionId: string) => {
-      setCurrentlyDownloading(captionId);
-      return selectCaptionById(captionId);
-    },
-    [selectCaptionById, setCurrentlyDownloading],
-  );
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     const files = event.dataTransfer.files;
@@ -498,59 +485,6 @@ export function CaptionsView({
 
     reader.readAsText(firstFile);
   }
-
-  // Render subtitle option
-  const renderSubtitleOption = (
-    v: CaptionListItem & { languageName: string },
-  ) => {
-    const handleDoubleClick = async () => {
-      const copyData = {
-        id: v.id,
-        url: v.url,
-        language: v.language,
-        type: v.type,
-        hasCorsRestrictions: v.needsProxy,
-        opensubtitles: v.opensubtitles,
-        display: v.display,
-        media: v.media,
-        isHearingImpaired: v.isHearingImpaired,
-        source: v.source,
-        encoding: v.encoding,
-        delay,
-      };
-
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(copyData));
-        // Could add a toast notification here if needed
-      } catch (err) {
-        console.error("Failed to copy subtitle data:", err);
-      }
-    };
-
-    return (
-      <CaptionOption
-        key={v.id}
-        countryCode={v.language}
-        selected={v.id === selectedCaptionId}
-        loading={v.id === currentlyDownloading && downloadReq.loading}
-        error={
-          v.id === currentlyDownloading && downloadReq.error
-            ? downloadReq.error.toString()
-            : undefined
-        }
-        onClick={() => startDownload(v.id)}
-        onDoubleClick={handleDoubleClick}
-        flag
-        subtitleUrl={v.url}
-        subtitleType={v.type}
-        subtitleSource={v.source}
-        subtitleEncoding={v.encoding}
-        isHearingImpaired={v.isHearingImpaired}
-      >
-        {v.languageName}
-      </CaptionOption>
-    );
-  };
 
   return (
     <>
@@ -591,6 +525,7 @@ export function CaptionsView({
                 type="button"
                 onClick={() => router.navigate("/captions/settingsOverlay")}
                 className="-mr-2 -my-1 px-2 p-[0.4em] rounded tabbable hover:bg-video-context-light hover:bg-opacity-10"
+                title="Customize subtitles"
               >
                 {t("player.menus.subtitles.customizeLabel")}
               </button>
@@ -613,10 +548,7 @@ export function CaptionsView({
             <div className="text-sm text-video-context-type-secondary mb-1">
               {t("player.menus.subtitles.previewLabel")}
             </div>
-            <div
-              className="text-base font-medium min-h-[3rem] flex items-center justify-center"
-              style={{ minHeight: "3rem" }}
-            >
+            <div className="text-base font-medium min-h-[3rem] flex items-center justify-center">
               {currentSubtitleText ? (
                 <div
                   // eslint-disable-next-line react/no-danger
@@ -662,7 +594,9 @@ export function CaptionsView({
 
           {/* Search input */}
           {(sourceCaptions.length || externalCaptions.length) > 0 && (
-            <Input value={searchQuery} onInput={setSearchQuery} />
+            <div className="mb-2">
+              <Input value={searchQuery} onInput={setSearchQuery} />
+            </div>
           )}
 
           {/* No subtitles available message */}
@@ -685,37 +619,64 @@ export function CaptionsView({
             </div>
           )}
 
-          {/* External Subtitles Section */}
-          {externalCaptions.length > 0 && (
-            <>
-              <div className="text-sm font-semibold text-video-context-type-secondary pt-2 mb-2">
-                {t("player.menus.subtitles.OpenSubtitlesChoice")}
-              </div>
-              {externalList.length > 0 ? (
-                externalList.map(renderSubtitleOption)
-              ) : (
-                <div className="text-center text-video-context-type-secondary py-2">
-                  {t("player.menus.subtitles.notFound")}
-                </div>
-              )}
-            </>
-          )}
+          {/* Language Groups */}
+          {useMemo(() => {
+            const groups: Record<
+              string,
+              { lang: string; items: CaptionListItem[] }
+            > = {};
+            captions.forEach((v) => {
+              const name =
+                getPrettyLanguageNameFromLocale(v.language) ?? v.language;
+              if (!groups[name]) groups[name] = { lang: v.language, items: [] };
+              groups[name].items.push(v);
+            });
 
-          {/* Source Subtitles Section */}
-          {sourceCaptions.length > 0 && (
-            <>
-              <div className="text-sm font-semibold text-video-context-type-secondary pt-2 mb-2">
-                {t("player.menus.subtitles.SourceChoice")}
-              </div>
-              {sourceList.length > 0 ? (
-                sourceList.map(renderSubtitleOption)
-              ) : (
-                <div className="text-center text-video-context-type-secondary py-2">
-                  {t("player.menus.subtitles.notFound")}
-                </div>
-              )}
-            </>
-          )}
+            const unknownLabel = t("player.menus.subtitles.unknownLanguage");
+            const sortedNames = Object.keys(groups).sort((a, b) => {
+              const aLower = a.toLowerCase();
+              const bLower = b.toLowerCase();
+
+              // 1. English always first
+              if (aLower.includes("english")) return -1;
+              if (bLower.includes("english")) return 1;
+
+              // 2. Unknown/unresolvable languages go to the very bottom
+              const isUnknownA =
+                a === unknownLabel ||
+                a.length <= 3 || // raw language codes like "ae"
+                aLower === "unknown";
+              const isUnknownB =
+                b === unknownLabel || b.length <= 3 || bLower === "unknown";
+              if (isUnknownA && !isUnknownB) return 1;
+              if (!isUnknownA && isUnknownB) return -1;
+
+              // 3. Alphabetical
+              return a.localeCompare(b);
+            });
+
+            const filteredNames = sortedNames.filter((name) => {
+              if (searchQuery.trim().length === 0) return true;
+              return name.toLowerCase().includes(searchQuery.toLowerCase());
+            });
+
+            return filteredNames.map((name) => {
+              const group = groups[name];
+              const count = group.items.length;
+              return (
+                <Menu.ChevronLink
+                  key={name}
+                  rightText={count.toString()}
+                  onClick={() => onSelectLanguage?.(group.lang)}
+                >
+                  <span className="flex items-center">
+                    <FlagIcon langCode={group.lang} />
+                    <span className="ml-3">{name}</span>
+                  </span>
+                </Menu.ChevronLink>
+              );
+            });
+          }, [captions, searchQuery, onSelectLanguage, t])}
 
           {/* Loading indicator for external subtitles while source exists */}
           {isLoadingExternalSubtitles && sourceCaptions.length > 0 && (

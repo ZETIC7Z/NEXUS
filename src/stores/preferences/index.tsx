@@ -33,6 +33,8 @@ export interface PreferencesStore {
   enableDoubleClickToSeek: boolean;
   enableAutoResumeOnPlaybackError: boolean;
   febboxUseMp4: boolean;
+  enableAutoSkipSegments: boolean;
+  enablePauseOverlay: boolean;
 
   setEnableThumbnails(v: boolean): void;
   setEnableAutoplay(v: boolean): void;
@@ -63,6 +65,8 @@ export interface PreferencesStore {
   setEnableDoubleClickToSeek(v: boolean): void;
   setEnableAutoResumeOnPlaybackError(v: boolean): void;
   setFebboxUseMp4(v: boolean): void;
+  setEnableAutoSkipSegments(v: boolean): void;
+  setEnablePauseOverlay(v: boolean): void;
   setTIDBKey(v: string | null): void;
 }
 
@@ -99,6 +103,8 @@ export const usePreferencesStore = create(
       enableDoubleClickToSeek: false,
       enableAutoResumeOnPlaybackError: true,
       febboxUseMp4: false,
+      enableAutoSkipSegments: false,
+      enablePauseOverlay: true,
       setEnableThumbnails(v) {
         set((s) => {
           s.enableThumbnails = v;
@@ -247,6 +253,16 @@ export const usePreferencesStore = create(
       setFebboxUseMp4(v) {
         set((s) => {
           s.febboxUseMp4 = v;
+        });
+      },
+      setEnableAutoSkipSegments(v) {
+        set((s) => {
+          s.enableAutoSkipSegments = v;
+        });
+      },
+      setEnablePauseOverlay(v) {
+        set((s) => {
+          s.enablePauseOverlay = v;
         });
       },
       setTIDBKey(v) {

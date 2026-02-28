@@ -666,6 +666,12 @@
           "quality": "Best quality + More Sources",
           "title": "Browser extension"
         },
+        "desktopapp": {
+          "action": "Download app",
+          "description": "Download the desktop app for the ultimate NEXUS experience. Even more sources and features!",
+          "quality": "BEST QUALITY + EVEN MORE SOURCES",
+          "title": "NEXUS Desktop App"
+        },
         "proxy": {
           "action": "Setup proxy",
           "description": "Setup a free proxy in just 5 minutes! Improves loading reliability!",
@@ -780,7 +786,8 @@
         },
         "title": "Sources",
         "unknownOption": "Unknown",
-        "editOrder": "Edit order"
+        "editOrder": "Edit order",
+        "findNextSource": "Find next source"
       },
       "subtitles": {
         "customChoice": "Drop or upload file",
@@ -931,6 +938,10 @@
       "intro": "Skip Intro",
       "recap": "Skip Recap",
       "credits": "Skip Credits",
+      "preview": "Skip Preview",
+      "skipSegments": "Skip Segments",
+      "noSegments": "No skip segments available for this media.",
+      "endOfVideo": "End",
       "feedback": {
         "title": "Was this skip correct?",
         "modal": {
@@ -984,7 +995,14 @@
           }
         }
       }
-    }
+    },
+    "segment": {
+      "intro": "Intro",
+      "recap": "Recap",
+      "credits": "Credits",
+      "preview": "Preview"
+    },
+    "paused": "Paused"
   },
   "support": {
     "title": "Support",
@@ -1231,7 +1249,13 @@
       "autoResumeOnPlaybackErrorLabel": "Auto resume on playback error",
       "lastSuccessfulSource": "Last used source",
       "lastSuccessfulSourceDescription": "Automatically prioritize the source that successfully provided content for the previous episode. This helps ensure continuity when watching series.",
-      "lastSuccessfulSourceEnableLabel": "Last used source"
+      "lastSuccessfulSourceEnableLabel": "Last used source",
+      "autoSkipSegments": "Auto-Skip Segments",
+      "autoSkipSegmentsDescription": "Automatically skip intro, recap, and preview segments when available. Uses data from TheIntroDB and other community sources.",
+      "autoSkipSegmentsLabel": "Auto-skip segments",
+      "pauseOverlay": "Pause Overlay",
+      "pauseOverlayDescription": "Show media information (title, poster, episode details) when the video is paused.",
+      "pauseOverlayLabel": "Pause overlay"
     },
     "reset": "Reset",
     "save": "Save",

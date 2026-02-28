@@ -1,3 +1,4 @@
+/* eslint-disable react/forbid-dom-props */
 import classNames from "classnames";
 import React, {
   useCallback,
@@ -7,11 +8,13 @@ import React, {
   useState,
 } from "react";
 import { Link, To, useLocation, useNavigate } from "react-router-dom";
+import { useClickAway } from "react-use";
 
-import { NoUserAvatar, UserAvatar } from "@/components/Avatar";
+import { UserAvatar } from "@/components/Avatar";
 import { SearchBarInput } from "@/components/form/SearchBar";
 import { Icon, Icons } from "@/components/Icon";
 import { LinksDropdown } from "@/components/LinksDropdown";
+import { DownloadModal } from "@/components/overlays/DownloadModal";
 import { useNotifications } from "@/components/overlays/notificationsModal";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useBannerSize } from "@/stores/banner";
@@ -159,6 +162,7 @@ function GenreDropdown() {
 function DiscoverNexusDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [isWatchOnOpen, setIsWatchOnOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -199,6 +203,25 @@ function DiscoverNexusDropdown() {
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-60 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl shadow-black/50 overflow-visible z-50 animate-fadeIn">
+          <button
+            type="button"
+            onClick={() => {
+              setIsDownloadOpen(true);
+              setIsOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200 group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)_/_0.1)] flex items-center justify-center group-hover:bg-[hsl(var(--colors-active)_/_0.2)] transition-colors">
+              <Icon
+                icon={Icons.DOWNLOAD}
+                className="text-lg text-[hsl(var(--colors-active))]"
+              />
+            </div>
+            <span className="text-base font-medium">Download Nexus App</span>
+          </button>
+
+          <div className="mx-3 border-t border-white/10" />
+
           <div
             className="relative"
             onMouseEnter={() => setIsWatchOnOpen(true)}
@@ -262,6 +285,12 @@ function DiscoverNexusDropdown() {
           </button>
         </div>
       )}
+
+      {/* Download Modal Portal */}
+      <DownloadModal
+        isOpen={isDownloadOpen}
+        onClose={() => setIsDownloadOpen(false)}
+      />
     </div>
   );
 }
@@ -331,8 +360,7 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
       {/* Sliding Indicator */}
       <div
         ref={indicatorRef}
-        className="absolute h-[calc(100%-12px)] rounded-full bg-[hsl(var(--colors-active))] opacity-20 transition-all duration-300 ease-in-out pointer-events-none"
-        style={{ top: "6px" }}
+        className="absolute h-[calc(100%-12px)] rounded-full bg-[hsl(var(--colors-active))] opacity-20 transition-all duration-300 ease-in-out pointer-events-none top-[6px]"
       />
 
       {/* Nav Items */}
@@ -364,6 +392,8 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
           type="button"
           onClick={() => onSearchToggle?.()}
           className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
+          title="Search"
+          aria-label="Search"
         >
           <Icon icon={Icons.SEARCH} className="text-lg" />
         </button>
@@ -372,6 +402,8 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
         <button
           type="button"
           className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200 relative"
+          title="Notifications"
+          aria-label="Notifications"
         >
           <Icon icon={Icons.BELL} className="text-lg" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -409,12 +441,40 @@ export function Navigation(props: NavigationProps) {
     getUnreadCount: _getUnreadCount,
   } = useNotifications();
 
+  // Search auto-hide logic
+  const searchContainerDesktopRef = useRef<HTMLDivElement>(null);
+  const searchContainerMobileRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startSearchCloseTimer = useCallback(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchBarOpen(false);
+      setMobileSearchOpen(false);
+    }, 3000);
+  }, []);
+
+  const stopSearchCloseTimer = useCallback(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+  }, []);
+
+  useClickAway(searchContainerDesktopRef, () => {
+    if (searchBarOpen) setSearchBarOpen(false);
+  });
+
+  useClickAway(searchContainerMobileRef, () => {
+    if (mobileSearchOpen) setMobileSearchOpen(false);
+  });
+
   // Handle search bar toggle
   const toggleSearchBar = () => {
     setSearchBarOpen(!searchBarOpen);
     if (!searchBarOpen) {
       // Focus input after opening
       setTimeout(() => searchInputRef.current?.focus(), 100);
+      startSearchCloseTimer();
+    } else {
+      stopSearchCloseTimer();
     }
   };
 
@@ -426,6 +486,7 @@ export function Navigation(props: NavigationProps) {
       setSearchBarOpen(false);
       setMobileSearchOpen(false);
       setSearchQuery("");
+      stopSearchCloseTimer();
       // Force scroll to top on search
       window.scrollTo(0, 0);
     }
@@ -497,13 +558,14 @@ export function Navigation(props: NavigationProps) {
   return (
     <>
       {/* Netflix-style navigation header */}
+      {/* eslint-disable-next-line react/forbid-dom-props */}
       <div
         className={classNames(
           "fixed left-0 right-0 z-[500] transition-transform duration-300 ease-out flex justify-center",
           isHeaderHidden ? "-translate-y-full" : "translate-y-0",
         )}
-        style={{
-          top: `calc(${bannerHeight}px + 1.5rem)`,
+        ref={(el) => {
+          if (el) el.style.top = `calc(${bannerHeight}px + 1.5rem)`;
         }}
       >
         {/* Desktop Logo - Absolute Left */}
@@ -512,10 +574,7 @@ export function Navigation(props: NavigationProps) {
             <BrandPill clickable />
           </Link>
         </div>
-        <div
-          className="transition-all duration-300 ease-in-out w-fit"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
-        >
+        <div className="transition-all duration-300 ease-in-out w-fit pt-[env(safe-area-inset-top)]">
           {/* Main Navigation - Centered Pill */}
           {!location.pathname.startsWith("/settings") &&
             !location.pathname.startsWith("/register") &&
@@ -534,7 +593,7 @@ export function Navigation(props: NavigationProps) {
                   <SearchBarInput
                     value={props.searchQuery || ""}
                     onChange={props.onSearchChange}
-                    onUnFocus={props.onSearchUnFocus || (() => { })}
+                    onUnFocus={props.onSearchUnFocus || (() => {})}
                     placeholder="Search settings..."
                     hideTooltip
                   />
@@ -544,14 +603,23 @@ export function Navigation(props: NavigationProps) {
         </div>
 
         {/* Expandable Search Bar - Below Header */}
+        {/* eslint-disable-next-line react/forbid-dom-props */}
         <div
+          onMouseEnter={stopSearchCloseTimer}
+          onMouseLeave={startSearchCloseTimer}
           className={classNames(
             "fixed left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 transition-all duration-300 ease-out z-[499]",
             searchBarOpen
               ? "opacity-100 translate-y-0 pointer-events-auto"
               : "opacity-0 -translate-y-4 pointer-events-none",
           )}
-          style={{ top: `calc(${bannerHeight}px + 5rem)` }}
+          ref={(el) => {
+            if (el) el.style.top = `calc(${bannerHeight}px + 5rem)`;
+            if (typeof searchContainerDesktopRef === "function")
+              searchContainerDesktopRef(el);
+            else if (searchContainerDesktopRef)
+              searchContainerDesktopRef.current = el;
+          }}
         >
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative bg-black/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">
@@ -564,7 +632,12 @@ export function Navigation(props: NavigationProps) {
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    startSearchCloseTimer();
+                  }}
+                  onFocus={stopSearchCloseTimer}
+                  onBlur={startSearchCloseTimer}
                   placeholder="Search movies, TV shows, anime..."
                   className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-base"
                 />
@@ -572,6 +645,8 @@ export function Navigation(props: NavigationProps) {
                   type="button"
                   onClick={() => setSearchBarOpen(false)}
                   className="ml-3 p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
+                  title="Close Search"
+                  aria-label="Close Search"
                 >
                   <Icon icon={Icons.X} className="text-lg" />
                 </button>
@@ -599,6 +674,7 @@ export function Navigation(props: NavigationProps) {
                 onClick={() => sidebar.toggleMobile()}
                 className="text-white p-2 hover:bg-white/10 rounded-full transition-all duration-300 active:scale-95"
                 aria-label="Toggle Menu"
+                title="Menu"
               >
                 <Icon icon={Icons.MENU} className="text-xl" />
               </button>
@@ -616,10 +692,15 @@ export function Navigation(props: NavigationProps) {
           {/* Mobile Search - Toggles internal bar */}
           <button
             type="button"
+            title="Search"
+            aria-label="Search"
             onClick={() => {
               setMobileSearchOpen(!mobileSearchOpen);
               if (!mobileSearchOpen) {
                 setTimeout(() => searchInputRef.current?.focus(), 150);
+                startSearchCloseTimer();
+              } else {
+                stopSearchCloseTimer();
               }
             }}
             className={classNames(
@@ -638,6 +719,8 @@ export function Navigation(props: NavigationProps) {
           {/* Notification Button */}
           <button
             type="button"
+            title="Notifications"
+            aria-label="Notifications"
             className="p-2 text-white/90 hover:bg-white/10 rounded-full transition-all duration-300 relative active:scale-90"
           >
             <Icon icon={Icons.BELL} className="text-xl" />
@@ -647,6 +730,9 @@ export function Navigation(props: NavigationProps) {
 
         {/* Mobile Animated Search Bar */}
         <div
+          ref={searchContainerMobileRef}
+          onMouseEnter={stopSearchCloseTimer}
+          onMouseLeave={startSearchCloseTimer}
           className={classNames(
             "absolute top-full left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xs transition-all duration-300 ease-out overflow-hidden z-[500]",
             mobileSearchOpen
@@ -662,13 +748,20 @@ export function Navigation(props: NavigationProps) {
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    startSearchCloseTimer();
+                  }}
+                  onFocus={stopSearchCloseTimer}
+                  onBlur={startSearchCloseTimer}
                   placeholder="Search..."
                   className="flex-1 bg-transparent text-white outline-none text-base placeholder-gray-500"
                 />
                 <button
                   type="button"
                   onClick={() => setMobileSearchOpen(false)}
+                  title="Close Search"
+                  aria-label="Close Search"
                   className="ml-2 p-1 text-gray-400 hover:text-white"
                 >
                   <Icon icon={Icons.X} className="text-sm" />

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  SkipTimeData,
-  useSkipTime,
-} from "@/components/player/hooks/useSkipTime";
+import { useSkipTimeSource } from "@/components/player/hooks/useSkipTime";
 import { useSkipTracking } from "@/components/player/hooks/useSkipTracking";
 import { usePlayerStore } from "@/stores/player/store";
 
@@ -26,7 +23,7 @@ interface PendingSkip {
 }
 
 export function SkipTracker() {
-  const skipTimeData = useSkipTime();
+  const skipTimeSource = useSkipTimeSource();
   const { latestSkip } = useSkipTracking(20);
   const lastLoggedSkipRef = useRef<number>(0);
   const [pendingSkips, setPendingSkips] = useState<PendingSkip[]>([]);
@@ -39,7 +36,7 @@ export function SkipTracker() {
 
   // Only send analytics for auto-generated sources
   const shouldSendAnalytics =
-    skipTimeData?.source === "fed-skips" || skipTimeData?.source === "introdb";
+    skipTimeSource === "fed-skips" || skipTimeSource === "introdb";
 
   const sendSkipAnalytics = useCallback(
     async (skip: SkipEvent, adjustedConfidence: number) => {
@@ -60,14 +57,14 @@ export function SkipTracker() {
             episode_id: meta?.episode?.tmdbId,
             confidence: adjustedConfidence,
             turnstile_token: turnstileToken ?? "",
-            source: skipTimeData?.source,
+            source: skipTimeSource,
           }),
         });
       } catch (error) {
         console.error("Failed to send skip analytics:", error);
       }
     },
-    [meta, turnstileToken, shouldSendAnalytics, skipTimeData?.source],
+    [meta, turnstileToken, shouldSendAnalytics, skipTimeSource],
   );
 
   const createPendingSkip = useCallback(

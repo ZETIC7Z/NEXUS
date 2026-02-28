@@ -60,7 +60,25 @@ export function Fullscreen() {
   }, [handleOrientationChange]);
 
   const handleFullscreenToggle = () => {
-    // Just toggle fullscreen - orientation will be handled by the event listener
+    // Determine target fullscreen state
+    const targetFullscreen = !isFullscreen;
+
+    // Attempt orientation lock synchronously with the user click gesture
+    const screenAny = window.screen as any;
+    if (targetFullscreen && screenAny.orientation?.lock) {
+      screenAny.orientation.lock("landscape").catch(() => {
+        // Silently fail if not supported (iOS/Desktop)
+      });
+    } else if (!targetFullscreen && screenAny.orientation?.unlock) {
+      try {
+        screenAny.orientation.unlock();
+      } catch {
+        // Silently fail
+      }
+      setScreenLocked(false);
+    }
+
+    // Toggle the fullscreen API
     display?.toggleFullscreen();
   };
 

@@ -32,6 +32,7 @@ export interface FemboxStream {
  */
 export async function scrapeFemboxMovie(
   tmdbId: string,
+  turnstileToken?: string,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
   const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
@@ -43,7 +44,7 @@ export async function scrapeFemboxMovie(
     return null;
   }
 
-  const url = `https://fembox.aether.mom/movie/${tmdbId}?ui=${febboxKey}`;
+  const url = `https://fembox.aether.mom/movie/${tmdbId}?ui=${febboxKey}${turnstileToken ? `&turnstile_token=${turnstileToken}` : ""}`;
 
   try {
     // Use proxiedFetch to bypass CORS
@@ -66,6 +67,7 @@ export async function scrapeFemboxTV(
   tmdbId: string,
   season: number,
   episode: number,
+  turnstileToken?: string,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
   const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
@@ -77,7 +79,7 @@ export async function scrapeFemboxTV(
     return null;
   }
 
-  const url = `https://fembox.aether.mom/tv/${tmdbId}-${season}-${episode}?ui=${febboxKey}`;
+  const url = `https://fembox.aether.mom/tv/${tmdbId}-${season}-${episode}?ui=${febboxKey}${turnstileToken ? `&turnstile_token=${turnstileToken}` : ""}`;
 
   try {
     // Use proxiedFetch to bypass CORS

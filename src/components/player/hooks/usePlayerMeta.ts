@@ -27,7 +27,9 @@ export function usePlayerMeta() {
     (m: DetailedMeta, episodeId?: string) => {
       let playerMeta: PlayerMeta;
       if (m.meta.type === MWMediaType.SERIES) {
-        const ep = m.meta.seasonData.episodes.find((v) => v.id === episodeId);
+        const ep = m.meta.seasonData.episodes.find(
+          (v) => v.id.toString() === episodeId,
+        );
         if (!ep) return null;
         playerMeta = {
           type: "show",

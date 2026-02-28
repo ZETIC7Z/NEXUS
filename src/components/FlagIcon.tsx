@@ -15,28 +15,32 @@ export function FlagIcon(props: FlagIconProps) {
   if (props.langCode === "tok")
     return (
       <div className="w-8 h-6 rounded bg-[#c8e1ed] flex justify-center items-center">
-        <img src="/flags/tokiPona.svg" className="w-7 h-5" />
+        <img
+          src="/flags/tokiPona.svg"
+          className="w-7 h-5"
+          alt="Toki Pona Flag"
+        />
       </div>
     );
 
   if (props.langCode === "pirate")
     return (
       <div className="w-8 h-6 rounded bg-[#2E3439] flex justify-center items-center">
-        <img src="/flags/skull.svg" className="w-4 h-4" />
+        <img src="/flags/skull.svg" className="w-4 h-4" alt="Pirate Flag" />
       </div>
     );
 
   if (props.langCode === "cat")
     return (
       <div className="w-8 h-6 rounded bg-[#505050] flex justify-center items-center">
-        <img src="/flags/cat.png" className="w-4 h-4" />
+        <img src="/flags/cat.png" className="w-4 h-4" alt="Cat Flag" />
       </div>
     );
 
   if (props.langCode === "uwu")
     return (
       <div className="w-8 h-6 rounded bg-[#222] flex justify-center items-center">
-        <img src="/flags/uwu.png" className="w-6 h-6" />
+        <img src="/flags/uwu.png" className="w-6 h-6" alt="UwU Flag" />
       </div>
     );
 
@@ -64,23 +68,31 @@ export function FlagIcon(props: FlagIconProps) {
       </div>
     );
 
-  // Galicia - Not a country (Is a region of Spain) so have to add the flag manually
-  if (props.langCode === "gl-ES")
-    return (
-      <div className="w-8 h-6 rounded bg-[#2E3439] flex justify-center items-center">
-        <img src="/flags/galicia.svg" className="rounded" />
-      </div>
-    );
+  // Galicia falls back to Spain (es) via the utils mapping or generic fallback
 
   let backgroundClass = "bg-video-context-flagBg";
   if (countryCode === "np") backgroundClass = "bg-white";
+
+  // Fallback: show globe icon when no country code is available
+  if (!countryCode) {
+    return (
+      <span
+        className={classNames(
+          "!w-8 min-w-8 h-6 rounded overflow-hidden flex items-center justify-center text-sm",
+          backgroundClass,
+        )}
+      >
+        🌐
+      </span>
+    );
+  }
 
   return (
     <span
       className={classNames(
         "!w-8 min-w-8 h-6 rounded overflow-hidden bg-cover bg-center block fi",
         backgroundClass,
-        countryCode ? `fi-${countryCode}` : undefined,
+        `fi-${countryCode}`,
       )}
     />
   );

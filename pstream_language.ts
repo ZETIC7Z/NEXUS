@@ -1,4 +1,4 @@
-import countryLanguages, { LanguageObj } from "@ladjs/country-language";
+﻿import countryLanguages, { LanguageObj } from "@ladjs/country-language";
 import { getTag } from "@sozialhelden/ietf-language-tags";
 import { iso6393To1 } from "iso-639-3";
 
@@ -12,129 +12,6 @@ const languageOrder = ["en", "hi", "fr", "de", "nl", "pt"];
 const countryPriority: Record<string, string> = {
   zh: "cn",
   nv: "us",
-  en: "us",
-  ar: "sa",
-  sq: "al",
-  hr: "hr",
-  my: "mm",
-  hi: "in",
-  fr: "fr",
-  de: "de",
-  it: "it",
-  ja: "jp",
-  ko: "kr",
-  ru: "ru",
-  pt: "br",
-  es: "es",
-  tr: "tr",
-  vi: "vn",
-  th: "th",
-  id: "id",
-  ms: "my",
-  bn: "bd",
-  pa: "in",
-  te: "in",
-  mr: "in",
-  ta: "in",
-  ur: "pk",
-  fa: "ir",
-  he: "il",
-  uk: "ua",
-  pl: "pl",
-  nl: "nl",
-  ro: "ro",
-  hu: "hu",
-  cs: "cz",
-  el: "gr",
-  sk: "sk",
-  da: "dk",
-  fi: "fi",
-  no: "no",
-  sv: "se",
-  be: "by",
-  bs: "ba",
-  bg: "bg",
-  ca: "es",
-  cy: "gb",
-  et: "ee",
-  fo: "fo",
-  ga: "ie",
-  gl: "es",
-  is: "is",
-  ka: "ge",
-  kk: "kz",
-  km: "kh",
-  ku: "iq",
-  lo: "la",
-  lt: "lt",
-  lv: "lv",
-  mk: "mk",
-  ml: "in",
-  mn: "mn",
-  mt: "mt",
-  ne: "np",
-  sr: "rs",
-  tl: "ph",
-  uz: "uz",
-  zu: "za",
-  am: "et",
-  az: "az",
-  si: "lk",
-  sw: "ke",
-  hy: "am",
-  eu: "es",
-};
-
-const nameToLanguageCode: Record<string, string> = {
-  english: "en",
-  albanian: "sq",
-  amharic: "am",
-  arabic: "ar",
-  bengali: "bn",
-  bulgarian: "bg",
-  catalan: "ca",
-  chinese: "zh",
-  croatian: "hr",
-  czech: "cs",
-  danish: "da",
-  dutch: "nl",
-  estonian: "et",
-  finnish: "fi",
-  french: "fr",
-  german: "de",
-  greek: "el",
-  hebrew: "he",
-  hindi: "hi",
-  hungarian: "hu",
-  indonesian: "id",
-  italian: "it",
-  japanese: "ja",
-  korean: "ko",
-  latvian: "lv",
-  lithuanian: "lt",
-  malay: "ms",
-  norwegian: "no",
-  persian: "fa",
-  farsi: "fa",
-  polish: "pl",
-  portuguese: "pt",
-  romanian: "ro",
-  russian: "ru",
-  serbian: "sr",
-  slovak: "sk",
-  slovenian: "sl",
-  spanish: "es",
-  swedish: "sv",
-  tamil: "ta",
-  telugu: "te",
-  thai: "th",
-  turkish: "tr",
-  ukrainian: "uk",
-  urdu: "ur",
-  vietnamese: "vi",
-  malayalam: "ml",
-  burmese: "my",
-  tagalog: "tl",
 };
 
 // list of iso639_1 Alpha-2 codes used as default languages
@@ -272,11 +149,8 @@ export function sortLangCodes(langCodes: string[]) {
  * @returns country code or null
  */
 export function getCountryCodeForLocale(locale: string): string | null {
-  if (!locale) return null;
-  const normalizedLocale =
-    nameToLanguageCode[locale.toLowerCase().trim()] || locale;
   let output: LanguageObj | null = null as any as LanguageObj;
-  const tag = getTag(populateLanguageCode(normalizedLocale), true);
+  const tag = getTag(populateLanguageCode(locale), true);
 
   if (!tag?.language?.Subtag) return null;
   // this function isn't async, so its guaranteed to work like this
@@ -384,34 +258,3 @@ export function getTmdbLanguageCode(language: string): string {
   return "en-US";
 }
 
-/**
- * Get the default language code based on country code
- * @param countryCode ISO 3166-1 alpha-2 country code
- * @returns ISO 639-1 language code
- */
-export function getDefaultLanguageByCountry(
-  countryCode: string | null,
-): string {
-  if (!countryCode) return "en";
-
-  const countryToLanguage: Record<string, string> = {
-    PH: "tl", // Philippines -> Tagalog
-    IN: "hi", // India -> Hindi
-    FR: "fr", // France -> French
-    DE: "de", // Germany -> German
-    ES: "es", // Spain -> Spanish
-    IT: "it", // Italy -> Italian
-    BR: "pt", // Brazil -> Portuguese
-    PT: "pt", // Portugal -> Portuguese
-    JP: "ja", // Japan -> Japanese
-    KR: "ko", // South Korea -> Korean
-    CN: "zh", // China -> Chinese
-    VN: "vi", // Vietnam -> Vietnamese
-    TH: "th", // Thailand -> Thai
-    ID: "id", // Indonesia -> Indonesian
-    RU: "ru", // Russia -> Russian
-    SA: "ar", // Saudi Arabia -> Arabic
-  };
-
-  return countryToLanguage[countryCode.toUpperCase()] || "en";
-}

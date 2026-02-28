@@ -1,37 +1,164 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import { proxiedFetch } from "@/backend/helpers/fetch";
+import { mwFetch, proxiedFetch } from "@/backend/helpers/fetch";
 import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { conf } from "@/setup/config";
+import type { PlayerMeta } from "@/stores/player/slices/source";
+import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { getTurnstileToken } from "@/utils/turnstile";
 
 // Thanks Nemo for this API
+const THE_INTRO_DB_BASE_URL = "https://api.theintrodb.org/v2";
 const FED_SKIPS_BASE_URL = "https://fed-skips.pstream.mov";
 const INTRODB_BASE_URL = "https://api.introdb.app/intro";
 const MAX_RETRIES = 3;
 
+// Track the source of the current skip time (for analytics filtering)
+let currentSkipTimeSource: "fed-skips" | "introdb" | "theintrodb" | null = null;
+
+// Prevent multiple components from triggering overlapping fetches for the same media
+let fetchingForCacheKey: string | null = null;
+
+/** Cache key for skip segments – matches TIDB API (tmdbId + season + episode number). */
+function getSkipSegmentsCacheKey(meta: PlayerMeta | null): string | null {
+  if (!meta?.tmdbId) return null;
+  if (meta.type === "movie") return `skip-${meta.type}-${meta.tmdbId}`;
+  if (meta.type === "show" && meta.season != null && meta.episode != null) {
+    return `skip-${meta.type}-${meta.tmdbId}-${meta.season.number}-${meta.episode.number}`;
+  }
+  return null;
+}
+
+export function useSkipTimeSource(): typeof currentSkipTimeSource {
+  return currentSkipTimeSource;
+}
+
 export interface SegmentData {
-  start: number;
-  end: number;
-  type: "intro" | "recap" | "credits";
+  type: "intro" | "recap" | "credits" | "preview";
+  start_ms: number | null;
+  end_ms: number | null;
+  confidence: number | null;
+  submission_count: number;
 }
 
-export interface SkipTimeData {
-  skiptime: SegmentData | null;
-  source: "fed-skips" | "introdb" | "theintrodb" | "unknown";
-}
-
-export function useSkipTime(): SkipTimeData | null {
+export function useSkipTime() {
   const { playerMeta: meta } = usePlayerMeta();
-  const [skipData, setSkipData] = useState<SkipTimeData | null>(null);
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
+  const cacheKey = getSkipSegmentsCacheKey(meta ?? null);
+  const skipSegmentsCacheKey = usePlayerStore((s) => s.skipSegmentsCacheKey);
+  const skipSegments = usePlayerStore((s) => s.skipSegments);
+  const setSkipSegments = usePlayerStore((s) => s.setSkipSegments);
   const tidbKey = usePreferencesStore((s) => s.tidbKey);
 
   useEffect(() => {
-    const fetchFedSkipsTime = async (
-      retries = 0,
-    ): Promise<SegmentData | null> => {
+    if (!cacheKey) return;
+    // Already have segments for this media – don't refetch
+    if (usePlayerStore.getState().skipSegmentsCacheKey === cacheKey) return;
+    // Another fetch for this key is already in progress
+    if (fetchingForCacheKey === cacheKey) return;
+    fetchingForCacheKey = cacheKey;
+
+    const fetchTheIntroDBSegments = async (): Promise<{
+      segments: SegmentData[];
+      tidbNotFound: boolean;
+    }> => {
+      if (!meta?.tmdbId) return { segments: [], tidbNotFound: false };
+
+      try {
+        let apiUrl = `${THE_INTRO_DB_BASE_URL}/media?tmdb_id=${meta.tmdbId}`;
+        if (
+          meta.type !== "movie" &&
+          meta.season?.number &&
+          meta.episode?.number
+        ) {
+          apiUrl += `&season=${meta.season.number}&episode=${meta.episode.number}`;
+        }
+
+        const data = await mwFetch(apiUrl, {
+          headers: {
+            Authorization: tidbKey ? `Bearer ${tidbKey}` : undefined,
+          } as HeadersInit,
+        });
+
+        const fetchedSegments: SegmentData[] = [];
+
+        // Process intro segments (v2: array of segments)
+        if (Array.isArray(data?.intro) && data.intro.length > 0) {
+          for (const segment of data.intro) {
+            if (segment.submission_count > 0) {
+              fetchedSegments.push({
+                type: "intro",
+                start_ms: segment.start_ms,
+                end_ms: segment.end_ms,
+                confidence: segment.confidence,
+                submission_count: segment.submission_count,
+              });
+            }
+          }
+        }
+
+        // Process recap segments
+        if (Array.isArray(data?.recap) && data.recap.length > 0) {
+          for (const segment of data.recap) {
+            if (segment.submission_count > 0) {
+              fetchedSegments.push({
+                type: "recap",
+                start_ms: segment.start_ms,
+                end_ms: segment.end_ms,
+                confidence: segment.confidence,
+                submission_count: segment.submission_count,
+              });
+            }
+          }
+        }
+
+        // Process credits segments
+        if (Array.isArray(data?.credits) && data.credits.length > 0) {
+          for (const segment of data.credits) {
+            if (segment.submission_count > 0) {
+              fetchedSegments.push({
+                type: "credits",
+                start_ms: segment.start_ms,
+                end_ms: segment.end_ms,
+                confidence: segment.confidence,
+                submission_count: segment.submission_count,
+              });
+            }
+          }
+        }
+
+        // Process preview segments
+        if (Array.isArray(data?.preview) && data.preview.length > 0) {
+          for (const segment of data.preview) {
+            if (segment.submission_count > 0) {
+              fetchedSegments.push({
+                type: "preview",
+                start_ms: segment.start_ms,
+                end_ms: segment.end_ms,
+                confidence: segment.confidence,
+                submission_count: segment.submission_count,
+              });
+            }
+          }
+        }
+
+        return { segments: fetchedSegments, tidbNotFound: false };
+      } catch (error: unknown) {
+        const err = error as {
+          response?: { status?: number };
+          status?: number;
+        };
+        const status = err?.response?.status ?? err?.status;
+        if (status === 404) {
+          return { segments: [], tidbNotFound: true };
+        }
+        console.error("Error fetching TIDB segments:", error);
+        return { segments: [], tidbNotFound: false };
+      }
+    };
+
+    const fetchFedSkipsTime = async (retries = 0): Promise<number | null> => {
       if (!meta?.imdbId || meta.type === "movie") return null;
       if (!conf().ALLOW_FEBBOX_KEY) return null;
       if (!febboxKey) return null;
@@ -59,17 +186,11 @@ export function useSkipTime(): SkipTimeData | null {
 
         const data = await response.json();
 
-        const parseSkipTime = (
-          timeStr: string | undefined,
-        ): SegmentData | null => {
+        const parseSkipTime = (timeStr: string | undefined): number | null => {
           if (!timeStr || typeof timeStr !== "string") return null;
           const match = timeStr.match(/^(\d+)s$/);
           if (!match) return null;
-          return {
-            start: 0,
-            end: parseInt(match[1], 10),
-            type: "intro",
-          };
+          return parseInt(match[1], 10);
         };
 
         const skipTime = parseSkipTime(data.introSkipTime);
@@ -81,7 +202,7 @@ export function useSkipTime(): SkipTimeData | null {
       }
     };
 
-    const fetchIntroDBTime = async (): Promise<SegmentData | null> => {
+    const fetchIntroDBTime = async (): Promise<number | null> => {
       if (!meta?.imdbId || meta.type === "movie") return null;
 
       try {
@@ -90,12 +211,7 @@ export function useSkipTime(): SkipTimeData | null {
         const data = await proxiedFetch(apiUrl);
 
         if (data && typeof data.end_ms === "number") {
-          // Convert milliseconds to seconds
-          return {
-            start: data.start_ms ? Math.floor(data.start_ms / 1000) : 0,
-            end: Math.floor(data.end_ms / 1000),
-            type: "intro",
-          };
+          return Math.floor(data.end_ms / 1000);
         }
 
         return null;
@@ -105,49 +221,89 @@ export function useSkipTime(): SkipTimeData | null {
       }
     };
 
-    const fetchTIDBTime = async (): Promise<SegmentData | null> => {
-      // TIDB implementation would go here if API was available
-      // For now returning null
-      if (!tidbKey) return null;
-      return null;
+    const applySegments = (segmentsToApply: SegmentData[]) => {
+      const currentKey = getSkipSegmentsCacheKey(
+        usePlayerStore.getState().meta ?? null,
+      );
+      if (currentKey === cacheKey) {
+        setSkipSegments(cacheKey, segmentsToApply);
+      }
     };
 
     const fetchSkipTime = async (): Promise<void> => {
-      // Prioritize TheIntroDB if available (placeholder)
-      const tidbTime = await fetchTIDBTime();
-      if (tidbTime) {
-        setSkipData({ skiptime: tidbTime, source: "theintrodb" });
-        return;
-      }
+      currentSkipTimeSource = null;
 
-      // If user has febbox key, try Fed-skips (better quality)
-      if (febboxKey) {
-        const fedSkipsTime = await fetchFedSkipsTime();
-        if (fedSkipsTime !== null) {
-          setSkipData({ skiptime: fedSkipsTime, source: "fed-skips" });
+      try {
+        // Try TheIntroDB API first (supports both movies and TV shows with full segment data)
+        const { segments: tidbSegments, tidbNotFound } =
+          await fetchTheIntroDBSegments();
+
+        if (!tidbNotFound) {
+          currentSkipTimeSource = "theintrodb";
+          applySegments(tidbSegments);
           return;
         }
-      }
 
-      // Fall back to IntroDB API (available to all users)
-      const introDBTime = await fetchIntroDBTime();
-      if (introDBTime) {
-        setSkipData({ skiptime: introDBTime, source: "introdb" });
-      } else {
-        setSkipData(null);
+        // TIDB returned 404 – no segment data; try fallbacks for intro only
+        let fallbackIntroSegment: SegmentData | null = null;
+
+        // Fall back to Fed-skips (TV shows only)
+        if (febboxKey && meta?.type !== "movie") {
+          const fedSkipsTime = await fetchFedSkipsTime();
+          if (fedSkipsTime !== null) {
+            currentSkipTimeSource = "fed-skips";
+            fallbackIntroSegment = {
+              type: "intro",
+              start_ms: 0,
+              end_ms: fedSkipsTime * 1000,
+              confidence: null,
+              submission_count: 1,
+            };
+          }
+        }
+
+        // Last resort: IntroDB API (TV shows only)
+        if (!fallbackIntroSegment && meta?.type !== "movie") {
+          const introDBTime = await fetchIntroDBTime();
+          if (introDBTime !== null) {
+            currentSkipTimeSource = "introdb";
+            fallbackIntroSegment = {
+              type: "intro",
+              start_ms: 0,
+              end_ms: introDBTime * 1000,
+              confidence: null,
+              submission_count: 1,
+            };
+          }
+        }
+
+        const finalSegments: SegmentData[] = [];
+        if (fallbackIntroSegment) {
+          finalSegments.push(fallbackIntroSegment);
+        }
+
+        applySegments(finalSegments);
+      } finally {
+        if (fetchingForCacheKey === cacheKey) {
+          fetchingForCacheKey = null;
+        }
       }
     };
 
     fetchSkipTime();
   }, [
+    cacheKey,
     meta?.tmdbId,
     meta?.imdbId,
+    meta?.title,
     meta?.type,
     meta?.season?.number,
     meta?.episode?.number,
     febboxKey,
+    setSkipSegments,
     tidbKey,
   ]);
 
-  return skipData;
+  // Only return segments when they're for the current media
+  return cacheKey === skipSegmentsCacheKey ? skipSegments : [];
 }

@@ -5,16 +5,15 @@ import { Player } from "@/components/player";
 import { MobileLockButton } from "@/components/player/atoms/MobileLockButton";
 import { MobileLockScreen } from "@/components/player/atoms/MobileLockScreen";
 import { MobilePlayerLogo } from "@/components/player/atoms/MobilePlayerLogo";
-import { SkipIntroButton } from "@/components/player/atoms/SkipIntroButton";
+import { SkipSegmentButton } from "@/components/player/atoms/SkipSegmentButton";
 import { ThumbsFeedback } from "@/components/player/atoms/ThumbsFeedback";
 import { UnreleasedEpisodeOverlay } from "@/components/player/atoms/UnreleasedEpisodeOverlay";
 import { WatchPartyStatus } from "@/components/player/atoms/WatchPartyStatus";
-import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { useShouldShowControls } from "@/components/player/hooks/useShouldShowControls";
-import {
-  SegmentData,
-  useSkipTime,
-} from "@/components/player/hooks/useSkipTime";
+import { useSkipTime } from "@/components/player/hooks/useSkipTime";
+import type { SegmentData } from "@/components/player/hooks/useSkipTime";
+import { AutoSkipSegments } from "@/components/player/internals/AutoSkipSegments";
+import { PauseOverlay } from "@/components/player/overlays/PauseOverlay";
 import { useMobileFeatures } from "@/hooks/useMobileFeatures";
 import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
@@ -84,7 +83,7 @@ export function PlayerPart(props: PlayerPartProps) {
     setThumbsFeedbackData({ key, item });
   };
 
-  const skiptime = useSkipTime();
+  const segments = useSkipTime();
 
   return (
     <Player.Container
@@ -102,6 +101,13 @@ export function PlayerPart(props: PlayerPartProps) {
 
       {status === playerStatus.PLAYING ? (
         <Player.CenterControls>
+          <AutoSkipSegments />
+          <SkipSegmentButton
+            controlsShowing={showTargets}
+            segments={segments}
+            inControl={inControl}
+            onChangeMeta={props.onMetaChange}
+          />
           <Player.LoadingSpinner />
           <Player.AutoPlayStart />
           <Player.CastingNotification />
@@ -233,8 +239,7 @@ export function PlayerPart(props: PlayerPartProps) {
               <div
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                className="select-none touch-none"
-                style={{ WebkitTapHighlightColor: "transparent" }}
+                className="select-none touch-none tap-highlight-transparent"
               >
                 {isHoldingFullscreen ? (
                   <Player.Widescreen />
@@ -258,11 +263,15 @@ export function PlayerPart(props: PlayerPartProps) {
         inControl={inControl}
       />
 
-      <SkipIntroButton
+      <SkipSegmentButton
         controlsShowing={showTargets}
-        skipTime={skiptime?.skiptime?.end}
+        segments={segments}
         inControl={inControl}
+        onChangeMeta={props.onMetaChange}
       />
+
+      <AutoSkipSegments />
+      <PauseOverlay />
 
       <ThumbsFeedback
         controlsShowing={showTargets}

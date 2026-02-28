@@ -1,7 +1,9 @@
+/* eslint-disable react/forbid-dom-props */
 import { t } from "i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCopyToClipboard } from "react-use";
 
+import { getSeasonDetails } from "@/backend/metadata/tmdb";
 import { getNetworkContent } from "@/backend/metadata/traktApi";
 import { TMDBContentTypes } from "@/backend/metadata/types/tmdb";
 import { Icon, Icons } from "@/components/Icon";
@@ -33,6 +35,12 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
   const [showTrailer, setShowTrailer] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
+  const [fetchedSeasons, setFetchedSeasons] = useState<Record<number, any[]>>(
+    {},
+  );
+  const [loadingSeasons, setLoadingSeasons] = useState<Record<number, boolean>>(
+    {},
+  );
   const [, copyToClipboard] = useCopyToClipboard();
   const [hasCopiedShare, setHasCopiedShare] = useState(false);
   const [logoHeight, setLogoHeight] = useState<number>(0);
@@ -55,6 +63,54 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
       setSelectedSeason(showProgress.season.number);
     }
   }, [showProgress]);
+
+  // Fetch episodes for selected season (lazy loading)
+  useEffect(() => {
+    const fetchSeason = async (seasonNumber: number) => {
+      if (
+        !data.id ||
+        seasonNumber === -1 ||
+        fetchedSeasons[seasonNumber] ||
+        loadingSeasons[seasonNumber]
+      )
+        return;
+
+      setLoadingSeasons((prev) => ({ ...prev, [seasonNumber]: true }));
+      try {
+        const episodes = await getSeasonDetails(
+          data.id.toString(),
+          seasonNumber,
+        );
+        setFetchedSeasons((prev) => ({ ...prev, [seasonNumber]: episodes }));
+      } catch (err) {
+        console.error("Failed to fetch season details:", err);
+      } finally {
+        setLoadingSeasons((prev) => ({ ...prev, [seasonNumber]: false }));
+      }
+    };
+
+    if (data.type === "show") {
+      if (selectedSeason !== -1) {
+        fetchSeason(selectedSeason);
+      } else if (data.seasonData?.seasons) {
+        // Fetch all seasons for favorites
+        data.seasonData.seasons.forEach((season: any) => {
+          fetchSeason(season.season_number);
+        });
+      }
+    }
+  }, [
+    data.id,
+    data.type,
+    selectedSeason,
+    fetchedSeasons,
+    loadingSeasons,
+    data.seasonData,
+  ]);
+
+  const allEpisodes = useMemo(() => {
+    return Object.values(fetchedSeasons).flat();
+  }, [fetchedSeasons]);
 
   // Add effect to measure logo height
   useEffect(() => {
@@ -227,9 +283,9 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
 
       {/* Backdrop */}
       <div
-        className="relative -mt-12 z-20"
-        style={{
-          height: `${Math.max(500, logoHeight + 400)}px`,
+        className="relative -mt-12 z-20 transition-all duration-300"
+        ref={(el) => {
+          if (el) el.style.height = `${Math.max(500, logoHeight + 400)}px`;
         }}
       >
         {/* Title/Logo positioned on backdrop */}
@@ -239,7 +295,6 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
               src={data.logoUrl}
               alt={data.title}
               className="max-w-[16rem] md:max-w-[20rem] lg:max-w-[30rem] max-h-[12rem] object-contain drop-shadow-lg bg-transparent"
-              style={{ background: "none" }}
             />
           ) : (
             <h3 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">
@@ -248,17 +303,12 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
           )}
         </div>
         <div
-          className="absolute inset-0 bg-cover bg-top before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]"
-          style={{
-            backgroundImage: data.backdrop
-              ? `url(${data.backdrop})`
-              : undefined,
-            backgroundPosition: "center top",
-            maskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 150px)",
-            WebkitMaskImage:
-              "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1) 150px)",
-            zIndex: -1,
+          className="absolute inset-0 bg-cover bg-top before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)] -z-10 [mask-image:linear-gradient(to_top,rgba(0,0,0,0),rgba(0,0,0,1)_150px)] [-webkit-mask-image:linear-gradient(to_top,rgba(0,0,0,0),rgba(0,0,0,1)_150px)]"
+          ref={(el) => {
+            if (el)
+              el.style.backgroundImage = data.backdrop
+                ? `url(${data.backdrop})`
+                : "";
           }}
         />
       </div>
@@ -291,19 +341,20 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
             {/* Genres */}
             {data.genres && data.genres.length > 0 && (
               <div className="flex flex-wrap gap-2 items-center">
-                {data.genres.map((genre, index) => (
-                  <span
-                    key={genre.id}
-                    className="text-[11px] px-2 py-0.5 rounded-full bg-white/20 text-white/80 transition-all duration-300 hover:scale-110 animate-[scaleIn_0.6s_ease-out_forwards]"
-                    style={{
-                      animationDelay: `${((data.genres?.length ?? 0) - 1 - index) * 60}ms`,
-                      transform: "scale(0)",
-                      opacity: 0,
-                    }}
-                  >
-                    {genre.name}
-                  </span>
-                ))}
+                {data.genres.map((genre, index) => {
+                  return (
+                    <span
+                      key={genre.id}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-white/20 text-white/80 transition-all duration-300 hover:scale-110 animate-[scaleIn_0.6s_ease-out_forwards] scale-0 opacity-0"
+                      ref={(el) => {
+                        if (el)
+                          el.style.animationDelay = `${((data.genres?.length ?? 0) - 1 - index) * 60}ms`;
+                      }}
+                    >
+                      {genre.name}
+                    </span>
+                  );
+                })}
               </div>
             )}
 
@@ -345,7 +396,7 @@ export function DetailsContent({ data, minimal = false }: DetailsContentProps) {
         {/* Episodes Carousel for TV Shows */}
         {data.type === "show" && data.seasonData && !minimal && (
           <EpisodeCarousel
-            episodes={data.seasonData.episodes}
+            episodes={allEpisodes}
             showProgress={showProgress}
             progress={progress}
             selectedSeason={selectedSeason}

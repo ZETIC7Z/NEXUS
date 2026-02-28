@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import {
   Dispatch,
   SetStateAction,
@@ -51,26 +52,20 @@ interface BackendEditProps {
 
 interface FebboxKeyProps {
   febboxKey: string | null;
-  setFebboxKey: (value: string | null) => void;
+  setFebboxKey: Dispatch<SetStateAction<string | null>>;
 }
 
 interface TIDBEditProps {
   tidbKey: string | null;
-  setTIDBKey: (value: string | null) => void;
+  setTIDBKey: Dispatch<SetStateAction<string | null>>;
 }
 
 interface DebridProps {
   debridToken: string | null;
-  setdebridToken: (value: string | null) => void;
+  setdebridToken: Dispatch<SetStateAction<string | null>>;
   debridService: string;
-  setdebridService: (value: string) => void;
-  // eslint-disable-next-line react/no-unused-prop-types
+  setdebridService: Dispatch<SetStateAction<string>>;
   mode?: "onboarding" | "settings";
-}
-
-interface TIDBEditProps {
-  tidbKey: string | null;
-  setTIDBKey: (value: string | null) => void;
 }
 
 function ProxyEdit({
@@ -159,6 +154,14 @@ function ProxyEdit({
                   type="button"
                   onClick={() => removeItem(i)}
                   className="h-full scale-90 hover:scale-100 rounded-full aspect-square bg-authentication-inputBg hover:bg-authentication-inputBgHover flex justify-center items-center transition-transform duration-200 hover:text-white cursor-pointer"
+                  title={t(
+                    "settings.connections.workers.removeButton",
+                    "Remove Worker",
+                  )}
+                  aria-label={t(
+                    "settings.connections.workers.removeButton",
+                    "Remove Worker",
+                  )}
                 >
                   <Icon className="text-xl" icon={Icons.X} />
                 </button>
@@ -429,6 +432,14 @@ export function FebboxSetup({
                     type="button"
                     onClick={exampleModal.show}
                     className="text-type-link hover:text-type-linkHover"
+                    title={t(
+                      "fedapi.setup.tokenExample.button",
+                      "Token Example",
+                    )}
+                    aria-label={t(
+                      "fedapi.setup.tokenExample.button",
+                      "Token Example",
+                    )}
                   >
                     <Trans i18nKey="fedapi.setup.tokenExample.button" />
                   </button>
@@ -752,13 +763,20 @@ function TIDBEdit({ tidbKey, setTIDBKey }: TIDBEditProps) {
   );
 }
 
-export function ConnectionsPart(
-  props: BackendEditProps &
-    ProxyEditProps &
-    FebboxKeyProps &
-    DebridProps &
-    TIDBEditProps,
-) {
+interface ConnectionsPartProps {
+  backendUrl: string | null;
+  setBackendUrl: Dispatch<SetStateAction<string | null>>;
+  proxyUrls: string[] | null;
+  setProxyUrls: Dispatch<SetStateAction<string[] | null>>;
+  febboxKey: string | null;
+  setFebboxKey: Dispatch<SetStateAction<string | null>>;
+  tidbKey: string | null;
+  setTIDBKey: Dispatch<SetStateAction<string | null>>;
+  proxyTmdb: boolean;
+  setProxyTmdb: Dispatch<SetStateAction<boolean>>;
+}
+
+export function ConnectionsPart(props: ConnectionsPartProps) {
   const { t } = useTranslation();
   return (
     <div>
@@ -783,15 +801,30 @@ export function ConnectionsPart(
           setFebboxKey={props.setFebboxKey}
           mode="settings"
         />
-        <DebridEdit
-          debridToken={props.debridToken}
-          setdebridToken={props.setdebridToken}
-          debridService={props.debridService}
-          setdebridService={props.setdebridService}
-          mode="settings"
-        />
         <TIDBEdit tidbKey={props.tidbKey} setTIDBKey={props.setTIDBKey} />
       </div>
     </div>
   );
 }
+ProxyEdit.propTypes = {
+  proxyUrls: PropTypes.arrayOf(PropTypes.string),
+  setProxyUrls: PropTypes.func.isRequired,
+  proxyTmdb: PropTypes.bool.isRequired,
+  setProxyTmdb: PropTypes.func.isRequired,
+};
+
+BackendEdit.propTypes = {
+  backendUrl: PropTypes.string,
+  setBackendUrl: PropTypes.func.isRequired,
+};
+
+FebboxSetup.propTypes = {
+  febboxKey: PropTypes.string,
+  setFebboxKey: PropTypes.func.isRequired,
+  mode: PropTypes.oneOf(["onboarding", "settings"]),
+};
+
+TIDBEdit.propTypes = {
+  tidbKey: PropTypes.string,
+  setTIDBKey: PropTypes.func.isRequired,
+};

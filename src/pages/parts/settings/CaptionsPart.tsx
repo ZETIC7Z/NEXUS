@@ -1,3 +1,4 @@
+/* eslint-disable react/forbid-dom-props */
 import classNames from "classnames";
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
@@ -59,6 +60,7 @@ export function CaptionPreview(props: {
         </Helmet>
       ) : null}
       <Transition animation="fade" show={props.show}>
+        {/* eslint-disable-next-line react/forbid-dom-props */}
         <div
           className="absolute inset-0 pointer-events-auto"
           style={{
@@ -68,12 +70,15 @@ export function CaptionPreview(props: {
         >
           <button
             type="button"
+            title="Toggle fullscreen preview"
+            aria-label="Toggle fullscreen preview"
             className="tabbable bg-black absolute right-3 top-3 text-white bg-opacity-25 duration-100 transition-[background-color,transform] active:scale-110 hover:bg-opacity-50 p-2 rounded-md cursor-pointer"
             onClick={props.onToggle}
           >
             <Icon icon={props.fullscreen ? Icons.X : Icons.EXPAND} />
           </button>
 
+          {/* eslint-disable-next-line react/forbid-dom-props */}
           <div
             className="text-white pointer-events-none absolute flex w-full flex-col items-center transition-[bottom] p-4"
             style={{
@@ -323,6 +328,11 @@ export function CaptionsPart(props: {
                     <input
                       type="color"
                       value={props.styling.color}
+                      title={t("settings.subtitles.colorLabel", "Color Picker")}
+                      aria-label={t(
+                        "settings.subtitles.colorLabel",
+                        "Color Picker",
+                      )}
                       onChange={(e) => {
                         const color = e.target.value;
                         handleStylingChange({ ...props.styling, color });
@@ -333,6 +343,7 @@ export function CaptionsPart(props: {
                       }}
                       className="absolute opacity-0 cursor-pointer w-8 h-8"
                     />
+                    {/* eslint-disable-next-line react/forbid-dom-props */}
                     <div style={{ color: props.styling.color }}>
                       <Icon icon={Icons.BRUSH} className="text-2xl" />
                     </div>

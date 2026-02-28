@@ -44,7 +44,7 @@ importers:
         version: 1.8.0
       '@p-stream/providers':
         specifier: github:p-stream/providers#production
-        version: https://codeload.github.com/p-stream/providers/tar.gz/fc5a98210c5e14588c8c2daa4f3cba3970d84103
+        version: https://codeload.github.com/p-stream/providers/tar.gz/09a28ebb7596112b456c56821554a3d6b41a535f
       '@plasmohq/messaging':
         specifier: ^0.6.2
         version: 0.6.2(react@18.3.1)
@@ -120,6 +120,9 @@ importers:
       ofetch:
         specifier: ^1.4.1
         version: 1.4.1
+      prop-types:
+        specifier: ^15.8.1
+        version: 15.8.1
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -199,6 +202,9 @@ importers:
       '@types/pako':
         specifier: ^2.0.4
         version: 2.0.4
+      '@types/prop-types':
+        specifier: ^15.7.15
+        version: 15.7.15
       '@types/react':
         specifier: ^18.3.26
         version: 18.3.26
@@ -1213,8 +1219,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@p-stream/providers@https://codeload.github.com/p-stream/providers/tar.gz/fc5a98210c5e14588c8c2daa4f3cba3970d84103':
-    resolution: {tarball: https://codeload.github.com/p-stream/providers/tar.gz/fc5a98210c5e14588c8c2daa4f3cba3970d84103}
+  '@p-stream/providers@https://codeload.github.com/p-stream/providers/tar.gz/09a28ebb7596112b456c56821554a3d6b41a535f':
+    resolution: {tarball: https://codeload.github.com/p-stream/providers/tar.gz/09a28ebb7596112b456c56821554a3d6b41a535f}
     version: 3.2.0
 
   '@pkgjs/parseargs@0.11.0':
@@ -5554,7 +5560,7 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@p-stream/providers@https://codeload.github.com/p-stream/providers/tar.gz/fc5a98210c5e14588c8c2daa4f3cba3970d84103':
+  '@p-stream/providers@https://codeload.github.com/p-stream/providers/tar.gz/09a28ebb7596112b456c56821554a3d6b41a535f':
     dependencies:
       abort-controller: 3.0.0
       cheerio: 1.0.0-rc.12

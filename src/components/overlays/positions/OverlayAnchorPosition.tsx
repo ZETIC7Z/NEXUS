@@ -1,3 +1,4 @@
+/* eslint-disable react/forbid-dom-props */
 import classNames from "classnames";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
@@ -21,11 +22,11 @@ function useCalculatePositions() {
       const buttonCenter = anchor.x + anchor.w / 2;
       const bottomReal = window.innerHeight - (anchor.y + anchor.h);
 
-      setTop(window.innerHeight - bottomReal - anchor.h - card.height - 30);
+      setTop(window.innerHeight - bottomReal - anchor.h - card.height - 48);
       setLeft(
         Math.min(
           buttonCenter - card.width / 2,
-          window.innerWidth - card.width - 30,
+          window.innerWidth - card.width - 12,
         ),
       );
     },

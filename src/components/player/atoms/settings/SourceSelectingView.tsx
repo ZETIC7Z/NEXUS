@@ -10,6 +10,7 @@ import {
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { SelectableLink } from "@/components/player/internals/ContextMenu/Links";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
+import { playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 
@@ -156,6 +157,8 @@ export function SourceSelectionView({
   const router = useOverlayRouter(id);
   const metaType = usePlayerStore((s) => s.meta?.type);
   const currentSourceId = usePlayerStore((s) => s.sourceId);
+  const setResumeFromSourceId = usePlayerStore((s) => s.setResumeFromSourceId);
+  const setStatus = usePlayerStore((s) => s.setStatus);
   const preferredSourceOrder = usePreferencesStore((s) => s.sourceOrder);
   const enableSourceOrder = usePreferencesStore((s) => s.enableSourceOrder);
   const lastSuccessfulSource = usePreferencesStore(
@@ -165,73 +168,62 @@ export function SourceSelectionView({
     (s) => s.enableLastSuccessfulSource,
   );
   const disabledSources = usePreferencesStore((s) => s.disabledSources);
+  const manualSourceSelection = usePreferencesStore(
+    (s) => s.manualSourceSelection,
+  );
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
-  const _hasFebboxKey = febboxKey && febboxKey.length > 0; // Hidden for now
+  const hasFebboxKey = febboxKey && febboxKey.length > 0;
 
   const sources = useMemo(() => {
     if (!metaType) return [];
-    const allSources = getCachedMetadata()
+    let allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id));
 
-    // Create Zeticuz source (always available - no token needed)
-    const zeticuzSource = {
-      id: "zeticuz",
-      name: "Zeticuz 🔥",
-      type: "source" as const,
-      mediaTypes: ["movie", "show"] as ("movie" | "show")[],
-      rank: 0, // Highest priority
-    };
+    // Hide FebBox-related sources when no febbox key is set
+    if (!hasFebboxKey) {
+      allSources = allSources.filter(
+        (v) => !v.id.toLowerCase().includes("febbox"),
+      );
+    }
 
-    // Create FebBox API source (always available with shared token)
-    const febboxSource = {
-      id: "febbox",
-      name: "FebBox (4K) ⭐",
-      type: "source" as const,
-      mediaTypes: ["movie", "show"] as ("movie" | "show")[],
-      rank: 1, // Second highest priority after Zeticuz
-    };
-
-    // Premium sources list - Zeticuz and FebBox
-    const premiumSources: typeof allSources = [
-      zeticuzSource as (typeof allSources)[number],
-      febboxSource as (typeof allSources)[number],
-    ];
+    // Add FebBox manually to the source list if it's not present (since it's a custom source)
+    if (hasFebboxKey && !allSources.some((s) => s.id === "febbox")) {
+      allSources.push({
+        id: "febbox",
+        name: "FebBox (4K) ⭐",
+        type: "source",
+        mediaTypes: ["movie", "show"],
+        rank: 999, // High rank to prioritize or at least satisfy type
+      } as any);
+    }
 
     if (!enableSourceOrder || preferredSourceOrder.length === 0) {
-      // Even without custom source order, prioritize last successful source if enabled
+      // Dynamic prioritization: last successful source at the very top
       if (enableLastSuccessfulSource && lastSuccessfulSource) {
         const lastSourceIndex = allSources.findIndex(
           (s) => s.id === lastSuccessfulSource,
         );
         if (lastSourceIndex !== -1) {
           const lastSource = allSources.splice(lastSourceIndex, 1)[0];
-          const result = [lastSource, ...allSources];
-          // Add premium sources at the very top
-          return [...premiumSources, ...result];
+          return [lastSource, ...allSources];
         }
       }
-      // Add premium sources at the top
-      return [...premiumSources, ...allSources];
+      // Default: FebBox first if no last successful source
+      const febboxIndex = allSources.findIndex((s) => s.id === "febbox");
+      if (febboxIndex > 0) {
+        const febbox = allSources.splice(febboxIndex, 1)[0];
+        return [febbox, ...allSources];
+      }
+      return allSources;
     }
 
-    // Sort sources according to preferred order, but prioritize last successful source
-    const orderedSources = [];
+    // Sort sources according to preferred order
+    const orderedSources: typeof allSources = [];
     const remainingSources = [...allSources];
 
-    // First, add the last successful source if it exists, is available, and the feature is enabled
-    if (enableLastSuccessfulSource && lastSuccessfulSource) {
-      const lastSourceIndex = remainingSources.findIndex(
-        (s) => s.id === lastSuccessfulSource,
-      );
-      if (lastSourceIndex !== -1) {
-        orderedSources.push(remainingSources[lastSourceIndex]);
-        remainingSources.splice(lastSourceIndex, 1);
-      }
-    }
-
-    // Add sources in preferred order
+    // Add sources in preferred order first
     for (const sourceId of preferredSourceOrder) {
       const sourceIndex = remainingSources.findIndex((s) => s.id === sourceId);
       if (sourceIndex !== -1) {
@@ -243,8 +235,18 @@ export function SourceSelectionView({
     // Add remaining sources that weren't in the preferred order
     orderedSources.push(...remainingSources);
 
-    // Add premium sources at the top, then ordered sources
-    return [...premiumSources, ...orderedSources];
+    // Dynamic prioritization: last successful source at the very top
+    if (enableLastSuccessfulSource && lastSuccessfulSource) {
+      const lastSourceIndex = orderedSources.findIndex(
+        (s) => s.id === lastSuccessfulSource,
+      );
+      if (lastSourceIndex > 0) {
+        const lastSource = orderedSources.splice(lastSourceIndex, 1)[0];
+        orderedSources.unshift(lastSource);
+      }
+    }
+
+    return orderedSources;
   }, [
     metaType,
     preferredSourceOrder,
@@ -252,22 +254,35 @@ export function SourceSelectionView({
     disabledSources,
     lastSuccessfulSource,
     enableLastSuccessfulSource,
+    hasFebboxKey,
   ]);
+
+  const handleFindNextSource = () => {
+    if (!currentSourceId) return;
+    // Set the resume source ID in the store
+    setResumeFromSourceId(currentSourceId);
+    // Close the settings overlay
+    router.close();
+    // Set status to SCRAPING to trigger scraping from next source
+    setStatus(playerStatus.SCRAPING);
+  };
 
   return (
     <>
       <Menu.BackLink
         onClick={() => router.navigate("/")}
         rightSide={
-          <button
-            type="button"
-            onClick={() => {
-              window.location.href = "/settings#source-order";
-            }}
-            className="-mr-2 -my-1 px-2 p-[0.4em] rounded tabbable hover:bg-video-context-light hover:bg-opacity-10"
-          >
-            {t("player.menus.sources.editOrder")}
-          </button>
+          <div className="flex items-center gap-2">
+            {currentSourceId && !manualSourceSelection && (
+              <button
+                type="button"
+                onClick={handleFindNextSource}
+                className="-mr-2 -my-1 px-2 p-[0.4em] rounded tabbable hover:bg-video-context-light hover:bg-opacity-10"
+              >
+                {t("player.menus.sources.findNextSource")}
+              </button>
+            )}
+          </div>
         }
       >
         {t("player.menus.sources.title")}

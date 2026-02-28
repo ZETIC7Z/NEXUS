@@ -273,7 +273,11 @@ export function LinksDropdown(props: {
   const displayName = account?.fullName || account?.nickname || "";
 
   return (
-    <div className={classNames("relative is-dropdown", props.className)}>
+    <div
+      className={classNames("relative is-dropdown", props.className)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <div
         className={classNames(
           "tabbable",
@@ -303,66 +307,68 @@ export function LinksDropdown(props: {
       >
         <div
           className={classNames(
-            "rounded-xl absolute w-64 bg-dropdown-altBackground right-0 z-50",
-            props.dropUp ? "bottom-full mb-3" : "top-full mt-3",
+            "absolute right-0 z-50",
+            props.dropUp ? "bottom-full pb-3" : "top-full pt-3",
           )}
         >
-          {account ? (
-            <DropdownLink className="text-white" href="/settings">
-              <UserAvatar />
-              {displayName || "User"}
-            </DropdownLink>
-          ) : (
-            <DropdownLink href="/login" icon={Icons.RISING_STAR} highlight>
-              {t("navigation.menu.register")}
-            </DropdownLink>
-          )}
-          <Divider />
-          {showInstallButton && (
-            <DropdownLink
-              onClick={handleInstallClick}
-              icon={Icons.DOWNLOAD}
-              className="text-[#25D366] hover:text-[#128C7E]" // Example distinct color (WhatsApp green-ish) or something noticeable
-            >
-              Install Nexus App
-            </DropdownLink>
-          )}
-          <DropdownLink href="/settings" icon={Icons.SETTINGS}>
-            {t("navigation.menu.settings")}
-          </DropdownLink>
-          <DropdownLink href="/about" icon={Icons.CIRCLE_QUESTION}>
-            {t("navigation.menu.about")}
-          </DropdownLink>
-          <DropdownLink href="/help" icon={Icons.SUPPORT}>
-            Help & Tutorials
-          </DropdownLink>
-          <WatchPartyInputLink />
-          {account && !props.hideLogout ? (
-            <DropdownLink
-              className="!text-type-danger opacity-75 hover:opacity-100"
-              icon={Icons.LOGOUT}
-              onClick={logout}
-            >
-              {t("navigation.menu.logout")}
-            </DropdownLink>
-          ) : null}
-          <Divider />
-          <div className="my-4 flex justify-center items-center gap-4">
-            {conf().TELEGRAM_LINK && (
-              <CircleDropdownLink
-                href={conf().TELEGRAM_LINK}
-                icon={Icons.TELEGRAM}
-              />
+          <div className="rounded-xl w-64 bg-dropdown-altBackground border border-white/10 shadow-2xl overflow-hidden">
+            {account ? (
+              <DropdownLink className="text-white" href="/settings">
+                <UserAvatar />
+                {displayName || "User"}
+              </DropdownLink>
+            ) : (
+              <DropdownLink href="/login" icon={Icons.RISING_STAR} highlight>
+                {t("navigation.menu.register")}
+              </DropdownLink>
             )}
-            <CircleDropdownLink
-              href={conf().DISCORD_LINK}
-              icon={Icons.DISCORD}
-            />
-            <CircleDropdownLink href="/support" icon={Icons.SUPPORT} />
-            <CircleDropdownLink
-              href="https://rentry.co/m6f9fnu2"
-              icon={Icons.TIP_JAR}
-            />
+            <Divider />
+            {showInstallButton && (
+              <DropdownLink
+                onClick={handleInstallClick}
+                icon={Icons.DOWNLOAD}
+                className="text-[#25D366] hover:text-[#128C7E]" // Example distinct color (WhatsApp green-ish) or something noticeable
+              >
+                Install Nexus App
+              </DropdownLink>
+            )}
+            <DropdownLink href="/settings" icon={Icons.SETTINGS}>
+              {t("navigation.menu.settings")}
+            </DropdownLink>
+            <DropdownLink href="/about" icon={Icons.CIRCLE_QUESTION}>
+              {t("navigation.menu.about")}
+            </DropdownLink>
+            <DropdownLink href="/help" icon={Icons.SUPPORT}>
+              Help & Tutorials
+            </DropdownLink>
+            <WatchPartyInputLink />
+            {account && !props.hideLogout ? (
+              <DropdownLink
+                className="!text-type-danger opacity-75 hover:opacity-100"
+                icon={Icons.LOGOUT}
+                onClick={logout}
+              >
+                {t("navigation.menu.logout")}
+              </DropdownLink>
+            ) : null}
+            <Divider />
+            <div className="my-4 flex justify-center items-center gap-4">
+              {conf().TELEGRAM_LINK && (
+                <CircleDropdownLink
+                  href={conf().TELEGRAM_LINK}
+                  icon={Icons.TELEGRAM}
+                />
+              )}
+              <CircleDropdownLink
+                href={conf().DISCORD_LINK}
+                icon={Icons.DISCORD}
+              />
+              <CircleDropdownLink href="/support" icon={Icons.SUPPORT} />
+              <CircleDropdownLink
+                href="https://rentry.co/m6f9fnu2"
+                icon={Icons.TIP_JAR}
+              />
+            </div>
           </div>
         </div>
       </Transition>

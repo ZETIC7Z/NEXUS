@@ -219,7 +219,8 @@ export async function get<T>(url: string, params?: object): Promise<T> {
   }
 
   // directly writing parameters, otherwise it will start the first parameter in the proxied request as "&" instead of "?" because it doesnt understand its proxied
-  const fullUrl = new URL(tmdbBaseUrl1 + url);
+  const cleanUrl = url.startsWith("/") ? url.slice(1) : url;
+  const fullUrl = new URL(tmdbBaseUrl1 + cleanUrl);
   const allParams = {
     ...params,
     language: formattedLanguage,
@@ -240,7 +241,7 @@ export async function get<T>(url: string, params?: object): Promise<T> {
         {
           headers: tmdbHeaders,
           baseURL: proxy,
-          signal: abortOnTimeout(5000),
+          signal: abortOnTimeout(15000),
         },
       );
     } catch (err) {
@@ -251,18 +252,18 @@ export async function get<T>(url: string, params?: object): Promise<T> {
 
   if (!result!) {
     try {
-      result = await mwFetch<T>(encodeURI(url), {
+      result = await mwFetch<T>(encodeURI(cleanUrl), {
         headers: tmdbHeaders,
         baseURL: tmdbBaseUrl1,
         params: allParams,
-        signal: abortOnTimeout(5000),
+        signal: abortOnTimeout(15000),
       });
     } catch (err) {
-      result = await mwFetch<T>(encodeURI(url), {
+      result = await mwFetch<T>(encodeURI(cleanUrl), {
         headers: tmdbHeaders,
         baseURL: tmdbBaseUrl2,
         params: allParams,
-        signal: abortOnTimeout(30000),
+        signal: abortOnTimeout(45000),
       });
     }
   }
@@ -345,10 +346,36 @@ type MediaDetailReturn<T extends TMDBContentTypes> =
       ? TMDBShowData
       : never;
 
+export async function getSeasonDetails(
+  id: string,
+  season: number,
+): Promise<
+  Array<{
+    id: number;
+    name: string;
+    episode_number: number;
+    overview: string;
+    still_path: string | null;
+    air_date: string;
+    season_number: number;
+  }>
+> {
+  const seasonData = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
+  return seasonData.episodes.map((episode) => ({
+    id: episode.id,
+    name: episode.name,
+    episode_number: episode.episode_number,
+    overview: episode.overview,
+    still_path: episode.still_path,
+    air_date: episode.air_date,
+    season_number: season,
+  }));
+}
+
 export async function getMediaDetails<
   T extends TMDBContentTypes,
   TReturn = MediaDetailReturn<T>,
->(id: string, type: T): Promise<TReturn> {
+>(id: string, type: T, fetchEpisodes: boolean = true): Promise<TReturn> {
   if (type === TMDBContentTypes.MOVIE) {
     return get<TReturn>(`/movie/${id}`, {
       append_to_response: "external_ids,credits,release_dates",
@@ -359,21 +386,17 @@ export async function getMediaDetails<
       append_to_response: "external_ids,credits,content_ratings",
     });
 
+    if (!fetchEpisodes) {
+      return {
+        ...showData,
+        episodes: [],
+      } as TReturn;
+    }
+
     // Fetch episodes for each season
     const showDetails = showData as TMDBShowData;
     const episodePromises = showDetails.seasons.map(async (season) => {
-      const seasonData = await get<TMDBSeason>(
-        `/tv/${id}/season/${season.season_number}`,
-      );
-      return seasonData.episodes.map((episode) => ({
-        id: episode.id,
-        name: episode.name,
-        episode_number: episode.episode_number,
-        overview: episode.overview,
-        still_path: episode.still_path,
-        air_date: episode.air_date,
-        season_number: season.season_number,
-      }));
+      return getSeasonDetails(id, season.season_number);
     });
 
     const allEpisodes = (await Promise.all(episodePromises)).flat();

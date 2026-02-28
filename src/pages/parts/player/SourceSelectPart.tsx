@@ -1,3 +1,4 @@
+/* eslint-disable react/forbid-dom-props */
 import { ScrapeMedia } from "@p-stream/providers";
 import React, { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";

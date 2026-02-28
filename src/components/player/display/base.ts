@@ -66,7 +66,7 @@ function hlsLevelToQuality(level?: Level): SourceQuality | null {
     }
   }
 
-  return "unknown"; // fallback to unknown quality
+  return "360"; // fallback to lowest standard quality
 }
 
 function hlsLevelsToQualities(levels: Level[]): SourceQuality[] {
@@ -189,6 +189,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
           autoStartLoad: true,
           maxBufferLength: 120, // 120 seconds
           maxMaxBufferLength: 240,
+          abrEwmaDefaultEstimate: 5 * 1000 * 1000, // 5 Mbps default bandwidth estimate for better ABR decisions
           fragLoadPolicy: {
             default: {
               maxLoadTimeMs: 30 * 1000, // allow it load extra long, fragments are slow if requested for the first time on an origin
@@ -627,7 +628,16 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
     },
     toggleFullscreen() {
+      const screenAny = window.screen as any;
       if (isFullscreen) {
+        if (screenAny?.orientation?.unlock) {
+          try {
+            screenAny.orientation.unlock();
+          } catch {
+            // Silently fail
+          }
+        }
+
         isFullscreen = false;
         emit("fullscreen", isFullscreen);
         emit("needstrack", false);
@@ -637,6 +647,12 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
 
       // enter fullscreen
+      if (screenAny?.orientation?.lock) {
+        screenAny.orientation.lock("landscape").catch(() => {
+          // Silently fail if not supported (iOS/Desktop)
+        });
+      }
+
       isFullscreen = true;
       emit("fullscreen", isFullscreen);
       if (!canFullscreen() || fscreen.fullscreenElement) return;

@@ -11,6 +11,7 @@ import { Dropdown } from "@/components/form/Dropdown";
 import { SortableListWithToggles } from "@/components/form/SortableListWithToggles";
 import { Heading1 } from "@/components/utils/Text";
 import { appLanguageOptions } from "@/setup/i18n";
+import { usePreferencesStore } from "@/stores/preferences";
 import { isAutoplayAllowed } from "@/utils/autoplay";
 import { getLocaleInfo, sortLangCodes } from "@/utils/language";
 
@@ -59,7 +60,22 @@ export function PreferencesPart(props: {
     (item) => item.id === getLocaleInfo(props.language)?.code,
   );
 
-  const allSources = getAllProviders().listSources();
+  const hasFebboxKey = usePreferencesStore((s) => !!s.febboxKey);
+
+  const allSources = useMemo(() => {
+    const sources = getAllProviders().listSources();
+
+    if (hasFebboxKey && !sources.some((s) => s.id === "febbox")) {
+      sources.push({
+        id: "febbox",
+        name: "FebBox (4K) ⭐",
+        rank: 999,
+        mediaTypes: ["movie", "show"],
+      } as any);
+    }
+
+    return sources;
+  }, [hasFebboxKey]);
 
   const sourceItems = useMemo(() => {
     const currentDeviceSources = getProviders().listSources();
@@ -243,6 +259,63 @@ export function PreferencesPart(props: {
               <Toggle enabled={props.enableDoubleClickToSeek} />
               <p className="flex-1 text-white font-bold">
                 {t("settings.preferences.doubleClickToSeekLabel")}
+              </p>
+            </div>
+          </div>
+
+          {/* Auto Skip Segments Preference */}
+          <div>
+            <p className="text-white font-bold mb-3">
+              {t("settings.preferences.autoSkipSegments", "Auto-Skip Segments")}
+            </p>
+            <p className="max-w-[25rem] font-medium">
+              {t(
+                "settings.preferences.autoSkipSegmentsDescription",
+                "Automatically skip intro, recap, and preview segments when available. Uses data from TheIntroDB and other community sources.",
+              )}
+            </p>
+            <div
+              onClick={() => {
+                const store = usePreferencesStore.getState();
+                store.setEnableAutoSkipSegments(!store.enableAutoSkipSegments);
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+            >
+              <Toggle
+                enabled={usePreferencesStore((s) => s.enableAutoSkipSegments)}
+              />
+              <p className="flex-1 text-white font-bold">
+                {t(
+                  "settings.preferences.autoSkipSegmentsLabel",
+                  "Auto-skip segments",
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Pause Overlay Preference */}
+          <div>
+            <p className="text-white font-bold mb-3">
+              {t("settings.preferences.pauseOverlay", "Pause Overlay")}
+            </p>
+            <p className="max-w-[25rem] font-medium">
+              {t(
+                "settings.preferences.pauseOverlayDescription",
+                "Show media information (title, poster, episode details) when the video is paused.",
+              )}
+            </p>
+            <div
+              onClick={() => {
+                const store = usePreferencesStore.getState();
+                store.setEnablePauseOverlay(!store.enablePauseOverlay);
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+            >
+              <Toggle
+                enabled={usePreferencesStore((s) => s.enablePauseOverlay)}
+              />
+              <p className="flex-1 text-white font-bold">
+                {t("settings.preferences.pauseOverlayLabel", "Pause overlay")}
               </p>
             </div>
           </div>

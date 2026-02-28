@@ -140,6 +140,9 @@ export function useDiscoverMedia({
   const fetchTMDBMedia = useCallback(
     async (endpoint: string, params: Record<string, any> = {}) => {
       try {
+        const { getUserRegion } = await import("@/utils/region");
+        const region = await getUserRegion();
+
         // For carousel views, we only need one page of results
         if (isCarouselView) {
           params.page = "1"; // Always use first page for carousels
@@ -150,6 +153,7 @@ export function useDiscoverMedia({
         const data = await get<any>(endpoint, {
           api_key: conf().TMDB_READ_API_KEY,
           language: formattedLanguage,
+          region,
           ...params,
         });
 

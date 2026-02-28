@@ -95,8 +95,9 @@ export function TIDBSubmissionForm({
     if (segment) {
       setFormData({
         segment: segment.type as SegmentType,
-        start: segment.start ? segment.start.toString() : "",
-        end: segment.end ? segment.end.toString() : "",
+        start:
+          segment.start_ms != null ? (segment.start_ms / 1000).toString() : "",
+        end: segment.end_ms != null ? (segment.end_ms / 1000).toString() : "",
       });
     }
   }, [segment]);

@@ -49,7 +49,7 @@ export function DetailsModal({ id, data: _data, minimal }: DetailsModalProps) {
       try {
         const type =
           data.type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
-        const details = await getMediaDetails(data.id.toString(), type);
+        const details = await getMediaDetails(data.id.toString(), type, false);
         const backdropUrl = getMediaBackdrop(details.backdrop_path);
         const logoUrl = await getMediaLogo(data.id.toString(), type);
         if (type === TMDBContentTypes.MOVIE) {
@@ -162,6 +162,7 @@ export function DetailsModal({ id, data: _data, minimal }: DetailsModalProps) {
             <div className="absolute right-4 top-4 z-50 pointer-events-auto">
               <button
                 type="button"
+                title="Close"
                 className="text-s font-semibold text-type-secondary hover:text-white transition-transform hover:scale-95 select-none"
                 onClick={hide}
               >

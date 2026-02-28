@@ -34,8 +34,7 @@ type ScraperEvent<Event extends keyof FullScraperEvents> = Parameters<
 
 // Custom sources that should appear in the spinner (defined outside to avoid recreating on every render)
 const customSources: ScrapingSegment[] = [
-  { id: "zeticuz", name: "Zeticuz", status: "waiting", percentage: 0 },
-  { id: "febbox", name: "Febbox", status: "waiting", percentage: 0 },
+  { id: "febbox", name: "FebBox (4K) ⭐", status: "waiting", percentage: 0 },
 ];
 
 function useBaseScrape() {
@@ -247,7 +246,10 @@ export function useScrape() {
         : {};
 
       // Start with all available sources (filtered by disabled and failed ones)
-      let baseSourceOrder = allSources
+      const hasFebboxKey =
+        usePreferencesStore.getState().febboxKey ||
+        import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
+      const availableSources = allSources
         .filter(
           (source) =>
             !(disabledSources || []).includes(source.id) &&
@@ -255,7 +257,19 @@ export function useScrape() {
         )
         .map((source) => source.id);
 
-      // Apply custom source ordering if enabled
+      // Inject FebBox into the available sources list if key is present
+      if (hasFebboxKey && !availableSources.includes("febbox")) {
+        availableSources.push("febbox");
+      }
+
+      let baseSourceOrder = availableSources;
+
+      // Ensure febbox is in the list if key present
+      if (hasFebboxKey && !baseSourceOrder.includes("febbox")) {
+        baseSourceOrder.push("febbox");
+      }
+
+      // Apply custom source ordering if enabled (from settings)
       if (enableSourceOrder && (preferredSourceOrder || []).length > 0) {
         const orderedSources: string[] = [];
         const remainingSources = [...baseSourceOrder];
@@ -273,7 +287,7 @@ export function useScrape() {
         baseSourceOrder = [...orderedSources, ...remainingSources];
       }
 
-      // If we have a last successful source and the feature is enabled, prioritize it
+      // Dynamic prioritization: last successful source goes to the very top
       if (enableLastSuccessfulSource && lastSuccessfulSource) {
         const lastSourceIndex = baseSourceOrder.indexOf(lastSuccessfulSource);
         if (lastSourceIndex !== -1) {
@@ -282,14 +296,61 @@ export function useScrape() {
             ...baseSourceOrder.filter((id) => id !== lastSuccessfulSource),
           ];
         }
+      } else {
+        // Default: FebBox first if no lastSuccessfulSource
+        const febboxIdx = baseSourceOrder.indexOf("febbox");
+        if (febboxIdx > 0) {
+          baseSourceOrder.splice(febboxIdx, 1);
+          baseSourceOrder = ["febbox", ...baseSourceOrder];
+        }
       }
 
       // If starting from a specific source ID, filter the order to start AFTER that source
       let filteredSourceOrder = baseSourceOrder;
       if (startFromSourceId) {
-        const startIndex = filteredSourceOrder.indexOf(startFromSourceId);
+        let startIndex = filteredSourceOrder.indexOf(startFromSourceId);
+
+        // If the source was removed (e.g., due to failing previously), find its index in the unfiltered list
+        if (startIndex === -1) {
+          const unfilteredOrder = allSources.map((s) => s.id);
+          // Add custom sources to unfiltered order for reference
+          const febboxKeyPresent =
+            usePreferencesStore.getState().febboxKey ||
+            import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
+          if (febboxKeyPresent && !unfilteredOrder.includes("febbox")) {
+            unfilteredOrder.unshift("febbox");
+          }
+
+          const rawIndex = unfilteredOrder.indexOf(startFromSourceId);
+          if (rawIndex !== -1) {
+            // Find the next available source in the filtered list that comes AFTER the rawIndex
+            const nextAvailable = unfilteredOrder
+              .slice(rawIndex + 1)
+              .find((id) => filteredSourceOrder.includes(id));
+            if (nextAvailable) {
+              startIndex = filteredSourceOrder.indexOf(nextAvailable) - 1; // -1 because we slice(startIndex + 1) below
+            }
+          }
+        }
+
         if (startIndex !== -1) {
           filteredSourceOrder = filteredSourceOrder.slice(startIndex + 1);
+        } else {
+          // Explicitly prevent restarting from beginning if we were trying to find the next source and failed
+          // If we couldn't find a valid starting point, just empty it or find something else so we don't loop
+          const currentFebboxIdx = filteredSourceOrder.indexOf("febbox");
+          if (startFromSourceId === "febbox" && currentFebboxIdx !== -1) {
+            filteredSourceOrder = filteredSourceOrder.slice(
+              currentFebboxIdx + 1,
+            );
+          }
+        }
+
+        // If we reached the end of the list, loop back to the beginning EXCEPT to the source we just came from
+        if (filteredSourceOrder.length === 0) {
+          filteredSourceOrder = baseSourceOrder.filter(
+            (id) => id !== startFromSourceId,
+          );
         }
       }
 
@@ -305,40 +366,35 @@ export function useScrape() {
           )
         : undefined;
 
-      // Initialize ALL sources in spinner at once (custom + extension sources)
-      // Order by lastSuccessfulSource first (if it's a custom source)
+      // Use filteredSourceOrder for spinner when resuming, baseSourceOrder for fresh start
+      const spinnerSourceOrder = startFromSourceId
+        ? filteredSourceOrder
+        : baseSourceOrder;
+
+      // Initialize sources in spinner — only show what we'll actually try
       const allSourcesInit: Record<string, ScrapingSegment> = {};
       const allSourceOrder: ScrapingItems[] = [];
 
-      // Combine custom sources + provider sources
-      const combinedSources: ScrapingSegment[] = [
-        ...customSources.map((s) => ({ ...s, status: "waiting" as const })),
-        ...allSources
-          .filter(
-            (source) =>
-              !(disabledSources || []).includes(source.id) &&
-              !failedSources.includes(source.id) &&
-              !customSources.some((c) => c.id === source.id),
-          )
-          .map((source) => ({
-            id: source.id,
-            name: source.name,
+      // Map spinnerSourceOrder to ScrapingSegment items
+      const combinedSources: ScrapingSegment[] = spinnerSourceOrder.map(
+        (id) => {
+          // If it's a custom source (FebBox)
+          const custom = customSources.find((c) => c.id === id);
+          if (custom) return { ...custom, status: "waiting" as const };
+
+          // Otherwise it's a provider source
+          const source = allSources.find((s) => s.id === id);
+          return {
+            id,
+            name: source?.name || id,
             status: "waiting" as const,
             percentage: 0,
-          })),
-      ];
-
-      // Sort: lastSuccessfulSource first, then others
-      const orderedAllSources = combinedSources.sort((a, b) => {
-        if (enableLastSuccessfulSource && lastSuccessfulSource) {
-          if (a.id === lastSuccessfulSource) return -1;
-          if (b.id === lastSuccessfulSource) return 1;
-        }
-        return 0;
-      });
+          };
+        },
+      );
 
       // Build the sources and order for the spinner
-      orderedAllSources.forEach((source) => {
+      combinedSources.forEach((source) => {
         allSourcesInit[source.id] = { ...source };
         allSourceOrder.push({ id: source.id, children: [] });
       });
@@ -346,70 +402,15 @@ export function useScrape() {
       setSources(allSourcesInit);
       setSourceOrder(allSourceOrder);
 
-      // Keep reference to ordered custom sources for trying them first
-      const orderedCustomSources = orderedAllSources.filter((s) =>
-        customSources.some((c) => c.id === s.id),
+      // Only try custom sources that are in filteredSourceOrder (respects resume position)
+      const customSourceIdsToTry = filteredSourceOrder.filter((id) =>
+        customSources.some((c) => c.id === id),
       );
 
-      // Try custom sources in order (lastSuccessfulSource first)
-      for (const source of orderedCustomSources) {
-        if (source.id === "zeticuz") {
-          // Try Zeticuz
-          setCurrentSource("zeticuz");
-          setSources((s) => ({
-            ...s,
-            zeticuz: { ...s.zeticuz, status: "pending", percentage: 50 },
-          }));
-          try {
-            const {
-              scrapeZeticuzMovie,
-              scrapeZeticuzTV,
-              convertZeticuzToStream,
-            } = await import("@/backend/providers/zeticuz");
-
-            let zeticuzData = null;
-            if (media.type === "movie") {
-              zeticuzData = await scrapeZeticuzMovie(media.tmdbId);
-            } else if (media.type === "show" && media.episode && media.season) {
-              zeticuzData = await scrapeZeticuzTV(
-                media.tmdbId,
-                media.season.number,
-                media.episode.number,
-              );
-            }
-
-            if (zeticuzData) {
-              const stream = convertZeticuzToStream(zeticuzData);
-              if (stream) {
-                setSources((s) => ({
-                  ...s,
-                  zeticuz: {
-                    ...s.zeticuz,
-                    status: "success",
-                    percentage: 100,
-                  },
-                }));
-                setLastSuccessfulSource("zeticuz");
-                const zeticuzOutput = {
-                  stream: { ...stream, id: "zeticuz-stream" },
-                  sourceId: "zeticuz",
-                  embedId: undefined,
-                };
-                return getResult(zeticuzOutput);
-              }
-            }
-            setSources((s) => ({
-              ...s,
-              zeticuz: { ...s.zeticuz, status: "failure", percentage: 100 },
-            }));
-          } catch {
-            setSources((s) => ({
-              ...s,
-              zeticuz: { ...s.zeticuz, status: "failure", percentage: 100 },
-            }));
-          }
-        } else if (source.id === "febbox") {
-          // Try Febbox
+      // Try custom sources (FebBox) only if they are in the filtered list
+      for (const customSourceId of customSourceIdsToTry) {
+        if (customSourceId === "febbox") {
+          // Try Febbox with a 15-second timeout for fast failure detection
           setCurrentSource("febbox");
           setSources((s) => ({
             ...s,
@@ -419,14 +420,32 @@ export function useScrape() {
             const { scrapeFemboxMovie, scrapeFemboxTV, convertFemboxToStream } =
               await import("@/backend/providers/fembox");
 
+            // Wrap FebBox scraping in a timeout (15s max)
+            const febboxTimeout = <T,>(
+              promise: Promise<T>,
+              ms: number,
+            ): Promise<T | null> =>
+              Promise.race([
+                promise,
+                new Promise<null>((resolve) => {
+                  setTimeout(() => resolve(null), ms);
+                }),
+              ]);
+
             let femboxData = null;
             if (media.type === "movie") {
-              femboxData = await scrapeFemboxMovie(media.tmdbId);
+              femboxData = await febboxTimeout(
+                scrapeFemboxMovie(media.tmdbId),
+                15000,
+              );
             } else if (media.type === "show" && media.episode && media.season) {
-              femboxData = await scrapeFemboxTV(
-                media.tmdbId,
-                media.season.number,
-                media.episode.number,
+              femboxData = await febboxTimeout(
+                scrapeFemboxTV(
+                  media.tmdbId,
+                  media.season.number,
+                  media.episode.number,
+                ),
+                15000,
               );
             }
 
@@ -462,7 +481,12 @@ export function useScrape() {
         }
       }
 
-      // Continue with regular providers
+      // Continue with regular providers (exclude custom sources like febbox from provider engine)
+      const customSourceIds = customSources.map((c) => c.id);
+      const providerSourceOrder = filteredSourceOrder.filter(
+        (id) => !customSourceIds.includes(id),
+      );
+
       const providerApiUrl = getLoadbalancedProviderApiUrl();
       if (providerApiUrl && !isExtensionActiveCached()) {
         startScrape();
@@ -470,7 +494,7 @@ export function useScrape() {
         const conn = await connectServerSideEvents<RunOutput | "">(
           baseUrlMaker.scrapeAll(
             media,
-            filteredSourceOrder,
+            providerSourceOrder,
             filteredEmbedOrder,
           ),
           ["completed", "noOutput"],
@@ -490,7 +514,7 @@ export function useScrape() {
       const providers = getProviders();
       const output = await providers.runAll({
         media,
-        sourceOrder: filteredSourceOrder,
+        sourceOrder: providerSourceOrder,
         embedOrder: filteredEmbedOrder,
         events: {
           init: initEvent,
@@ -513,8 +537,8 @@ export function useScrape() {
       startScrape,
       preferredSourceOrder,
       enableSourceOrder,
-      lastSuccessfulSource,
       enableLastSuccessfulSource,
+      lastSuccessfulSource,
       setLastSuccessfulSource,
       disabledSources,
       preferredEmbedOrder,

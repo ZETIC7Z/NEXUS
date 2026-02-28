@@ -36,7 +36,7 @@ import { conf } from "@/setup/config";
 import { usePreferencesStore } from "@/stores/preferences";
 import { getProxyUrls } from "@/utils/proxyUrls";
 
-import { DebridEdit, FebboxSetup } from "../parts/settings/ConnectionsPart";
+import { FebboxSetup } from "../parts/settings/ConnectionsPart";
 
 function Item(props: { title: string; children: React.ReactNode }) {
   return (
@@ -153,10 +153,14 @@ export function OnboardingPage() {
           <Trans i18nKey="onboarding.start.moreInfo.explainer.outro">
             <a
               href="https://discord.com/invite/7z6znYgrTG"
+              title="Discord server"
+              aria-label="Discord server"
               target="_blank"
               rel="noopener noreferrer"
               className="text-type-link"
-            />
+            >
+              Discord
+            </a>
           </Trans>
         </div>
       </FancyModal>
@@ -179,9 +183,36 @@ export function OnboardingPage() {
         {/* Desktop Cards */}
         <div className="hidden md:flex w-full flex-col md:flex-row gap-3 pb-6">
           <Card
+            onClick={() =>
+              window.open(
+                "https://github.com/ZETIC7Z/NEXUS-desktop/releases",
+                "_blank",
+              )
+            }
+            className="md:w-1/4"
+          >
+            <CardContent
+              colorClass="!text-onboarding-best"
+              title={t("onboarding.start.options.desktopapp.title")}
+              subtitle={t("onboarding.start.options.desktopapp.quality")}
+              description={t("onboarding.start.options.desktopapp.description")}
+            >
+              <Link className="!text-onboarding-best">
+                {t("onboarding.start.options.desktopapp.action")}
+              </Link>
+            </CardContent>
+          </Card>
+          <div className="hidden md:grid grid-rows-[1fr,auto,1fr] justify-center gap-4">
+            <VerticalLine className="items-end" />
+            <span className="text-xs uppercase font-bold">
+              {t("onboarding.start.options.or")}
+            </span>
+            <VerticalLine />
+          </div>
+          <Card
             onClick={() => navigate("/onboarding/extension")}
             className={classNames(
-              conf().HIDE_PROXY_ONBOARDING ? "md:w-1/2" : "md:w-1/3",
+              conf().HIDE_PROXY_ONBOARDING ? "md:w-1/3" : "md:w-1/4",
             )}
           >
             <CardContent
@@ -235,7 +266,7 @@ export function OnboardingPage() {
                     : skipModal.show // Show modal on other browsers
                 }
                 className={classNames(
-                  conf().HIDE_PROXY_ONBOARDING ? "md:w-1/2" : "md:w-1/3",
+                  conf().HIDE_PROXY_ONBOARDING ? "md:w-1/3" : "md:w-1/4",
                 )}
               >
                 <CardContent
@@ -304,16 +335,14 @@ export function OnboardingPage() {
         <div className="mt-6">
           <FebboxSetup
             febboxKey={usePreferencesStore((s) => s.febboxKey)}
-            setFebboxKey={usePreferencesStore((s) => s.setFebboxKey)}
-            mode="onboarding"
-          />
-        </div>
-        <div className="mt-6">
-          <DebridEdit
-            debridToken={usePreferencesStore((s) => s.debridToken)}
-            setdebridToken={usePreferencesStore((s) => s.setdebridToken)}
-            debridService={usePreferencesStore((s) => s.debridService)}
-            setdebridService={usePreferencesStore((s) => s.setdebridService)}
+            setFebboxKey={(val) => {
+              const setter = usePreferencesStore.getState().setFebboxKey;
+              if (typeof val === "function") {
+                setter(val(usePreferencesStore.getState().febboxKey));
+              } else {
+                setter(val);
+              }
+            }}
             mode="onboarding"
           />
         </div>

@@ -31,7 +31,6 @@ export function SettingsMenu({ id }: { id: string }) {
 
     // Custom source name mappings for sources not in provider metadata
     const customSourceNames: Record<string, string> = {
-      zeticuz: "Zeticuz 🔥",
       febbox: "FebBox (4K) ⭐",
     };
 
@@ -170,6 +169,9 @@ export function SettingsMenu({ id }: { id: string }) {
         </Menu.Link>
         <Menu.ChevronLink onClick={() => router.navigate("/playback")}>
           {t("player.menus.settings.playbackItem")}
+        </Menu.ChevronLink>
+        <Menu.ChevronLink onClick={() => router.navigate("/skipsegments")}>
+          {t("player.skipTime.skipSegments", "Skip Segments")}
         </Menu.ChevronLink>
       </Menu.Section>
     </Menu.Card>
