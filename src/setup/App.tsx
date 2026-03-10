@@ -12,6 +12,7 @@ import {
 import { convertLegacyUrl, isLegacyUrl } from "@/backend/metadata/getmeta";
 import { generateQuickSearchMediaUrl } from "@/backend/metadata/tmdb";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { AutoPWAInstallPrompt } from "@/components/AutoPWAInstallPrompt";
 import { DetailsModal } from "@/components/overlays/detailsModal";
 import { DisclaimerModal } from "@/components/overlays/DisclaimerModal";
 import { KeyboardCommandsModal } from "@/components/overlays/KeyboardCommandsModal";
@@ -135,6 +136,7 @@ function App() {
   return (
     <Layout>
       <LanguageProvider />
+      <AutoPWAInstallPrompt />
       <NotificationModal id="notifications" />
       <KeyboardCommandsModal id="keyboard-commands" />
       <SupportInfoModal id="support-info" />

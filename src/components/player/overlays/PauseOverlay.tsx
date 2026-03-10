@@ -150,26 +150,24 @@ export function PauseOverlay() {
     >
       {/* Poster Background layer */}
       {posterUrl && (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none transition-opacity duration-700"
-            ref={(el) => {
-              if (el) {
-                el.style.opacity = shouldShow ? "0.45" : "0";
-                el.style.webkitMaskImage =
-                  "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)";
-                el.style.maskImage =
-                  "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)";
-              }
-            }}
-          >
-            <img
-              src={posterUrl}
-              alt="backdrop"
-              className="w-full h-full object-cover pointer-events-none"
-            />
-          </div>
-        </>
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+          ref={(el) => {
+            if (el) {
+              el.style.opacity = shouldShow ? "0.45" : "0";
+              el.style.webkitMaskImage =
+                "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)";
+              el.style.maskImage =
+                "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)";
+            }
+          }}
+        >
+          <img
+            src={posterUrl}
+            alt="backdrop"
+            className="w-full h-full object-cover pointer-events-none"
+          />
+        </div>
       )}
 
       {/* Logo/Details layer (Fade in delayed) */}

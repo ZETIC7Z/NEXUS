@@ -73,15 +73,14 @@ export function MobileLockScreen() {
 
   const handleLockedScreenTap = () => {
     if (isScreenLocked) {
-      // Show unlock button when tapping locked screen
+      // Show unlock button when tapping locked screen and restart auto-hide timer
       setShowButton(true);
+      if (hideTimer) clearTimeout(hideTimer);
+      const timer = setTimeout(() => {
+        setShowButton(false);
+      }, 3000);
+      setHideTimer(timer);
     }
-  };
-
-  const _handleUnlockedTap = () => {
-    // Reset hide timer when tapping
-    if (hideTimer) clearTimeout(hideTimer);
-    setShowButton(true);
   };
 
   const toggleLock = (e: React.MouseEvent | React.TouchEvent) => {
@@ -89,6 +88,12 @@ export function MobileLockScreen() {
     e.preventDefault();
     setScreenLocked(!isScreenLocked);
     setShowButton(true);
+    // Reset auto-hide timer after toggling
+    if (hideTimer) clearTimeout(hideTimer);
+    const timer = setTimeout(() => {
+      setShowButton(false);
+    }, 3000);
+    setHideTimer(timer);
   };
 
   // Only show in landscape fullscreen on mobile (not portrait)

@@ -564,9 +564,7 @@ export function Navigation(props: NavigationProps) {
           "fixed left-0 right-0 z-[500] transition-transform duration-300 ease-out flex justify-center",
           isHeaderHidden ? "-translate-y-full" : "translate-y-0",
         )}
-        ref={(el) => {
-          if (el) el.style.top = `calc(${bannerHeight}px + 1.5rem)`;
-        }}
+        style={{ top: `calc(${bannerHeight}px + 1.5rem)` }}
       >
         {/* Desktop Logo - Absolute Left */}
         <div className="hidden lg:block absolute left-8 top-1/2 -translate-y-1/2 z-[502]">
@@ -605,6 +603,7 @@ export function Navigation(props: NavigationProps) {
         {/* Expandable Search Bar - Below Header */}
         {/* eslint-disable-next-line react/forbid-dom-props */}
         <div
+          ref={searchContainerDesktopRef}
           onMouseEnter={stopSearchCloseTimer}
           onMouseLeave={startSearchCloseTimer}
           className={classNames(
@@ -613,13 +612,7 @@ export function Navigation(props: NavigationProps) {
               ? "opacity-100 translate-y-0 pointer-events-auto"
               : "opacity-0 -translate-y-4 pointer-events-none",
           )}
-          ref={(el) => {
-            if (el) el.style.top = `calc(${bannerHeight}px + 5rem)`;
-            if (typeof searchContainerDesktopRef === "function")
-              searchContainerDesktopRef(el);
-            else if (searchContainerDesktopRef)
-              searchContainerDesktopRef.current = el;
-          }}
+          style={{ top: `calc(${bannerHeight}px + 5rem)` }}
         >
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative bg-black/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">

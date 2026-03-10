@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { UserAvatar } from "@/components/Avatar";
 import { Icon, Icons } from "@/components/Icon";
 import { LinksDropdown } from "@/components/LinksDropdown";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSidebarStore } from "@/stores/sidebar";
 
@@ -33,7 +34,7 @@ const mainNavItems: SidebarItem[] = [
     id: "favorites",
     label: "My Favorites",
     icon: Icons.HEART,
-    path: "/favorites",
+    path: "/bookmarks",
   },
   { id: "history", label: "Recent Watch", icon: Icons.CLOCK, path: "/history" },
   {
@@ -268,6 +269,9 @@ function DiscoverNexusDropdown({
         </div>
       )}
 
+      {/* PWA Install Button */}
+      <PWAInstallButton isSidebarItem />
+
       {/* International Cable TV */}
       <button
         type="button"
@@ -336,22 +340,24 @@ function NavContent({
                       : false
               }
               handleNavigation={handleNavigation}
-              onClick={() => {
-                if (item.id === "genre") {
-                  setGenreOpen(!genreOpen);
-                  // Auto-close Discover Nexus when opening Genre
-                  if (!genreOpen) {
-                    setDiscoverOpen(false);
-                    setWatchOnOpen(false);
-                  }
-                } else if (item.id === "discover") {
-                  setDiscoverOpen(!discoverOpen);
-                  // Auto-close Genre when opening Discover Nexus
-                  if (!discoverOpen) {
-                    setGenreOpen(false);
-                  }
-                }
-              }}
+              onClick={
+                item.id === "genre"
+                  ? () => {
+                      setGenreOpen(!genreOpen);
+                      if (!genreOpen) {
+                        setDiscoverOpen(false);
+                        setWatchOnOpen(false);
+                      }
+                    }
+                  : item.id === "discover"
+                    ? () => {
+                        setDiscoverOpen(!discoverOpen);
+                        if (!discoverOpen) {
+                          setGenreOpen(false);
+                        }
+                      }
+                    : undefined
+              }
             />
             {item.id === "genre" && (
               <GenreDropdown
