@@ -31,13 +31,13 @@ export function ZeticuzIframePlayer() {
     const { id, type } = decoded;
 
     if (type === MWMediaType.MOVIE) {
-      return `https://zxcstream.xyz/player/movie/${id}?autoplay=true&server=5&domainAd=www.zeticuz.online&color=E50914`;
+      return `https://zxcstream.xyz/player/movie/${id}?server=5&domainAd=www.zeticuz.online&color=E50914`;
     }
 
     if (type === MWMediaType.SERIES) {
       const seasonNum = params.season || "1";
       const episodeNum = params.episode || "1";
-      return `https://zxcstream.xyz/player/tv/${id}/${seasonNum}/${episodeNum}?autoplay=true&server=5&domainAd=www.zeticuz.online&color=E50914`;
+      return `https://zxcstream.xyz/player/tv/${id}/${seasonNum}/${episodeNum}?server=5&domainAd=www.zeticuz.online&color=E50914`;
     }
 
     return null;
@@ -85,7 +85,8 @@ export function ZeticuzIframePlayer() {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFsChange);
-    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
 
   const toggleFullscreen = () => {
@@ -168,4 +169,3 @@ export function ZeticuzIframePlayer() {
     </div>
   );
 }
-
