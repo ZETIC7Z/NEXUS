@@ -117,12 +117,12 @@ export function ZeticuzIframePlayer() {
         <title>Zeticuz Player | NEXUS</title>
       </Helmet>
 
-      {/* NEXUS Logo Overlay - Positioned at top-1 and right-20. Now shows instantly (duration-75). Logo size responds to device. */}
+      {/* NEXUS Logo Overlay - Positioned at top-[-12px] (up +3) and right-20. Now shows instantly (duration-75). Logo size responds to device. */}
       <Transition
         animation="fade"
         show={showLogo}
         durationClass="duration-75"
-        className="absolute right-20 top-1 z-[60] pointer-events-none md:right-24 lg:right-28"
+        className="absolute right-20 top-[-12px] z-[60] pointer-events-none md:right-24 lg:right-28"
       >
         <img
           src="/nexus-logo-full.png"
@@ -153,7 +153,7 @@ export function ZeticuzIframePlayer() {
           className="rounded-full bg-black/50 p-3 text-white backdrop-blur-md transition-colors hover:bg-black/70"
           title={isFullscreen ? t("player.exitFullscreen") : t("player.fullscreen")}
         >
-          <Icon icon={isFullscreen ? Icons.FULLSCREEN_EXIT : Icons.FULLSCREEN} />
+          <Icon icon={isFullscreen ? Icons.COMPRESS : Icons.EXPAND} />
         </button>
       </Transition>
 
