@@ -33,6 +33,7 @@ import {
 } from "@/pages/onboarding/utils";
 import { PageTitle } from "@/pages/parts/util/PageTitle";
 import { conf } from "@/setup/config";
+import { useOnboardingStore } from "@/stores/onboarding";
 import { usePreferencesStore } from "@/stores/preferences";
 import { getProxyUrls } from "@/utils/proxyUrls";
 
@@ -53,13 +54,10 @@ export function OnboardingPage() {
   const infoModal = useModal("info");
   const { completeAndRedirect } = useRedirectBack();
   const { t } = useTranslation();
+  const setUseZeticuzPlayer = useOnboardingStore((s) => s.setUseZeticuzPlayer);
   const noProxies = getProxyUrls().length === 0;
 
-  const isSafari =
-    typeof navigator !== "undefined" &&
-    /Safari/.test(navigator.userAgent) &&
-    !/Chrome/.test(navigator.userAgent) &&
-    !/Edg/.test(navigator.userAgent);
+
 
   return (
     <MinimalPageLayout>
@@ -210,7 +208,10 @@ export function OnboardingPage() {
             <VerticalLine />
           </div>
           <Card
-            onClick={() => navigate("/onboarding/extension")}
+            onClick={() => {
+              setUseZeticuzPlayer(false);
+              navigate("/onboarding/extension");
+            }}
             className={classNames(
               conf().HIDE_PROXY_ONBOARDING ? "md:w-1/3" : "md:w-1/4",
             )}
@@ -236,7 +237,10 @@ export function OnboardingPage() {
                 <VerticalLine />
               </div>
               <Card
-                onClick={() => navigate("/onboarding/proxy")}
+                onClick={() => {
+                  setUseZeticuzPlayer(false);
+                  navigate("/onboarding/proxy");
+                }}
                 className="md:w-1/3"
               >
                 <CardContent
@@ -260,23 +264,20 @@ export function OnboardingPage() {
                 <VerticalLine />
               </div>
               <Card
-                onClick={
-                  isSafari
-                    ? () => completeAndRedirect() // Skip modal on Safari
-                    : skipModal.show // Show modal on other browsers
-                }
+                onClick={() => {
+                  setUseZeticuzPlayer(true);
+                  completeAndRedirect();
+                }}
                 className={classNames(
                   conf().HIDE_PROXY_ONBOARDING ? "md:w-1/3" : "md:w-1/4",
                 )}
               >
                 <CardContent
-                  colorClass="!text-onboarding-bad"
-                  title={t("onboarding.defaultConfirm.confirm")}
+                  colorClass="!text-onboarding-good"
+                  title="Zeticuz Player"
                   subtitle=""
-                  description={t("onboarding.defaultConfirm.description")}
-                >
-                  <Trans i18nKey="onboarding.start.options.default.text" />
-                </CardContent>
+                  description="The best choice for mobile and smart TV or Android device that doesn't have or cannot install extension, but if your device and browser can support extension, much better to use and install extension specially for PC/desktop device"
+                />
               </Card>
             </>
           )}
@@ -285,7 +286,10 @@ export function OnboardingPage() {
         {/* Mobile Cards */}
         <div className="md:hidden flex w-full flex-col md:flex-row gap-3 pb-6">
           <Card
-            onClick={() => navigate("/onboarding/extension")}
+            onClick={() => {
+              setUseZeticuzPlayer(false);
+              navigate("/onboarding/extension");
+            }}
             className="md:w-1/3 md:h-full"
           >
             <MiniCardContent
@@ -297,7 +301,10 @@ export function OnboardingPage() {
           </Card>
           {conf().HIDE_PROXY_ONBOARDING ? null : (
             <Card
-              onClick={() => navigate("/onboarding/proxy")}
+              onClick={() => {
+                setUseZeticuzPlayer(false);
+                navigate("/onboarding/proxy");
+              }}
               className="md:w-1/3"
             >
               <MiniCardContent
@@ -310,18 +317,17 @@ export function OnboardingPage() {
           )}
           {noProxies ? null : (
             <Card
-              onClick={
-                isSafari
-                  ? () => completeAndRedirect() // Skip modal on Safari
-                  : skipModal.show // Show modal on other browsers
-              }
+              onClick={() => {
+                setUseZeticuzPlayer(true);
+                completeAndRedirect();
+              }}
               className="md:w-1/3"
             >
               <MiniCardContent
-                colorClass="!text-onboarding-bad"
-                title={t("onboarding.defaultConfirm.confirm")}
+                colorClass="!text-onboarding-good"
+                title="Zeticuz Player"
                 subtitle=""
-                description={t("onboarding.defaultConfirm.description")}
+                description="The best choice for mobile and smart TV or Android device that doesn't have or cannot install extension"
               />
             </Card>
           )}

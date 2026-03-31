@@ -19,6 +19,7 @@ import {
 import { Heading3 } from "@/components/utils/Text";
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
+import { useOnboardingStore } from "@/stores/onboarding";
 import { usePreferencesStore } from "@/stores/preferences";
 
 const testUrl = "https://postman-echo.com/get";
@@ -40,6 +41,7 @@ export type Status =
 
 type SetupData = {
   extension: Status;
+  zeticuzPlayer: Status;
   proxy: Status;
   defaultProxy: Status;
   febboxKeyTest?: Status;
@@ -185,6 +187,7 @@ function useIsSetup() {
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
   const debridToken = usePreferencesStore((s) => s.debridToken);
   const debridService = usePreferencesStore((s) => s.debridService);
+  const useZeticuzPlayer = useOnboardingStore((s) => s.useZeticuzPlayer);
   const { loading, value } = useAsync(async (): Promise<SetupData> => {
     const extensionStatus: Status = (await isExtensionActive())
       ? "success"
@@ -207,6 +210,7 @@ function useIsSetup() {
 
     return {
       extension: extensionStatus,
+      zeticuzPlayer: useZeticuzPlayer ? "success" : "unset",
       proxy: proxyStatus,
       defaultProxy: "success",
       ...(conf().ALLOW_FEBBOX_KEY && {
@@ -214,11 +218,12 @@ function useIsSetup() {
       }),
       debridTokenTest: debridTokenStatus,
     };
-  }, [proxyUrls, febboxKey, debridToken, debridService]);
+  }, [proxyUrls, febboxKey, debridToken, debridService, useZeticuzPlayer]);
 
   let globalState: Status = "unset";
   if (
     value?.extension === "success" ||
+    value?.zeticuzPlayer === "success" ||
     value?.proxy === "success" ||
     value?.febboxKeyTest === "success" ||
     value?.debridTokenTest === "success"
@@ -355,6 +360,9 @@ export function SetupPart() {
           <p className="max-w-[20rem] font-medium mb-6">
             {t(textLookupMap[globalState].desc)}
           </p>
+          <SetupCheckList status={setupStates.zeticuzPlayer}>
+            Zeticuz Player
+          </SetupCheckList>
           <SetupCheckList status={setupStates.extension}>
             {t("settings.connections.setup.items.extension")}
           </SetupCheckList>

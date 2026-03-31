@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import { useAsync } from "react-use";
 
+import { isExtensionActive } from "@/backend/extension/messaging";
 import { DetailedMeta } from "@/backend/metadata/getmeta";
 import { usePlayer } from "@/components/player/hooks/usePlayer";
 import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
@@ -17,13 +18,12 @@ import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { ScrapingItems, ScrapingSegment } from "@/hooks/useProviderScrape";
 import { useQueryParam } from "@/hooks/useQueryParams";
 import { MetaPart } from "@/pages/parts/player/MetaPart";
-import { PlaybackErrorPart } from "@/pages/parts/player/PlaybackErrorPart";
 import { PlayerPart } from "@/pages/parts/player/PlayerPart";
-import { ResumePart } from "@/pages/parts/player/ResumePart";
 import { ScrapeErrorPart } from "@/pages/parts/player/ScrapeErrorPart";
 import { ScrapingPart } from "@/pages/parts/player/ScrapingPart";
 import { SourceSelectPart } from "@/pages/parts/player/SourceSelectPart";
 import { useLastNonPlayerLink } from "@/stores/history";
+import { useOnboardingStore } from "@/stores/onboarding";
 import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
@@ -32,6 +32,9 @@ import { needsOnboarding } from "@/utils/onboarding";
 import { parseTimestamp } from "@/utils/timestamp";
 
 import { BlurEllipsis } from "./layouts/SubPageLayout";
+import { PlaybackErrorPart } from "./parts/player/PlaybackErrorPart";
+import { ResumePart } from "./parts/player/ResumePart";
+import { ZeticuzIframePlayer } from "./parts/player/ZeticuzIframePlayer";
 
 export function RealPlayerView() {
   const navigate = useNavigate();
@@ -254,13 +257,16 @@ export function RealPlayerView() {
 
 export function PlayerView() {
   const loc = useLocation();
-  const { loading, error, value } = useAsync(() => {
-    return needsOnboarding();
+  const useZeticuzPlayer = useOnboardingStore((s) => s.useZeticuzPlayer);
+  const { loading, error, value } = useAsync(async () => {
+    const onboarding = await needsOnboarding();
+    const extension = await isExtensionActive();
+    return { needsOnboarding: onboarding, extensionActive: extension };
   });
 
   if (error) throw new Error("Failed to detect onboarding");
-  if (loading) return null;
-  if (value)
+  if (loading || !value) return null;
+  if (value.needsOnboarding)
     return (
       <Navigate
         replace
@@ -270,6 +276,11 @@ export function PlayerView() {
         }}
       />
     );
+
+  if (!value.extensionActive && useZeticuzPlayer) {
+    return <ZeticuzIframePlayer />;
+  }
+
   return <RealPlayerView />;
 }
 
