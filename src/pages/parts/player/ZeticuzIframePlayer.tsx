@@ -131,12 +131,12 @@ export function ZeticuzIframePlayer() {
         />
       </Transition>
 
-      {/* UI Controls Overlay (Back and Fullscreen) */}
+      {/* Back button overlay */}
       <Transition
         animation="fade"
         show={showLogo}
         durationClass="duration-200"
-        className="absolute left-4 top-4 z-50 flex space-x-3"
+        className="absolute left-4 top-4 z-50"
       >
         <button
           type="button"
@@ -145,15 +145,6 @@ export function ZeticuzIframePlayer() {
           title={t("player.back")}
         >
           <Icon icon={Icons.ARROW_LEFT} />
-        </button>
-
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className="rounded-full bg-black/50 p-3 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-          title={isFullscreen ? t("player.exitFullscreen") : t("player.fullscreen")}
-        >
-          <Icon icon={isFullscreen ? Icons.COMPRESS : Icons.EXPAND} />
         </button>
       </Transition>
 
