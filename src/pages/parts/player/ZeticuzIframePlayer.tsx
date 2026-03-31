@@ -148,6 +148,14 @@ export function ZeticuzIframePlayer() {
         </button>
       </Transition>
 
+      {/* Fullscreen Proxy Detector: Intercepts clicks on the player's internal FS button to use our branded FS instead. */}
+      <div
+        className="absolute bottom-0 right-0 z-[70] h-16 w-16 cursor-pointer opacity-0"
+        onClick={toggleFullscreen}
+        aria-hidden="true"
+        title="Fullscreen"
+      />
+
       {/* Embedded Zeticuz player */}
       <iframe
         src={iframeSrc}
