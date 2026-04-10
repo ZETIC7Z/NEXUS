@@ -1,5 +1,6 @@
 import { proxiedFetch } from "@/backend/helpers/fetch";
 import { usePreferencesStore } from "@/stores/preferences";
+import { conf } from "@/setup/config";
 
 export interface FemboxSource {
   url: string;
@@ -35,7 +36,7 @@ export async function scrapeFemboxMovie(
   turnstileToken?: string,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
-  const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
+  const sharedToken = conf().VITE_DEFAULT_FEBBOX_KEY;
 
   // Use user's token if available, otherwise use shared token
   const febboxKey = userToken || sharedToken;
@@ -70,7 +71,7 @@ export async function scrapeFemboxTV(
   turnstileToken?: string,
 ): Promise<FemboxResponse | null> {
   const userToken = usePreferencesStore.getState().febboxKey;
-  const sharedToken = import.meta.env.VITE_DEFAULT_FEBBOX_KEY;
+  const sharedToken = conf().VITE_DEFAULT_FEBBOX_KEY;
 
   // Use user's token if available, otherwise use shared token
   const febboxKey = userToken || sharedToken;

@@ -27,6 +27,7 @@ interface Config {
   ONBOARDING_PROXY_INSTALL_LINK: string;
   ALLOW_AUTOPLAY: boolean;
   ALLOW_FEBBOX_KEY: boolean;
+  VITE_DEFAULT_FEBBOX_KEY: string;
   ALLOW_DEBRID_KEY: boolean;
   SHOW_AD: boolean;
   AD_CONTENT_URL: string;
@@ -62,6 +63,7 @@ export interface RuntimeConfig {
   ONBOARDING_FIREFOX_EXTENSION_INSTALL_LINK: string | null;
   ONBOARDING_PROXY_INSTALL_LINK: string | null;
   ALLOW_FEBBOX_KEY: boolean;
+  VITE_DEFAULT_FEBBOX_KEY: string | null;
   SHOW_AD: boolean;
   AD_CONTENT_URL: string[];
   TRACK_SCRIPT: string | null;
@@ -97,6 +99,7 @@ const env: Record<keyof Config, undefined | string> = {
   HAS_ONBOARDING: import.meta.env.VITE_HAS_ONBOARDING,
   ALLOW_AUTOPLAY: import.meta.env.VITE_ALLOW_AUTOPLAY,
   ALLOW_FEBBOX_KEY: import.meta.env.VITE_ALLOW_FEBBOX_KEY,
+  VITE_DEFAULT_FEBBOX_KEY: import.meta.env.VITE_DEFAULT_FEBBOX_KEY,
   ALLOW_DEBRID_KEY: import.meta.env.VITE_ALLOW_DEBRID_KEY,
   SHOW_AD: import.meta.env.VITE_SHOW_AD,
   AD_CONTENT_URL: import.meta.env.VITE_AD_CONTENT_URL,
@@ -174,6 +177,7 @@ export function conf(): RuntimeConfig {
       )
       .filter((v) => v.length === 2), // The format is <beforeA>:<afterA>,<beforeB>:<afterB>
     ALLOW_FEBBOX_KEY: getKey("ALLOW_FEBBOX_KEY", "false") === "true",
+    VITE_DEFAULT_FEBBOX_KEY: getKey("VITE_DEFAULT_FEBBOX_KEY"),
     ALLOW_DEBRID_KEY: getKey("ALLOW_DEBRID_KEY", "false") === "true",
     SHOW_AD: getKey("SHOW_AD", "false") === "true",
     AD_CONTENT_URL: getKey("AD_CONTENT_URL", "")

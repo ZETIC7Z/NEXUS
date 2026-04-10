@@ -15,7 +15,7 @@ window.__CONFIG__ = {
   VITE_NORMAL_ROUTER: "true",
 
   // The backend URL to communicate with (CB's Community Backend)
-  VITE_BACKEND_URL: "https://backend.pstream.online",
+  VITE_BACKEND_URL: "https://backend.aether.mom",
 
   // A comma separated list of disallowed IDs in the case of a DMCA claim
   VITE_DISALLOWED_IDS: "",
@@ -39,5 +39,5 @@ window.__CONFIG__ = {
   VITE_ONBOARDING_CHROME_EXTENSION_INSTALL_LINK: "https://chromewebstore.google.com/detail/p-stream-extension/gnheenieicoichghfmjlpofcaebbgclh",
 
   // Shared Febbox token for all users (fallback if user doesn't have their own)
-  VITE_SHARED_FEBBOX_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NjYzMTA4NzIsIm5iZiI6MTc2NjMxMDg3MiwiZXhwIjoxNzk3NDE0ODkyLCJkYXRhIjp7InVpZCI6MTIzODI3MSwidG9rZW4iOiIzN2VkOGUzN2E5ZWFlNTIxNGZiMDg3YzBhYjBmMjI0MyJ9fQ.xi3bOpsWguPjyXNTlTbIzwp8hLV3el0vs4EtIWtXS4Y",
+  VITE_DEFAULT_FEBBOX_KEY: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NjYzMTA4NzIsIm5iZiI6MTc2NjMxMDg3MiwiZXhwIjoxNzk3NDE0ODkyLCJkYXRhIjp7InVpZCI6MTIzODI3MSwidG9rZW4iOiIzN2VkOGUzN2E5ZWFlNTIxNGZiMDg3YzBhYjBmMjI0MyJ9fQ.xi3bOpsWguPjyXNTlTbIzwp8hLV3el0vs4EtIWtXS4Y",
 };
