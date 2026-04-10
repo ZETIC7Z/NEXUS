@@ -56,7 +56,7 @@ export function CaptionPreview(props: {
     >
       {props.fullscreen && props.show ? (
         <Helmet>
-          <html data-no-scroll />
+          <html lang="en" data-no-scroll />
         </Helmet>
       ) : null}
       <Transition animation="fade" show={props.show}>

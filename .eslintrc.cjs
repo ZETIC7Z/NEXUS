@@ -1,10 +1,4 @@
-const a11yOff = Object.keys(require("eslint-plugin-jsx-a11y").rules).reduce(
-  (acc, rule) => {
-    acc[`jsx-a11y/${rule}`] = "off";
-    return acc;
-  },
-  {},
-);
+// a11y rules are disabled in the rules section below
 
 module.exports = {
   env: {
@@ -106,6 +100,6 @@ module.exports = {
         allowSeparatedGroups: true,
       },
     ],
-    ...a11yOff,
+    // Accessibility rules are handled by the airbnb config or disabled manually if needed
   },
 };

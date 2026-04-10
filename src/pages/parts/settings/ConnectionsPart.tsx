@@ -392,8 +392,15 @@ export function FebboxSetup({
                   {t("fedapi.setup.title")}
                   <br />
                   <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setShowVideo(!showVideo)}
-                    className="flex items-center justify-between p-1 px-2 my-2 w-fit border border-type-secondary rounded-lg cursor-pointer text-type-secondary hover:text-white transition-colors duration-200"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        setShowVideo(!showVideo);
+                      }
+                    }}
+                    className="flex items-center justify-between p-1 px-2 my-2 w-fit border border-type-secondary rounded-lg cursor-pointer text-type-secondary hover:text-white transition-colors duration-200 outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
                   >
                     <span className="text-sm">
                       {showVideo
@@ -729,8 +736,6 @@ export function DebridEdit({
 }
 
 function TIDBEdit({ tidbKey, setTIDBKey }: TIDBEditProps) {
-  const { t } = useTranslation();
-
   return (
     <SettingsCard>
       <div className="flex justify-between items-center gap-4">

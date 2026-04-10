@@ -56,9 +56,6 @@ export function OnboardingPage() {
   const { t } = useTranslation();
   const setUseZeticuzPlayer = useOnboardingStore((s) => s.setUseZeticuzPlayer);
   const noProxies = getProxyUrls().length === 0;
-
-
-
   return (
     <MinimalPageLayout>
       <PageTitle subpage k="global.pages.onboarding" />

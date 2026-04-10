@@ -42,9 +42,18 @@ export function Banner(props: {
         </div>
         <span
           className="absolute right-4 hover:cursor-pointer"
+          role="button"
+          tabIndex={0}
+          aria-label="Close banner"
           onClick={() => {
             hideBanner(props.id, true);
             sessionStorage.setItem(`hideBanner-${props.id}`, "true");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              hideBanner(props.id, true);
+              sessionStorage.setItem(`hideBanner-${props.id}`, "true");
+            }
           }}
         >
           <Icon icon={Icons.X} />

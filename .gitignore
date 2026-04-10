@@ -30,3 +30,8 @@ package-lock.json
 .env
 
 .vercel
+*.png
+*.txt
+analyze_zxc.js
+.playwright-mcp/
+test-results/

@@ -5,11 +5,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Icon, Icons } from "@/components/Icon";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
+import { DownloadModal } from "../overlays/DownloadModal";
+
 export function MobileBottomNav() {
   const { isMobile } = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const [showMenu, setShowMenu] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Navigation items: Home, Search, Bookmark, Menu, Profile
@@ -28,6 +31,7 @@ export function MobileBottomNav() {
     { path: "/anime", label: "Anime", icon: Icons.STAR },
     { path: "/discover", label: "Discover", icon: Icons.RISING },
     { path: "/settings", label: "Appearance", icon: Icons.CIRCLE_HALF },
+    { id: "download", label: "Download App", icon: Icons.DOWNLOAD },
   ];
 
   // Determine active index based on current path
@@ -59,6 +63,11 @@ export function MobileBottomNav() {
   const handleNavigation = (path: string) => {
     window.scrollTo(0, 0);
     navigate(path);
+    setShowMenu(false);
+  };
+
+  const handleDownloadClick = () => {
+    setIsDownloadOpen(true);
     setShowMenu(false);
   };
 
@@ -291,10 +300,16 @@ export function MobileBottomNav() {
         <div className="sheet-content">
           {menuItems.map((item) => (
             <button
-              key={item.path}
+              key={"path" in item ? item.path : item.id}
               type="button"
               className="sheet-item"
-              onClick={() => handleNavigation(item.path)}
+              onClick={() => {
+                if ("path" in item) {
+                  handleNavigation(item.path as string);
+                } else if (item.id === "download") {
+                  handleDownloadClick();
+                }
+              }}
             >
               <Icon icon={item.icon} className="sheet-icon" />
               <span>{item.label}</span>
@@ -357,6 +372,11 @@ export function MobileBottomNav() {
           </ul>
         </div>
       </div>
+
+      <DownloadModal
+        isOpen={isDownloadOpen}
+        onClose={() => setIsDownloadOpen(false)}
+      />
     </>
   );
 }

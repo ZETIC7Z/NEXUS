@@ -96,9 +96,23 @@ export function CaptionDelay(props: {
         {/* Slider */}
         <div ref={ref}>
           <div
-            className="group/progress w-full h-8 flex items-center cursor-pointer"
+            role="slider"
+            aria-label={props.label}
+            aria-valuemin={props.min}
+            aria-valuemax={props.max}
+            aria-valuenow={props.value}
+            tabIndex={0}
+            className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}
             onTouchStart={dragMouseDown}
+            onKeyDown={(e) => {
+              const step = 1 / 10 ** (props.decimalsAllowed ?? 0);
+              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+                props.onChange?.(Math.min(props.max, props.value + step));
+              } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+                props.onChange?.(Math.max(props.min, props.value - step));
+              }
+            }}
           >
             <div
               dir="ltr"
@@ -268,9 +282,23 @@ export function CaptionSetting(props: {
       <div className="grid items-center grid-cols-[1fr,auto] gap-4">
         <div ref={ref}>
           <div
-            className="group/progress w-full h-8 flex items-center cursor-pointer"
+            role="slider"
+            aria-label={props.label}
+            aria-valuemin={props.min}
+            aria-valuemax={props.max}
+            aria-valuenow={props.value}
+            tabIndex={0}
+            className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}
             onTouchStart={dragMouseDown}
+            onKeyDown={(e) => {
+              const step = 1 / 10 ** (props.decimalsAllowed ?? 0);
+              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+                props.onChange?.(Math.min(props.max, props.value + step));
+              } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+                props.onChange?.(Math.max(props.min, props.value - step));
+              }
+            }}
           >
             <div
               dir="ltr"
@@ -327,13 +355,23 @@ export function CaptionSetting(props: {
             />
           ) : (
             <div
-              className="relative"
+              role="button"
+              tabIndex={0}
+              className="relative outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
               onClick={(evt) => {
                 if ((evt.target as HTMLButtonElement).closest(".actions"))
                   return;
 
                 setInputValue(props.value.toFixed(props.decimalsAllowed ?? 0));
                 setIsFocused(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setInputValue(
+                    props.value.toFixed(props.decimalsAllowed ?? 0),
+                  );
+                  setIsFocused(true);
+                }
               }}
             >
               <button

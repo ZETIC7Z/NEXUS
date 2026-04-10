@@ -10,9 +10,13 @@ export interface DownloadModalProps {
 }
 
 const downloadLinks = {
-  windows: "#", // Placeholder
-  mac: "#", // Placeholder
-  linux: "#", // Placeholder
+  windows:
+    "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/1b1e2d63-61b1-451a-b315-92be6cabd971?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A36%3A13Z&rscd=attachment%3B+filename%3DNEXUS.Setup.1.2.1.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A36%3A07Z&ske=2026-04-10T09%3A36%3A13Z&sks=b&skv=2018-11-09&sig=kVCXTdRJSCUZuunuH6xKjdqRbGrk7FiFXel1yHBRYAk%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxMzg4OCwibmJmIjoxNzc1ODEwMjg4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.HMshptf-POBLHUuJ_rNyyiPplH8lpOuA-9sdFGwvRuk",
+  mac: "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/66866ad3-e6bd-4ace-97d5-d6050dd588aa?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A36%3A03Z&rscd=attachment%3B+filename%3DNEXUS-1.2.1-arm64.dmg&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A35%3A46Z&ske=2026-04-10T09%3A36%3A03Z&sks=b&skv=2018-11-09&sig=LPSlSPM5uepZa%2BqO56UM%2BFa%2BI9VGCWbpNUBCUJ3zAd0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxNDA0MywibmJmIjoxNzc1ODEwMjg4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.RBoNs-7TRW4RKFvRy5kq_xT1essbhac9-RlNqiwGIvQ",
+  linux:
+    "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/082c54b4-6f03-49cf-a355-277b00a91bad?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A32%3A59Z&rscd=attachment%3B+filename%3DNEXUS-1.2.1.AppImage&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A32%3A12Z&ske=2026-04-10T09%3A32%3A59Z&sks=b&skv=2018-11-09&sig=f8fE87YiENwGqw90ZIB1iW7rAUxfyeDYCmVg%2BZDNnJ4%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxNDA3NywibmJmIjoxNzc1ODEwNDc3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.FhhAKVB7rhGxo243IOt4-Wx5al9JuGD1tYeC6vw3Cbo",
+  android:
+    "https://drive.usercontent.google.com/download?id=1fBYz5TySt-68EWP8NW2mayBXltP5Y24m&export=download&authuser=1&confirm=t&uuid=f3792236-56db-4d6f-9555-8efddba1d776&at=ALBwUgniziUojnjbjn7ch3LP4i89:1775809883460",
 };
 
 export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
@@ -110,22 +114,25 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
           </p>
 
           {/* OS Buttons Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-2xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-4xl mx-auto">
             {/* Windows Button */}
             <a
               href={downloadLinks.windows}
-              target="_blank"
-              rel="noreferrer"
-              className="group relative flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] hover:-translate-y-1 block max-w-[200px]"
+              download="NEXUS.Setup.1.2.1.exe"
+              className="group relative flex flex-col items-center justify-center p-6 md:p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] hover:-translate-y-1 block max-w-full md:max-w-[200px] w-full"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10 flex flex-col items-center gap-4">
+              <div className="relative z-10 flex flex-col items-center gap-4 text-center">
                 <div className="p-4 bg-white/5 rounded-xl text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-all duration-300">
-                  <Icon icon={Icons.WINDOWS} className="text-4xl" />
+                  <Icon icon={Icons.WINDOWS} className="text-3xl md:text-4xl" />
                 </div>
                 <div>
-                  <div className="text-white font-medium text-lg">Windows</div>
-                  <div className="text-white/40 text-sm mt-1">.exe / x64</div>
+                  <div className="text-white font-medium text-base md:text-lg">
+                    Windows
+                  </div>
+                  <div className="text-white/40 text-xs md:text-sm mt-1">
+                    .exe / x64
+                  </div>
                 </div>
               </div>
             </a>
@@ -133,18 +140,19 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
             {/* macOS Button */}
             <a
               href={downloadLinks.mac}
-              target="_blank"
-              rel="noreferrer"
-              className="group relative flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)] hover:-translate-y-1 block max-w-[200px]"
+              download="NEXUS-1.2.1-arm64.dmg"
+              className="group relative flex flex-col items-center justify-center p-6 md:p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)] hover:-translate-y-1 block max-w-full md:max-w-[200px] w-full"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10 flex flex-col items-center gap-4">
+              <div className="relative z-10 flex flex-col items-center gap-4 text-center">
                 <div className="p-4 bg-white/5 rounded-xl text-purple-400 group-hover:text-purple-300 group-hover:scale-110 transition-all duration-300">
-                  <Icon icon={Icons.APPLE} className="text-4xl" />
+                  <Icon icon={Icons.APPLE} className="text-3xl md:text-4xl" />
                 </div>
                 <div>
-                  <div className="text-white font-medium text-lg">macOS</div>
-                  <div className="text-white/40 text-sm mt-1">
+                  <div className="text-white font-medium text-base md:text-lg">
+                    macOS
+                  </div>
+                  <div className="text-white/40 text-xs md:text-sm mt-1">
                     .dmg / M1 & Intel
                   </div>
                 </div>
@@ -154,19 +162,46 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
             {/* Linux Button */}
             <a
               href={downloadLinks.linux}
-              target="_blank"
-              rel="noreferrer"
-              className="group relative flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(249,115,22,0.3)] hover:-translate-y-1 block max-w-[200px]"
+              download="NEXUS-1.2.1.AppImage"
+              className="group relative flex flex-col items-center justify-center p-6 md:p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(249,115,22,0.3)] hover:-translate-y-1 block max-w-full md:max-w-[200px] w-full"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10 flex flex-col items-center gap-4">
+              <div className="relative z-10 flex flex-col items-center gap-4 text-center">
                 <div className="p-4 bg-white/5 rounded-xl text-orange-400 group-hover:text-orange-300 group-hover:scale-110 transition-all duration-300">
-                  <Icon icon={Icons.LINUX} className="text-4xl" />
+                  <Icon icon={Icons.LINUX} className="text-3xl md:text-4xl" />
                 </div>
                 <div>
-                  <div className="text-white font-medium text-lg">Linux</div>
-                  <div className="text-white/40 text-sm mt-1">
+                  <div className="text-white font-medium text-base md:text-lg">
+                    Linux
+                  </div>
+                  <div className="text-white/40 text-xs md:text-sm mt-1">
                     .AppImage / x64
+                  </div>
+                </div>
+              </div>
+            </a>
+
+            {/* Android Button */}
+            <a
+              href={downloadLinks.android}
+              target="_blank"
+              rel="noreferrer"
+              className="group relative flex flex-col items-center justify-center p-6 md:p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-green-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_-5px_rgba(34,197,94,0.3)] hover:-translate-y-1 block max-w-full md:max-w-[200px] w-full"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative z-10 flex flex-col items-center gap-4 text-center">
+                <div className="p-4 bg-white/5 rounded-xl text-green-400 group-hover:text-green-300 group-hover:scale-110 transition-all duration-300">
+                  <Icon
+                    icon={Icons.DOWNLOAD}
+                    className="text-3xl md:text-4xl"
+                  />
+                </div>
+                <div>
+                  <div className="text-white font-medium text-base md:text-lg">
+                    Android
+                  </div>
+                  <div className="text-white/40 text-xs md:text-sm mt-1">
+                    .apk / ARM64
                   </div>
                 </div>
               </div>

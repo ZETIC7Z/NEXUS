@@ -8,8 +8,9 @@ import React, {
   useState,
 } from "react";
 import { Link, To, useLocation, useNavigate } from "react-router-dom";
-import { useClickAway } from "react-use";
+import { useAsyncFn, useClickAway } from "react-use";
 
+import { searchForMedia } from "@/backend/metadata/search";
 import { UserAvatar } from "@/components/Avatar";
 import { SearchBarInput } from "@/components/form/SearchBar";
 import { Icon, Icons } from "@/components/Icon";
@@ -18,7 +19,9 @@ import { DownloadModal } from "@/components/overlays/DownloadModal";
 import { useNotifications } from "@/components/overlays/notificationsModal";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useBannerSize } from "@/stores/banner";
+import { useOverlayStack } from "@/stores/interface/overlayStack";
 import { useSidebarStore } from "@/stores/sidebar";
+import { MediaItem } from "@/utils/mediaTypes";
 
 import { BrandPill } from "./BrandPill";
 
@@ -36,11 +39,17 @@ interface NavItem {
   icon?: Icons;
 }
 
+// Mobile sidebar items
 const navItems: NavItem[] = [
   { path: "/discover", label: "Home", icon: Icons.HOME },
+];
+
+// Browse dropdown items (formerly top-level nav items)
+const browseItems: NavItem[] = [
   { path: "/movies", label: "Movies", icon: Icons.FILM },
   { path: "/tv", label: "TV Series", icon: Icons.DISPLAY },
   { path: "/anime", label: "Anime", icon: Icons.STAR },
+  { path: "/music", label: "Music", icon: Icons.WAND },
   { path: "/my-bookmarks", label: "My Favorites", icon: Icons.HEART },
   { path: "/watch-history", label: "Recent Watch", icon: Icons.CLOCK },
 ];
@@ -152,6 +161,189 @@ function GenreDropdown() {
               {genre.name}
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Browse Dropdown Component — contains Movies, TV Series, Anime, Favorites, Recent Watch
+function BrowseDropdown() {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isBrowseActive = browseItems.some((item) =>
+    location.pathname.startsWith(item.path),
+  );
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setIsOpen(false);
+    window.scrollTo(0, 0);
+  };
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
+    >
+      <button
+        type="button"
+        className={classNames(
+          "flex items-center gap-2 px-4 py-2.5 text-base font-medium rounded-full transition-all duration-200",
+          isOpen || isBrowseActive
+            ? "text-white bg-white/10"
+            : "text-gray-400 hover:text-white hover:bg-white/5",
+        )}
+      >
+        Browse
+        <Icon
+          icon={Icons.CHEVRON_DOWN}
+          className={classNames(
+            "text-sm transition-transform duration-200",
+            isOpen ? "rotate-180" : "",
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-64 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl shadow-black/50 z-50 animate-fadeIn p-2">
+          <div className="px-3 py-2 mb-1">
+            <p className="text-sm font-bold text-white">Browse</p>
+            <p className="text-xs text-gray-500">
+              Discover and manage your content
+            </p>
+          </div>
+          <div className="mx-2 border-t border-white/10 mb-1" />
+          {browseItems.map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => handleNavigation(item.path)}
+              className={classNames(
+                "w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors duration-200 text-left",
+                location.pathname.startsWith(item.path)
+                  ? "text-white bg-white/10"
+                  : "text-gray-300 hover:text-white hover:bg-white/5",
+              )}
+            >
+              {item.icon && (
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                  <Icon icon={item.icon} className="text-base" />
+                </div>
+              )}
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Live Search Results component — shows poster cards while user types
+function LiveSearchResults({
+  query,
+  onClose,
+}: {
+  query: string;
+  onClose: () => void;
+}) {
+  const { showModal } = useOverlayStack();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_state, exec] = useAsyncFn(
+    (q: { searchQuery: string }) => searchForMedia(q),
+    [],
+  );
+  const [results, setResults] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!query || query.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+
+    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await exec({ searchQuery: query.trim() });
+        if (data) setResults(data.slice(0, 12)); // Show max 12 results
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, exec]);
+
+  if (!query || query.trim().length < 2) return null;
+
+  const handleCardClick = (media: MediaItem) => {
+    // Open movie details modal (same as MediaCard behavior)
+    showModal("details", {
+      id: Number(media.id),
+      type: media.type === "movie" ? "movie" : "show",
+    });
+    onClose();
+  };
+
+  return (
+    <div className="mt-2 max-h-[60vh] overflow-y-auto rounded-xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-2xl shadow-black/50 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {loading && results.length === 0 && (
+        <div className="flex items-center justify-center p-6">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-600 border-t-white" />
+          <span className="ml-3 text-sm text-gray-400">Searching...</span>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div className="p-3">
+          <p className="mb-2 text-xs text-gray-500">
+            {results.length} result{results.length !== 1 ? "s" : ""} for &quot;
+            {query}&quot;
+          </p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+            {results.map((media) => (
+              <button
+                key={media.id}
+                type="button"
+                onClick={() => handleCardClick(media)}
+                className="group relative overflow-hidden rounded-lg bg-white/5 transition-all duration-200 hover:scale-105 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+              >
+                <div
+                  className="aspect-[2/3] w-full bg-cover bg-center"
+                  style={{
+                    backgroundImage: media.poster
+                      ? `url(${media.poster})`
+                      : "none",
+                  }}
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-1.5">
+                  <p className="line-clamp-2 text-[10px] font-semibold leading-tight text-white">
+                    {media.title}
+                  </p>
+                  {media.year && (
+                    <p className="text-[9px] text-gray-400">{media.year}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && results.length === 0 && query.trim().length >= 2 && (
+        <div className="p-6 text-center text-sm text-gray-500">
+          No results found for &quot;{query}&quot;
         </div>
       )}
     </div>
@@ -363,7 +555,7 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
         className="absolute h-[calc(100%-12px)] rounded-full bg-[hsl(var(--colors-active))] opacity-20 transition-all duration-300 ease-in-out pointer-events-none top-[6px]"
       />
 
-      {/* Nav Items */}
+      {/* Nav Items: Home, Browse ▾, Music, Genre ▾ */}
       {navItems.map((item, index) => (
         <React.Fragment key={item.path}>
           <a
@@ -381,8 +573,10 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
           >
             {item.label}
           </a>
-          {/* Add Genre after Anime (which is at index 3) */}
-          {index === 3 && <GenreDropdown />}
+          {/* Insert Browse dropdown after Home (index 0) */}
+          {index === 0 && <BrowseDropdown />}
+          {/* Insert Genre dropdown after Music (index 1) */}
+          {index === 1 && <GenreDropdown />}
         </React.Fragment>
       ))}
 
@@ -434,7 +628,8 @@ export function Navigation(props: NavigationProps) {
   const [searchBarOpen, setSearchBarOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const desktopSearchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const lastScrollY = useRef(0);
   const {
     openNotifications: _openNotifications,
@@ -470,19 +665,48 @@ export function Navigation(props: NavigationProps) {
   const toggleSearchBar = () => {
     setSearchBarOpen(!searchBarOpen);
     if (!searchBarOpen) {
-      // Focus input after opening
-      setTimeout(() => searchInputRef.current?.focus(), 100);
+      // Focus will be handled by useLayoutEffect
       startSearchCloseTimer();
     } else {
       stopSearchCloseTimer();
     }
   };
 
+  // Improved Auto-Focus — uses separate refs for desktop vs mobile
+  useLayoutEffect(() => {
+    if (searchBarOpen) {
+      // Two-stage focus: immediate attempt + delayed retry after CSS transition
+      requestAnimationFrame(() => {
+        desktopSearchInputRef.current?.focus();
+      });
+      const timer = setTimeout(() => {
+        desktopSearchInputRef.current?.focus();
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [searchBarOpen]);
+
+  useLayoutEffect(() => {
+    if (mobileSearchOpen) {
+      requestAnimationFrame(() => {
+        mobileSearchInputRef.current?.focus();
+      });
+      const timer = setTimeout(() => {
+        mobileSearchInputRef.current?.focus();
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [mobileSearchOpen]);
+
   // Handle search submit
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/browse/${encodeURIComponent(searchQuery.trim())}`);
+      if (location.pathname === "/music") {
+        navigate(`/music?q=${encodeURIComponent(searchQuery.trim())}`);
+      } else {
+        navigate(`/browse/${encodeURIComponent(searchQuery.trim())}`);
+      }
       setSearchBarOpen(false);
       setMobileSearchOpen(false);
       setSearchQuery("");
@@ -563,8 +787,13 @@ export function Navigation(props: NavigationProps) {
         className={classNames(
           "fixed left-0 right-0 z-[500] transition-transform duration-300 ease-out flex justify-center",
           isHeaderHidden ? "-translate-y-full" : "translate-y-0",
+          "top-[calc(var(--banner-offset)+1.5rem)]",
         )}
-        style={{ top: `calc(${bannerHeight}px + 1.5rem)` }}
+        style={
+          {
+            "--banner-offset": `${bannerHeight}px`,
+          } as React.CSSProperties
+        }
       >
         {/* Desktop Logo - Absolute Left */}
         <div className="hidden lg:block absolute left-8 top-1/2 -translate-y-1/2 z-[502]">
@@ -608,11 +837,11 @@ export function Navigation(props: NavigationProps) {
           onMouseLeave={startSearchCloseTimer}
           className={classNames(
             "fixed left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 transition-all duration-300 ease-out z-[499]",
+            "top-[calc(var(--banner-offset)+5rem)] shadow-2xl shadow-black/50 overflow-hidden",
             searchBarOpen
               ? "opacity-100 translate-y-0 pointer-events-auto"
               : "opacity-0 -translate-y-4 pointer-events-none",
           )}
-          style={{ top: `calc(${bannerHeight}px + 5rem)` }}
         >
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative bg-black/90 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">
@@ -622,12 +851,22 @@ export function Navigation(props: NavigationProps) {
                   className="text-gray-400 text-lg mr-3"
                 />
                 <input
-                  ref={searchInputRef}
+                  ref={desktopSearchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    startSearchCloseTimer();
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    stopSearchCloseTimer(); // Keep open while typing
+
+                    // Live update music search
+                    if (location.pathname === "/music") {
+                      if (val.trim()) {
+                        navigate(`/music?q=${encodeURIComponent(val.trim())}`);
+                      } else {
+                        navigate("/music");
+                      }
+                    }
                   }}
                   onFocus={stopSearchCloseTimer}
                   onBlur={startSearchCloseTimer}
@@ -636,7 +875,10 @@ export function Navigation(props: NavigationProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => setSearchBarOpen(false)}
+                  onClick={() => {
+                    setSearchBarOpen(false);
+                    setSearchQuery("");
+                  }}
                   className="ml-3 p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200"
                   title="Close Search"
                   aria-label="Close Search"
@@ -646,6 +888,17 @@ export function Navigation(props: NavigationProps) {
               </div>
             </div>
           </form>
+
+          {/* Live Search Results */}
+          {location.pathname !== "/music" && (
+            <LiveSearchResults
+              query={searchQuery}
+              onClose={() => {
+                setSearchBarOpen(false);
+                setSearchQuery("");
+              }}
+            />
+          )}
         </div>
 
         {/* Floating Actions on the right (Optional/Mobile toggle) */}
@@ -688,9 +941,9 @@ export function Navigation(props: NavigationProps) {
             title="Search"
             aria-label="Search"
             onClick={() => {
-              setMobileSearchOpen(!mobileSearchOpen);
-              if (!mobileSearchOpen) {
-                setTimeout(() => searchInputRef.current?.focus(), 150);
+              const opening = !mobileSearchOpen;
+              setMobileSearchOpen(opening);
+              if (opening) {
                 startSearchCloseTimer();
               } else {
                 stopSearchCloseTimer();
@@ -727,9 +980,9 @@ export function Navigation(props: NavigationProps) {
           onMouseEnter={stopSearchCloseTimer}
           onMouseLeave={startSearchCloseTimer}
           className={classNames(
-            "absolute top-full left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xs transition-all duration-300 ease-out overflow-hidden z-[500]",
+            "absolute top-full left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md transition-all duration-300 ease-out z-[500]",
             mobileSearchOpen
-              ? "max-h-20 opacity-100 translate-y-2"
+              ? "max-h-[70vh] opacity-100 translate-y-2"
               : "max-h-0 opacity-0 -translate-y-4 pointer-events-none",
           )}
         >
@@ -738,12 +991,22 @@ export function Navigation(props: NavigationProps) {
               <div className="flex items-center px-4 py-2.5">
                 <Icon icon={Icons.SEARCH} className="text-gray-400 mr-3" />
                 <input
-                  ref={searchInputRef}
+                  ref={mobileSearchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    startSearchCloseTimer();
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    stopSearchCloseTimer(); // Keep open while typing
+
+                    // Live update music search
+                    if (location.pathname === "/music") {
+                      if (val.trim()) {
+                        navigate(`/music?q=${encodeURIComponent(val.trim())}`);
+                      } else {
+                        navigate("/music");
+                      }
+                    }
                   }}
                   onFocus={stopSearchCloseTimer}
                   onBlur={startSearchCloseTimer}
@@ -752,7 +1015,10 @@ export function Navigation(props: NavigationProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => setMobileSearchOpen(false)}
+                  onClick={() => {
+                    setMobileSearchOpen(false);
+                    setSearchQuery("");
+                  }}
                   title="Close Search"
                   aria-label="Close Search"
                   className="ml-2 p-1 text-gray-400 hover:text-white"
@@ -762,6 +1028,17 @@ export function Navigation(props: NavigationProps) {
               </div>
             </div>
           </form>
+
+          {/* Live Search Results (Mobile) */}
+          {location.pathname !== "/music" && (
+            <LiveSearchResults
+              query={searchQuery}
+              onClose={() => {
+                setMobileSearchOpen(false);
+                setSearchQuery("");
+              }}
+            />
+          )}
         </div>
       </div>
     </>

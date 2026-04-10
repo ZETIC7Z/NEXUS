@@ -10,6 +10,7 @@ import { useAsync } from "react-use";
 
 import { isExtensionActive } from "@/backend/extension/messaging";
 import { DetailedMeta } from "@/backend/metadata/getmeta";
+import { isNativeApp } from "@/backend/native/nexusBridge";
 import { usePlayer } from "@/components/player/hooks/usePlayer";
 import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { convertProviderCaption } from "@/components/player/utils/captions";
@@ -18,6 +19,7 @@ import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { ScrapingItems, ScrapingSegment } from "@/hooks/useProviderScrape";
 import { useQueryParam } from "@/hooks/useQueryParams";
 import { MetaPart } from "@/pages/parts/player/MetaPart";
+import { NativeScrapingPart } from "@/pages/parts/player/NativeScrapingPart";
 import { PlayerPart } from "@/pages/parts/player/PlayerPart";
 import { ScrapeErrorPart } from "@/pages/parts/player/ScrapeErrorPart";
 import { ScrapingPart } from "@/pages/parts/player/ScrapingPart";
@@ -222,7 +224,19 @@ export function RealPlayerView() {
         />
       ) : null}
       {status === playerStatus.SCRAPING && scrapeMedia ? (
-        manualSourceSelection ? (
+        // ── When inside the NEXUS Android WebView, bypass the browser scraper
+        // ── and route directly through the Kotlin native extractors.
+        isNativeApp() ? (
+          <NativeScrapingPart
+            key={`native-scraping-${resumeFromSourceId || "default"}`}
+            media={scrapeMedia}
+            onResult={() => {
+              setScrapeNotFound();
+              setResumeFromSourceId(null);
+            }}
+            onGetStream={playAfterScrape}
+          />
+        ) : manualSourceSelection ? (
           <SourceSelectPart media={scrapeMedia} />
         ) : (
           <ScrapingPart

@@ -9,6 +9,8 @@ import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSidebarStore } from "@/stores/sidebar";
 
+import { DownloadModal } from "../overlays/DownloadModal";
+
 interface SidebarItem {
   id: string;
   label: string;
@@ -29,6 +31,7 @@ const mainNavItems: SidebarItem[] = [
   { id: "movies", label: "Movies", icon: Icons.FILM, path: "/movies" },
   { id: "tv", label: "TV Series", icon: Icons.DISPLAY, path: "/tv" },
   { id: "anime", label: "Anime", icon: Icons.DRAGON, path: "/anime" },
+  { id: "music", label: "Music", icon: Icons.WAND, path: "/music" },
   { id: "genre", label: "Genre", icon: Icons.BOOKMARK, hasSubmenu: true },
   {
     id: "favorites",
@@ -217,10 +220,32 @@ function DiscoverNexusDropdown({
   setWatchOnOpen: (open: boolean) => void;
   handleNavigation: (path: string) => void;
 }) {
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+
   if (!isOpen || !isExpanded) return null;
 
   return (
     <div className="ml-8 mt-1 space-y-1 animate-fadeIn">
+      {/* Download Nexus App */}
+      <button
+        type="button"
+        onClick={() => setIsDownloadOpen(true)}
+        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group/download"
+      >
+        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)_/_0.1)] flex items-center justify-center group-hover/download:bg-[hsl(var(--colors-active)_/_0.2)] transition-colors">
+          <Icon
+            icon={Icons.DOWNLOAD}
+            className="text-base text-[hsl(var(--colors-active))]"
+          />
+        </div>
+        <span className="font-medium">Download Nexus App</span>
+      </button>
+
+      <DownloadModal
+        isOpen={isDownloadOpen}
+        onClose={() => setIsDownloadOpen(false)}
+      />
+
       {/* Join a Watch Party */}
       <button
         type="button"
@@ -516,6 +541,8 @@ function SidebarContent({
         type="button"
         onClick={() => setExpanded(!isExpanded)}
         className="absolute -right-3 top-20 w-6 h-6 bg-[#0d0d0d] border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition-all shadow-lg z-10 hover:scale-110 group"
+        title={isExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+        aria-label={isExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
       >
         <Icon
           icon={Icons.CHEVRON_RIGHT}
@@ -638,7 +665,15 @@ export function YouTubeSidebar() {
               ? "opacity-100 pointer-events-auto"
               : "opacity-0 pointer-events-none",
           )}
+          role="button"
+          tabIndex={0}
           onClick={() => setMobileOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
+              setMobileOpen(false);
+            }
+          }}
+          aria-label="Close sidebar"
         />
         {/* Sidebar with smooth slide animation */}
         <aside

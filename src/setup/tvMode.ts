@@ -7,6 +7,5 @@ import { isTVDevice } from "@/utils/isTVDevice";
 export function initializeTVMode() {
   if (isTVDevice()) {
     document.documentElement.setAttribute("data-tv-mode", "true");
-    console.log("[TV Mode] TV device detected, enabling TV optimizations");
   }
 }

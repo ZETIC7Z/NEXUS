@@ -48,7 +48,7 @@ export function LanguageProvider() {
 
   return (
     <Helmet>
-      <html dir={isRtl ? "rtl" : "ltr"} />
+      <html lang={language} dir={isRtl ? "rtl" : "ltr"} />
     </Helmet>
   );
 }

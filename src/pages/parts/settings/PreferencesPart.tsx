@@ -131,13 +131,22 @@ export function PreferencesPart(props: {
               {t("settings.preferences.thumbnailDescription")}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 if (!props.enableLowPerformanceMode) {
                   props.setEnableThumbnails(!props.enableThumbnails);
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  if (!props.enableLowPerformanceMode) {
+                    props.setEnableThumbnails(!props.enableThumbnails);
+                  }
+                }
+              }}
               className={classNames(
-                "bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg",
+                "bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]",
                 props.enableLowPerformanceMode
                   ? "cursor-not-allowed opacity-50 pointer-events-none"
                   : "cursor-pointer opacity-100 pointer-events-auto",
@@ -159,13 +168,22 @@ export function PreferencesPart(props: {
               {t("settings.preferences.autoplayDescription")}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() =>
                 allowAutoplay && !props.enableLowPerformanceMode
                   ? props.setEnableAutoplay(!props.enableAutoplay)
                   : null
               }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  if (allowAutoplay && !props.enableLowPerformanceMode) {
+                    props.setEnableAutoplay(!props.enableAutoplay);
+                  }
+                }
+              }}
               className={classNames(
-                "bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg",
+                "bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]",
                 allowAutoplay && !props.enableLowPerformanceMode
                   ? "cursor-pointer opacity-100 pointer-events-auto"
                   : "cursor-not-allowed opacity-50 pointer-events-none",
@@ -189,10 +207,17 @@ export function PreferencesPart(props: {
                     {t("settings.preferences.skipCreditsDescription")}
                   </p>
                   <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() =>
                       props.setEnableSkipCredits(!props.enableSkipCredits)
                     }
-                    className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        props.setEnableSkipCredits(!props.enableSkipCredits);
+                      }
+                    }}
+                    className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
                   >
                     <Toggle enabled={props.enableSkipCredits} />
                     <p className="flex-1 text-white font-bold">
@@ -211,8 +236,15 @@ export function PreferencesPart(props: {
               {t("settings.preferences.lowPerformanceModeDescription")}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={handleLowPerformanceModeToggle}
-              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleLowPerformanceModeToggle();
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
               <Toggle enabled={props.enableLowPerformanceMode} />
               <p className="flex-1 text-white font-bold">
@@ -230,10 +262,17 @@ export function PreferencesPart(props: {
               {t("settings.preferences.holdToBoostDescription")}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() =>
                 props.setEnableHoldToBoost(!props.enableHoldToBoost)
               }
-              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  props.setEnableHoldToBoost(!props.enableHoldToBoost);
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
               <Toggle enabled={props.enableHoldToBoost} />
               <p className="flex-1 text-white font-bold">
@@ -251,10 +290,19 @@ export function PreferencesPart(props: {
               {t("settings.preferences.doubleClickToSeekDescription")}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() =>
                 props.setEnableDoubleClickToSeek(!props.enableDoubleClickToSeek)
               }
-              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  props.setEnableDoubleClickToSeek(
+                    !props.enableDoubleClickToSeek,
+                  );
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
               <Toggle enabled={props.enableDoubleClickToSeek} />
               <p className="flex-1 text-white font-bold">
@@ -275,11 +323,21 @@ export function PreferencesPart(props: {
               )}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 const store = usePreferencesStore.getState();
                 store.setEnableAutoSkipSegments(!store.enableAutoSkipSegments);
               }}
-              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  const store = usePreferencesStore.getState();
+                  store.setEnableAutoSkipSegments(
+                    !store.enableAutoSkipSegments,
+                  );
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
               <Toggle
                 enabled={usePreferencesStore((s) => s.enableAutoSkipSegments)}
@@ -305,11 +363,19 @@ export function PreferencesPart(props: {
               )}
             </p>
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => {
                 const store = usePreferencesStore.getState();
                 store.setEnablePauseOverlay(!store.enablePauseOverlay);
               }}
-              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  const store = usePreferencesStore.getState();
+                  store.setEnablePauseOverlay(!store.enablePauseOverlay);
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
               <Toggle
                 enabled={usePreferencesStore((s) => s.enablePauseOverlay)}
@@ -333,10 +399,19 @@ export function PreferencesPart(props: {
                 {t("settings.preferences.manualSourceDescription")}
               </p>
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() =>
                   props.setManualSourceSelection(!props.manualSourceSelection)
                 }
-                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    props.setManualSourceSelection(
+                      !props.manualSourceSelection,
+                    );
+                  }
+                }}
+                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
               >
                 <Toggle enabled={props.manualSourceSelection} />
                 <p className="flex-1 text-white font-bold">
@@ -354,12 +429,21 @@ export function PreferencesPart(props: {
                 {t("settings.preferences.autoResumeOnPlaybackErrorDescription")}
               </p>
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() =>
                   props.setEnableAutoResumeOnPlaybackError(
                     !props.enableAutoResumeOnPlaybackError,
                   )
                 }
-                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    props.setEnableAutoResumeOnPlaybackError(
+                      !props.enableAutoResumeOnPlaybackError,
+                    );
+                  }
+                }}
+                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
               >
                 <Toggle enabled={props.enableAutoResumeOnPlaybackError} />
                 <p className="flex-1 text-white font-bold">
@@ -377,12 +461,21 @@ export function PreferencesPart(props: {
                 {t("settings.preferences.lastSuccessfulSourceDescription")}
               </p>
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() =>
                   props.setEnableLastSuccessfulSource(
                     !props.enableLastSuccessfulSource,
                   )
                 }
-                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    props.setEnableLastSuccessfulSource(
+                      !props.enableLastSuccessfulSource,
+                    );
+                  }
+                }}
+                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
               >
                 <Toggle enabled={props.enableLastSuccessfulSource} />
                 <p className="flex-1 text-white font-bold">
@@ -400,17 +493,35 @@ export function PreferencesPart(props: {
                 components={{
                   bold: (
                     <span
-                      className="text-type-link font-bold cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t(
+                        "settings.preferences.sourceOrderDescriptionLink",
+                        "Go to extension onboarding",
+                      )}
+                      className="text-type-link font-bold cursor-pointer outline-none hover:underline focus:underline"
                       onClick={() => navigate("/onboarding/extension")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          navigate("/onboarding/extension");
+                        }
+                      }}
                     />
                   ),
                 }}
               />
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() =>
                   props.setenableSourceOrder(!props.enableSourceOrder)
                 }
-                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    props.setenableSourceOrder(!props.enableSourceOrder);
+                  }
+                }}
+                className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
               >
                 <Toggle enabled={props.enableSourceOrder} />
                 <p className="flex-1 text-white font-bold">
