@@ -1,54 +1,45 @@
 /**
- * Detects if the current device is a TV or TV-like device
- * Checks for Android TV, WebOS, Tizen, and other TV platforms
+ * Detects if the current device is a TV or TV-like device.
+ * Only matches real TV platforms — NOT regular desktops, tablets, or phones.
  */
 export function isTVDevice(): boolean {
   const userAgent = navigator.userAgent.toLowerCase();
 
-  // Check for known TV user agents
+  // Check for known TV-specific user agent strings
+  // These are unique to TV platforms and won't match desktops/tablets
   const tvUserAgents = [
     "googletv",
     "appletv",
     "smarttv",
     "smart-tv",
-    "tv",
-    "hbbtv",
-    "netcast",
-    "nettv",
-    "web0s",
-    "webos",
-    "tizen",
-    "aftm", // Amazon Fire TV
-    "aftb", // Amazon Fire TV Stick
-    "afts", // Amazon Fire TV
+    "hbbtv",    // Hybrid Broadcast Broadband TV standard
+    "netcast",  // LG NetCast
+    "nettv",    // Philips Net TV
+    "web0s",    // LG webOS (old format)
+    "webos",    // LG webOS
+    "tizen",    // Samsung Tizen TVs
+    "aftm",     // Amazon Fire TV (AFTM models)
+    "aftb",     // Amazon Fire TV Stick (AFTB models)
+    "afts",     // Amazon Fire TV (AFTS models)
+    "aftt",     // Amazon Fire TV Stick (AFTT models)
+    "crkey",    // Chromecast
   ];
 
-  // Check user agent
+  // Check user agent for TV-specific strings
   const hasTVUserAgent = tvUserAgents.some((tv) => userAgent.includes(tv));
   if (hasTVUserAgent) return true;
 
-  // Check for large screen with typical TV resolution
-  const isLargeScreen =
-    window.screen.width >= 1920 && window.screen.height >= 1080;
-  const isVeryLargeScreen = window.screen.width >= 3840; // 4K TVs
-
-  // Check if using a gamepad (TV remotes often register as gamepads)
-  const hasGamepad =
-    navigator.getGamepads && navigator.getGamepads().length > 0;
-
-  // Android TV specific check
-  const isAndroidTVDevice =
-    userAgent.includes("android") && !userAgent.includes("mobile");
+  // Check specifically for "android tv" as a phrase (not just "android" alone)
+  if (userAgent.includes("android tv")) return true;
 
   // Detect if display-mode is tv (some browsers support this)
-  const isTVDisplayMode = window.matchMedia("(display-mode: tv)").matches;
+  try {
+    if (window.matchMedia("(display-mode: tv)").matches) return true;
+  } catch {
+    // matchMedia not available
+  }
 
-  return (
-    isAndroidTVDevice ||
-    isTVDisplayMode ||
-    (isVeryLargeScreen && !window.matchMedia("(pointer: fine)").matches) ||
-    (isLargeScreen && hasGamepad)
-  );
+  return false;
 }
 
 /**
@@ -56,7 +47,8 @@ export function isTVDevice(): boolean {
  */
 export function isAndroidTV(): boolean {
   const userAgent = navigator.userAgent.toLowerCase();
-  return userAgent.includes("android") && !userAgent.includes("mobile");
+  // Only match "android tv" specifically, not regular Android tablets
+  return userAgent.includes("android tv");
 }
 
 /**
@@ -69,15 +61,17 @@ export function getTVPlatform(): string | null {
     return "LG WebOS";
   if (userAgent.includes("tizen")) return "Samsung Tizen";
   if (userAgent.includes("googletv")) return "Google TV";
-  if (isAndroidTV()) return "Android TV";
+  if (userAgent.includes("android tv")) return "Android TV";
   if (
     userAgent.includes("aftm") ||
     userAgent.includes("afts") ||
-    userAgent.includes("aftb")
+    userAgent.includes("aftb") ||
+    userAgent.includes("aftt")
   ) {
     return "Amazon Fire TV";
   }
   if (userAgent.includes("appletv")) return "Apple TV";
+  if (userAgent.includes("crkey")) return "Chromecast";
 
   return isTVDevice() ? "Unknown TV" : null;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { CarouselCards } from "@/components/CarouselCards";
@@ -145,176 +145,12 @@ function MovieBackground() {
   );
 }
 
-// Video intro animation with modern splash screen
-function VideoIntro({ onComplete }: { onComplete: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [fadeOut, setFadeOut] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-
-  // Start the intro with audio
-  const startIntro = () => {
-    const video = videoRef.current;
-    const audio = audioRef.current;
-
-    if (video && audio) {
-      setShowSplash(false);
-      video.muted = false;
-      audio.volume = 1.0;
-
-      video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(() => onComplete());
-      });
-
-      audio.play().catch(() => {});
-    }
-  };
-
-  // Video intro - no countdown, user clicks to start
-  // (Removed auto-countdown timer per user request)
-
-  // Video event handlers
-  useEffect(() => {
-    const video = videoRef.current;
-    const audio = audioRef.current;
-    if (!video || !audio) return;
-
-    const handleEnded = () => {
-      setFadeOut(true);
-      audio.pause();
-      audio.currentTime = 0;
-      setTimeout(() => onComplete(), 500);
-    };
-
-    const handleError = () => {
-      setHasError(true);
-      audio.pause();
-      onComplete();
-    };
-
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("error", handleError);
-
-    return () => {
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("error", handleError);
-      audio.pause();
-    };
-  }, [onComplete]);
-
-  if (hasError) return null;
-
-  return (
-    <div
-      className={`fixed inset-0 z-50 bg-black transition-opacity duration-500 ${fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"}`}
-    >
-      {/* Modern Splash Screen */}
-      {showSplash && (
-        <div className="absolute inset-0 z-20 bg-gradient-to-b from-black via-gray-900 to-black flex flex-col items-center justify-center">
-          {/* Glowing animated logo */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 blur-3xl bg-red-600/30 animate-pulse rounded-full scale-150" />
-            <img
-              src="/nexus-logo-full.png"
-              alt="NEXUS"
-              className="relative h-32 md:h-40 lg:h-48 object-contain drop-shadow-[0_0_30px_rgba(239,68,68,0.8)] animate-pulse"
-            />
-          </div>
-
-          {/* Play button - click to enter */}
-          <button
-            type="button"
-            onClick={startIntro}
-            className="relative group mb-8 w-28 h-28 rounded-full bg-gray-800/50 hover:bg-red-600/30 border-2 border-gray-700 hover:border-red-600 flex items-center justify-center transition-all"
-          >
-            <svg
-              className="w-12 h-12 text-white ml-2"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            {/* Glow effect on hover */}
-            <div className="absolute inset-0 rounded-full bg-red-600/0 group-hover:bg-red-600/10 transition-colors" />
-          </button>
-
-          {/* Enter Site button */}
-          <button
-            type="button"
-            onClick={startIntro}
-            className="flex items-center gap-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-10 py-4 rounded-full text-lg font-bold uppercase tracking-wider shadow-lg shadow-red-600/30 hover:shadow-red-600/50 transition-all hover:scale-105 mb-10"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            Enter Site
-          </button>
-
-          {/* 18+ Disclaimer */}
-          <div className="max-w-lg text-center px-6">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="text-2xl">🔞</span>
-              <span className="text-red-500 font-bold text-xl uppercase tracking-wider">
-                Adults Only (18+)
-              </span>
-            </div>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              This website contains content intended for adults only. By
-              entering, you confirm that you are at least 18 years of age and
-              agree to our Terms of Service.
-            </p>
-          </div>
-
-          {/* Decorative elements */}
-          <div className="absolute bottom-4 text-gray-600 text-xs">
-            © 2025 NEXUS · All Rights Reserved
-          </div>
-        </div>
-      )}
-
-      <video
-        ref={videoRef}
-        src="/intro.mp4"
-        className="w-full h-full object-cover"
-        playsInline
-        preload="auto"
-      />
-      <audio ref={audioRef} src="/introanim.mp3" preload="auto" />
-    </div>
-  );
-}
-
 export function LandingPage() {
   const navigate = useNavigate();
   const account = useAuthStore((s) => s.account);
   const isLoggedIn = !!account;
 
   const [contentVisible, setContentVisible] = useState(false);
-  const [showTVIntro, setShowTVIntro] = useState(false);
-  const [tvIntroComplete, setTVIntroComplete] = useState(false);
-
-  // Check if TV and if intro has been shown
-  useEffect(() => {
-    const isTVSessionStorageKey = "nexus-tv-intro-shown";
-    const hasShownIntro = sessionStorage.getItem(isTVSessionStorageKey);
-
-    // Check if this is a TV device
-    const isTV = document.documentElement.hasAttribute("data-tv-mode");
-
-    if (isTV && !hasShownIntro && !isLoggedIn) {
-      setShowTVIntro(true);
-    } else {
-      setTVIntroComplete(true);
-    }
-  }, [isLoggedIn]);
-
-  const handleTVIntroComplete = () => {
-    sessionStorage.setItem("nexus-tv-intro-shown", "true");
-    setShowTVIntro(false);
-    setTVIntroComplete(true);
-  };
 
   // Redirect to discover if logged in
   useEffect(() => {
@@ -325,22 +161,15 @@ export function LandingPage() {
 
   // Show content with fade-in animation
   useEffect(() => {
-    if (tvIntroComplete) {
-      const timer = setTimeout(() => setContentVisible(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [tvIntroComplete]);
+    const timer = setTimeout(() => setContentVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSignIn = () => navigate("/login");
   const handleRegister = () => navigate("/register");
 
   // Don't render if logged in (will redirect)
   if (isLoggedIn) return null;
-
-  // Show TV intro if needed
-  if (showTVIntro) {
-    return <VideoIntro onComplete={handleTVIntroComplete} />;
-  }
 
   return (
     <div className="h-screen bg-black relative overflow-hidden flex flex-col">
