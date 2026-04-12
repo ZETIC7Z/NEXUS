@@ -397,13 +397,15 @@ function DiscoverNexusDropdown() {
         <div className="absolute top-full left-0 mt-2 w-60 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl shadow-black/50 overflow-visible z-50 animate-fadeIn">
           <button
             type="button"
+            title="Download Nexus App"
+            aria-label="Download Nexus App"
             onClick={() => {
               setIsDownloadOpen(true);
               setIsOpen(false);
             }}
-            className="w-full flex items-center gap-3 px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200 group"
+            className="w-full flex items-center gap-3 px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200 group/download glow-pulse"
           >
-            <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)_/_0.1)] flex items-center justify-center group-hover:bg-[hsl(var(--colors-active)_/_0.2)] transition-colors">
+            <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)/0.2)] flex items-center justify-center group-hover/download:bg-[hsl(var(--colors-active)/0.3)] transition-colors shadow-[0_0_15px_hsla(var(--colors-active),0.3)]">
               <Icon
                 icon={Icons.DOWNLOAD}
                 className="text-lg text-[hsl(var(--colors-active))]"
@@ -421,6 +423,8 @@ function DiscoverNexusDropdown() {
           >
             <button
               type="button"
+              title="Watch On Other Platforms"
+              aria-label="Watch On Other Platforms"
               className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200"
             >
               <div className="flex items-center gap-3">

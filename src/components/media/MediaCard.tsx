@@ -179,13 +179,13 @@ function MediaCardContent({
           })}
         />
         <Flare.Child
-          className={`pointer-events-auto relative mb-2 p-[0.4em] transition-transform duration-300 ${
-            canLink ? "group-hover:scale-95" : "opacity-60"
+          className={`pointer-events-auto relative mb-2 p-[0.4em] transition-all duration-400 ease-[cubic-bezier(0.33,1,0.68,1)] ${
+            canLink ? "group-hover:scale-105 group-hover:z-50" : "opacity-60"
           }`}
         >
           <div
             className={classNames(
-              "relative mb-4 pb-[150%] w-full overflow-hidden rounded-xl bg-mediaCard-hoverBackground bg-cover bg-center transition-[border-radius] duration-300",
+              "relative mb-4 pb-[150%] w-full overflow-hidden rounded-xl bg-mediaCard-hoverBackground bg-cover bg-center transition-all duration-400 ease-out shadow-lg group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)]",
               {
                 "group-hover:rounded-lg": canLink,
               },

@@ -11,12 +11,12 @@ export interface DownloadModalProps {
 
 const downloadLinks = {
   windows:
-    "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/1b1e2d63-61b1-451a-b315-92be6cabd971?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A36%3A13Z&rscd=attachment%3B+filename%3DNEXUS.Setup.1.2.1.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A36%3A07Z&ske=2026-04-10T09%3A36%3A13Z&sks=b&skv=2018-11-09&sig=kVCXTdRJSCUZuunuH6xKjdqRbGrk7FiFXel1yHBRYAk%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxMzg4OCwibmJmIjoxNzc1ODEwMjg4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.HMshptf-POBLHUuJ_rNyyiPplH8lpOuA-9sdFGwvRuk",
-  mac: "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/66866ad3-e6bd-4ace-97d5-d6050dd588aa?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A36%3A03Z&rscd=attachment%3B+filename%3DNEXUS-1.2.1-arm64.dmg&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A35%3A46Z&ske=2026-04-10T09%3A36%3A03Z&sks=b&skv=2018-11-09&sig=LPSlSPM5uepZa%2BqO56UM%2BFa%2BI9VGCWbpNUBCUJ3zAd0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxNDA0MywibmJmIjoxNzc1ODEwMjg4LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.RBoNs-7TRW4RKFvRy5kq_xT1essbhac9-RlNqiwGIvQ",
+    "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS.Setup.1.2.1.exe",
+  mac: "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS-1.2.1-arm64.dmg",
   linux:
-    "https://release-assets.githubusercontent.com/github-production-release-asset/1146452590/082c54b4-6f03-49cf-a355-277b00a91bad?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-04-10T09%3A32%3A59Z&rscd=attachment%3B+filename%3DNEXUS-1.2.1.AppImage&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-04-10T08%3A32%3A12Z&ske=2026-04-10T09%3A32%3A59Z&sks=b&skv=2018-11-09&sig=f8fE87YiENwGqw90ZIB1iW7rAUxfyeDYCmVg%2BZDNnJ4%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc3NTgxNDA3NywibmJmIjoxNzc1ODEwNDc3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.FhhAKVB7rhGxo243IOt4-Wx5al9JuGD1tYeC6vw3Cbo",
+    "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS-1.2.1.AppImage",
   android:
-    "https://drive.usercontent.google.com/download?id=1fBYz5TySt-68EWP8NW2mayBXltP5Y24m&export=download&authuser=1&confirm=t&uuid=f3792236-56db-4d6f-9555-8efddba1d776&at=ALBwUgniziUojnjbjn7ch3LP4i89:1775809883460",
+    "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS.apk",
 };
 
 export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
@@ -192,7 +192,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
               <div className="relative z-10 flex flex-col items-center gap-4 text-center">
                 <div className="p-4 bg-white/5 rounded-xl text-green-400 group-hover:text-green-300 group-hover:scale-110 transition-all duration-300">
                   <Icon
-                    icon={Icons.DOWNLOAD}
+                    icon={Icons.ANDROID}
                     className="text-3xl md:text-4xl"
                   />
                 </div>

@@ -230,9 +230,9 @@ function DiscoverNexusDropdown({
       <button
         type="button"
         onClick={() => setIsDownloadOpen(true)}
-        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group/download"
+        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 group/download glow-pulse"
       >
-        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)_/_0.1)] flex items-center justify-center group-hover/download:bg-[hsl(var(--colors-active)_/_0.2)] transition-colors">
+        <div className="w-8 h-8 rounded-lg bg-[hsl(var(--colors-active)/0.2)] flex items-center justify-center group-hover/download:bg-[hsl(var(--colors-active)/0.3)] transition-colors shadow-[0_0_15px_hsla(var(--colors-active),0.3)]">
           <Icon
             icon={Icons.DOWNLOAD}
             className="text-base text-[hsl(var(--colors-active))]"

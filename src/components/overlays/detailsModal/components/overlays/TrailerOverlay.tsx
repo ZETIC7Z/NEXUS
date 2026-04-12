@@ -45,6 +45,8 @@ export function TrailerOverlay({ trailerUrl, onClose }: TrailerOverlayProps) {
           type="button"
           onClick={onClose}
           className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+          title="Close trailer"
+          aria-label="Close trailer"
         >
           <Icon icon={Icons.X} className="text-white" />
         </button>

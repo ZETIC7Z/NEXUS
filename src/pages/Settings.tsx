@@ -718,7 +718,7 @@ export function SettingsPage() {
       <SettingsLayout
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
-        className="space-y-28"
+        className="space-y-28 pb-32"
       >
         {(searchQuery.trim() ||
           !selectedCategory ||
@@ -857,14 +857,15 @@ export function SettingsPage() {
       <Transition
         animation="fade"
         show={state.changed}
-        className="bg-settings-saveBar-background border-t border-settings-card-border/50 py-4 transition-opacity w-full fixed bottom-0 flex justify-between flex-col md:flex-row px-8 items-start md:items-center gap-3 z-[999]"
+        className="bg-settings-saveBar-background border-t border-settings-card-border/50 py-4 transition-opacity w-full fixed bottom-0 left-0 flex justify-between flex-col md:flex-row px-8 items-start md:items-center gap-3 z-[1000] pb-[calc(env(safe-area-inset-bottom)+1rem)] md:pb-8"
       >
-        <p className="text-type-danger">{t("settings.unsaved")}</p>
+        <p className="text-type-danger font-medium">{t("settings.unsaved")}</p>
         <div className="space-x-3 w-full md:w-auto flex">
           <Button
             className="w-full md:w-auto"
             theme="secondary"
             onClick={state.reset}
+            title={t("settings.reset")}
           >
             {t("settings.reset")}
           </Button>
@@ -872,6 +873,7 @@ export function SettingsPage() {
             className="w-full md:w-auto"
             theme="purple"
             onClick={saveChanges}
+            title={t("settings.save")}
           >
             {t("settings.save")}
           </Button>
