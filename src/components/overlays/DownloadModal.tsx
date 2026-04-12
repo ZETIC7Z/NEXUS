@@ -11,10 +11,10 @@ export interface DownloadModalProps {
 
 const downloadLinks = {
   windows:
-    "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS.Setup.1.2.1.exe",
-  mac: "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS-1.2.1-arm64.dmg",
+    "https://drive.usercontent.google.com/download?id=10Woa7Uc7JebsV-bJeIpK-24s2tR1yJf0&export=download&authuser=3&confirm=t&uuid=35184727-2067-43ba-95dd-b34d8538d06e&at=ALBwUgkZyGOLiAaHQNApnYCACkU4:1775994800055",
+  mac: "https://drive.google.com/file/d/1h9ZseM24cZDxGl2iYImWnPrDi7GaUBhZ/view?usp=drive_link",
   linux:
-    "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS-1.2.1.AppImage",
+    "https://drive.google.com/file/d/1kL0gK5dknzW-PfORcpZGZtahuP5ta2Yj/view?usp=sharing",
   android:
     "https://github.com/ZETIC7Z/NEXUS/releases/download/v1.2.1/NEXUS.apk",
 };
