@@ -284,6 +284,8 @@ function MediaCardContent({
               <button
                 className="media-more-button p-2"
                 type="button"
+                title="Show details"
+                aria-label="Show details"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -302,6 +304,8 @@ function MediaCardContent({
               <button
                 className="media-more-button p-2"
                 type="button"
+                title="Edit item"
+                aria-label="Edit item"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

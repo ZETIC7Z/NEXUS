@@ -363,8 +363,9 @@ export function MobileBottomNav() {
                 </a>
               </li>
             ))}
-            <div
+            <li
               className="magic-indicator"
+              aria-hidden="true"
               style={{
                 transform: `translateX(${activeIndex * 70}px)`,
               }}

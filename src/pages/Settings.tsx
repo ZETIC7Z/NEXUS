@@ -865,7 +865,6 @@ export function SettingsPage() {
             className="w-full md:w-auto"
             theme="secondary"
             onClick={state.reset}
-            title={t("settings.reset")}
           >
             {t("settings.reset")}
           </Button>
@@ -873,7 +872,6 @@ export function SettingsPage() {
             className="w-full md:w-auto"
             theme="purple"
             onClick={saveChanges}
-            title={t("settings.save")}
           >
             {t("settings.save")}
           </Button>

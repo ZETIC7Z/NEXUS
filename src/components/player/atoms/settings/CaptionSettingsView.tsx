@@ -170,6 +170,8 @@ export function CaptionDelay(props: {
               className={inputClasses}
               value={inputValue}
               autoFocus
+              aria-label={props.label}
+              title={props.label}
               onFocus={(e) => {
                 (e.target as HTMLInputElement).select();
               }}
@@ -337,6 +339,8 @@ export function CaptionSetting(props: {
               className={inputClasses}
               value={inputValue}
               autoFocus
+              aria-label={props.label}
+              title={props.label}
               onFocus={(e) => {
                 (e.target as HTMLInputElement).select();
               }}
@@ -355,24 +359,7 @@ export function CaptionSetting(props: {
             />
           ) : (
             <div
-              role="button"
-              tabIndex={0}
               className="relative outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
-              onClick={(evt) => {
-                if ((evt.target as HTMLButtonElement).closest(".actions"))
-                  return;
-
-                setInputValue(props.value.toFixed(props.decimalsAllowed ?? 0));
-                setIsFocused(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setInputValue(
-                    props.value.toFixed(props.decimalsAllowed ?? 0),
-                  );
-                  setIsFocused(true);
-                }
-              }}
             >
               <button
                 className={classNames(
@@ -381,6 +368,12 @@ export function CaptionSetting(props: {
                 )}
                 type="button"
                 tabIndex={0}
+                title={`Edit ${props.label}`}
+                aria-label={`Edit ${props.label}`}
+                onClick={() => {
+                  setInputValue(props.value.toFixed(props.decimalsAllowed ?? 0));
+                  setIsFocused(true);
+                }}
               >
                 {textTransformer(
                   props.value.toFixed(props.decimalsAllowed ?? 0),
@@ -391,12 +384,14 @@ export function CaptionSetting(props: {
                   <div className="actions w-6 h-full absolute left-0 top-0 grid grid-cols-1 items-center justify-center">
                     <button
                       type="button"
+                      title="Decrease value"
+                      aria-label="Decrease value"
                       onClick={
                         () =>
                           props.onChange?.(
                             props.value -
                               1 / 10 ** (props.decimalsAllowed ?? 0),
-                          ) // Remove depending on the decimalsAllowed. If there's 1 decimal allowed, add 0.1. For 2, add 0.01, etc.
+                          )
                       }
                       className={arrowButtonClasses}
                     >
@@ -406,12 +401,14 @@ export function CaptionSetting(props: {
                   <div className="actions w-6 h-full absolute right-0 top-0 grid grid-cols-1 items-center justify-center">
                     <button
                       type="button"
+                      title="Increase value"
+                      aria-label="Increase value"
                       onClick={
                         () =>
                           props.onChange?.(
                             props.value +
                               1 / 10 ** (props.decimalsAllowed ?? 0),
-                          ) // Add depending on the decimalsAllowed. If there's 1 decimal allowed, add 0.1. For 2, add 0.01, etc.
+                          )
                       }
                       className={arrowButtonClasses}
                     >
@@ -663,6 +660,8 @@ export function CaptionSettingsView({
                   <input
                     type="color"
                     value={styling.color}
+                    aria-label="Custom subtitle color"
+                    title="Custom subtitle color"
                     onChange={(e) => {
                       const color = e.target.value;
                       handleStylingChange({ ...styling, color });

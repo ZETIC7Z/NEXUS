@@ -6,15 +6,8 @@ export function TrailerOverlay({ trailerUrl, onClose }: TrailerOverlayProps) {
   return (
     <div
       className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity duration-300"
-      role="button"
-      tabIndex={0}
       onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
-          onClose();
-        }
-      }}
-      aria-label="Close trailer"
+      role="presentation"
     >
       <div
         className="relative w-[90%] max-w-6xl aspect-video"
