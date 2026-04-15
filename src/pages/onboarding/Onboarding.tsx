@@ -403,14 +403,15 @@ export function OnboardingPage() {
           </div>
 
           {/* Right Column: Branding & Installation */}
-          <div className="hidden md:flex flex-col items-center pt-8 border-l border-white/5 pl-8">
+          <div className="hidden md:flex flex-col items-center justify-center pt-8 border-l border-white/5 pl-8 w-full max-w-sm">
             <img
               src="/nexus-logo-gold.png"
-              className="w-72 h-auto drop-shadow-[0_0_30px_rgba(251,191,36,0.2)] mb-10"
+              className="w-72 h-auto drop-shadow-[0_0_30px_rgba(251,191,36,0.2)] mb-8"
               alt="NEXUS"
             />
 
             <button
+              type="button"
               className="group relative bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold py-5 px-10 rounded-xl flex flex-col items-center gap-1 transition-all transform hover:scale-105 shadow-[0_0_40px_rgba(251,191,36,0.4)]"
               onClick={() => setIsDownloadOpen(true)}
             >
@@ -443,19 +444,25 @@ export function OnboardingPage() {
         </div>
 
         {/* Mobile Layout */}
-        <div className="md:hidden flex w-full flex-col gap-4 pb-6">
-          <div className="flex flex-col items-center mb-8">
+        <div className="md:hidden flex w-full flex-col gap-4 pb-6 mt-12">
+          <div className="flex flex-col items-center mb-10">
             <img
               src="/nexus-logo-gold.png"
-              className="w-48 h-auto drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+              className="w-56 h-auto drop-shadow-[0_0_15px_rgba(251,191,36,0.3)] mb-6"
               alt="NEXUS"
             />
             <button
-              className="mt-4 bg-gradient-to-b from-amber-400 to-amber-600 text-black font-bold py-3 px-6 rounded-md flex items-center gap-2 shadow-[0_0_15px_rgba(251,191,36,0.5)] w-full justify-center"
+              type="button"
+              className="group relative bg-gradient-to-b from-amber-400 to-amber-600 text-black font-bold py-4 px-8 rounded-xl flex flex-col items-center gap-1 shadow-[0_0_25px_rgba(251,191,36,0.4)] w-full max-w-xs transition-all active:scale-95"
               onClick={() => setIsDownloadOpen(true)}
             >
-              <Icon icon={Icons.DOWNLOAD} />
-              INSTALL NEXUS TO DEVICE
+              <div className="flex items-center gap-2 text-base font-black uppercase">
+                <Icon icon={Icons.DOWNLOAD} />
+                Install Nexus to Device
+              </div>
+              <span className="text-[9px] opacity-80 font-bold uppercase tracking-tighter">
+                Android, Windows, iOS
+              </span>
             </button>
           </div>
 

@@ -324,12 +324,15 @@ function DiscoverNexusDropdown({
             WATCH ON ZETFLIX
           </span>
         </div>
-        <div className="flex items-center gap-1.5 bg-red-600 text-white px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(220,38,38,0.4)]">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+        <div className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-500 text-white px-2 py-0.5 rounded-full shadow-[0_0_12px_rgba(220,38,38,0.4)] border border-red-400/20">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40" />
+            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-20 scale-150" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[inset_-1px_-1px_1.5px_rgba(0,0,0,0.4),inset_1px_1px_1.5px_rgba(255,255,255,0.6),0_0_4px_#22c55e]" />
           </span>
-          <span className="text-[9px] uppercase font-bold">LIVE</span>
+          <span className="text-[9px] uppercase font-black tracking-wider drop-shadow-sm">
+            LIVE
+          </span>
         </div>
       </a>
     </div>

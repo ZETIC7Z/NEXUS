@@ -1,11 +1,16 @@
 export interface NotificationItem {
   guid: string;
   title: string;
-  link: string;
+  link?: string;
   description: string;
   pubDate: string;
   category: string;
   source?: string;
+  posterUrl?: string;
+  releaseDate?: string;
+  mediaId?: string;
+  mediaType?: "movie" | "show";
+  type?: "rss" | "movie" | "system";
 }
 
 export interface NotificationModalProps {

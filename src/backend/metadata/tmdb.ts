@@ -322,6 +322,34 @@ export async function searchTVShows(
   }));
 }
 
+export async function getUpcomingMovies(
+  page: number = 1,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{
+    results: TMDBMovieSearchResult[];
+  }>("movie/upcoming", {
+    page,
+  });
+  return data.results.map((result) => ({
+    ...result,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
+export async function getTrendingMovies(
+  page: number = 1,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{
+    results: TMDBMovieSearchResult[];
+  }>("trending/movie/day", {
+    page,
+  });
+  return data.results.map((result) => ({
+    ...result,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
 export async function generateQuickSearchMediaUrl(
   query: string,
 ): Promise<string | undefined> {

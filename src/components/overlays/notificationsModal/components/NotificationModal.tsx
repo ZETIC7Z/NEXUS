@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import slugify from "slugify";
 
+import {
+  getMediaPoster,
+  getTrendingMovies,
+  getUpcomingMovies,
+} from "@/backend/metadata/tmdb";
 import { Icon, Icons } from "@/components/Icon";
 
 import { DetailView } from "./DetailView";
@@ -90,7 +96,7 @@ export function NotificationModal({ id }: NotificationModalProps) {
     };
   }, []);
 
-  // Fetch RSS feed function
+  // Fetch RSS feed and TMDB data
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -99,21 +105,87 @@ export function NotificationModal({ id }: NotificationModalProps) {
       const allNotifications: NotificationItem[] = [];
       const autoReadGuids: string[] = [];
 
-      // Mark notifications older than autoReadDays as read
+      // 1. ADD SYSTEM NOTIFICATIONS
+      const systemNotifications: NotificationItem[] = [
+        {
+          guid: "welcome-nexus-2024",
+          title: "Welcome to NEXUS 2.0!",
+          link: "/discover",
+          description:
+            "Explore the ultimate streaming experience with our new Aether-inspired interface. No setup required, just hit play and enjoy your favorite content in stunning quality.",
+          pubDate: new Date().toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+        },
+        {
+          guid: "nexus-extension-guide",
+          title: "Get Maximum Performance with NEXUS Extension",
+          link: "https://github.com/ZETIC7Z/NEXUS",
+          description:
+            "Want more episodic access for TV Series and Anime? Install the NEXUS Browser Extension to unlock premium direct embed sources effortlessly.",
+          pubDate: new Date().toISOString(),
+          category: "Enhancement",
+          source: "NEXUS Lab",
+          type: "system",
+        },
+      ];
+      allNotifications.push(...systemNotifications);
+
+      // 2. FETCH TMDB DATA (Upcoming & Trending)
+      try {
+        const [upcoming, trending] = await Promise.all([
+          getUpcomingMovies(),
+          getTrendingMovies(),
+        ]);
+
+        const tmdbNotifications: NotificationItem[] = [
+          ...upcoming.slice(0, 5).map((m) => ({
+            guid: `tmdb-upcoming-${m.id}`,
+            title: m.title,
+            // Navigate to media page directly
+            link: `/media/tmdb-movie-${m.id}-${slugify(m.title, { lower: true, strict: true })}`,
+            description:
+              m.overview || "An exciting upcoming movie coming soon to NEXUS.",
+            pubDate: m.release_date || new Date().toISOString(),
+            category: "Upcoming",
+            source: "Trending Now",
+            posterUrl: getMediaPoster(m.poster_path),
+            releaseDate: m.release_date,
+            mediaId: m.id.toString(),
+            type: "movie" as const,
+          })),
+          ...trending.slice(0, 5).map((m) => ({
+            guid: `tmdb-trending-${m.id}`,
+            title: `Trending: ${m.title}`,
+            link: `/media/tmdb-movie-${m.id}-${slugify(m.title, { lower: true, strict: true })}`,
+            description:
+              m.overview || "Now trending on NEXUS and popular globally.",
+            pubDate: new Date().toISOString(),
+            category: "Popular",
+            source: "Netflix Trend",
+            posterUrl: getMediaPoster(m.poster_path),
+            mediaId: m.id.toString(),
+            type: "movie" as const,
+          })),
+        ];
+        allNotifications.push(...tmdbNotifications);
+      } catch (tmdbError) {
+        console.error("Failed to fetch TMDB notifications:", tmdbError);
+      }
+
+      // 3. FETCH RSS FEEDS (Existing logic)
       const autoReadDate = new Date();
       autoReadDate.setDate(autoReadDate.getDate() - autoReadDays);
 
-      // Get all feeds (default + custom)
       const feeds = getAllFeeds();
 
-      // Fetch from all feeds
       for (const feedUrl of feeds) {
         if (!feedUrl.trim()) continue;
 
         try {
           const xmlText = await fetchRssFeed(feedUrl);
 
-          // Basic validation that we got XML content
           if (
             xmlText &&
             (xmlText.includes("<rss") || xmlText.includes("<feed"))
@@ -121,15 +193,12 @@ export function NotificationModal({ id }: NotificationModalProps) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
-            // Check for parsing errors
             const parserError = xmlDoc.querySelector("parsererror");
             if (!parserError && xmlDoc && xmlDoc.documentElement) {
-              // Handle both RSS (item) and Atom (entry) feeds
               const items = xmlDoc.querySelectorAll("item, entry");
               if (items && items.length > 0) {
                 items.forEach((item) => {
                   try {
-                    // Handle both RSS and Atom formats
                     const guid =
                       item.querySelector("guid")?.textContent ||
                       item.querySelector("id")?.textContent ||
@@ -153,14 +222,9 @@ export function NotificationModal({ id }: NotificationModalProps) {
                     const category =
                       item.querySelector("category")?.textContent || "";
 
-                    // Skip items without essential data
-                    // Use link as fallback for guid if guid is missing
                     const itemGuid = guid || link;
-                    if (!itemGuid || !title) {
-                      return;
-                    }
+                    if (!itemGuid || !title) return;
 
-                    // Parse the publication date
                     const notificationDate = new Date(pubDate);
 
                     allNotifications.push({
@@ -171,51 +235,43 @@ export function NotificationModal({ id }: NotificationModalProps) {
                       pubDate,
                       category,
                       source: getSourceName(feedUrl),
+                      type: "rss" as const,
                     });
 
-                    // Collect GUIDs of notifications older than autoReadDays
                     if (notificationDate <= autoReadDate) {
                       autoReadGuids.push(itemGuid);
                     }
-                  } catch (itemError) {
-                    // Skip malformed items
-                    console.warn(
-                      "Skipping malformed RSS/Atom item:",
-                      itemError,
-                    );
-                  }
+                  } catch (itemError) {}
                 });
               }
             }
           }
-        } catch (customFeedError) {
-          // Silently fail for individual feed errors
-        }
+        } catch (customFeedError) {}
       }
+
+      // Sort notifications by date (newest first)
+      allNotifications.sort(
+        (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime(),
+      );
 
       setNotifications(allNotifications);
 
-      // Update read notifications after setting notifications
       if (autoReadGuids.length > 0) {
         setReadNotifications((prevReadSet) => {
           const newReadSet = new Set(prevReadSet);
           autoReadGuids.forEach((guid) => newReadSet.add(guid));
-
-          // Update localStorage
           localStorage.setItem(
             "read-notifications",
             JSON.stringify(Array.from(newReadSet)),
           );
-
           return newReadSet;
         });
       }
     } catch (err) {
-      console.error("RSS fetch error:", err);
+      console.error("Fetch error:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load notifications",
       );
-      // Set empty notifications to prevent crashes
       setNotifications([]);
     } finally {
       setLoading(false);

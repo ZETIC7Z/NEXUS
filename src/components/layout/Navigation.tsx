@@ -482,12 +482,15 @@ function DiscoverNexusDropdown() {
                 WATCH ON ZETFLIX
               </span>
             </div>
-            <div className="flex items-center gap-2 bg-red-600 text-white px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            <div className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 text-white px-2.5 py-0.5 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.4)] border border-red-400/20 group-hover:scale-105 transition-transform duration-300">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40" />
+                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-20 scale-150" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[inset_-1px_-1px_2px_rgba(0,0,0,0.4),inset_1px_1px_2px_rgba(255,255,255,0.6),0_0_5px_#22c55e]" />
               </span>
-              <span className="text-[10px] uppercase font-bold">LIVE</span>
+              <span className="text-[10px] uppercase font-black tracking-wider drop-shadow-sm">
+                LIVE
+              </span>
             </div>
           </a>
         </div>
@@ -509,6 +512,10 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
   const navRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
+  const {
+    openNotifications: _openNotifications,
+    getUnreadCount: _getUnreadCount,
+  } = useNotifications();
 
   // Determine active path
   const getActivePath = useCallback(() => {
@@ -610,12 +617,20 @@ function PillNavigation({ onSearchToggle }: { onSearchToggle?: () => void }) {
         {/* Notification Button */}
         <button
           type="button"
-          className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200 relative"
+          onClick={() => {
+            _openNotifications();
+          }}
+          className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200 relative group"
           title="Notifications"
           aria-label="Notifications"
         >
-          <Icon icon={Icons.BELL} className="text-lg" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <Icon
+            icon={Icons.BELL}
+            className="text-lg group-hover:rotate-12 transition-transform"
+          />
+          {_getUnreadCount() !== 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_rgba(239,68,68,0.8)]" />
+          )}
         </button>
 
         {/* Discover Nexus Dropdown */}
@@ -982,10 +997,13 @@ export function Navigation(props: NavigationProps) {
             type="button"
             title="Notifications"
             aria-label="Notifications"
+            onClick={() => _openNotifications()}
             className="p-2 text-white/90 hover:bg-white/10 rounded-full transition-all duration-300 relative active:scale-90"
           >
             <Icon icon={Icons.BELL} className="text-xl" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-black" />
+            {_getUnreadCount() !== 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-black shadow-[0_0_5px_rgba(239,68,68,0.5)]" />
+            )}
           </button>
         </div>
 
