@@ -466,19 +466,20 @@ function DiscoverNexusDropdown() {
             </span>
           </button>
 
-          <button
-            type="button"
-            className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200 cursor-not-allowed opacity-60"
-            disabled
+          <a
+            href="https://zetflix-tv.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200"
           >
             <div className="flex items-center gap-3">
-              <Icon icon={Icons.FILM} className="text-xl" />
-              <span className="text-base font-medium">Drama Box</span>
+              <Icon icon={Icons.FILM} className="text-xl text-amber-500" />
+              <span className="text-base font-medium uppercase">Watch Movies in ZETFLIX</span>
             </div>
-            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full uppercase font-bold">
-              Coming Soon
+            <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded-full uppercase font-bold shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+              LIVE
             </span>
-          </button>
+          </a>
         </div>
       )}
 

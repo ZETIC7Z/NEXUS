@@ -14,13 +14,21 @@ export function Card(props: {
     <div
       className={classNames(
         {
-          "bg-onboarding-card duration-300 border border-onboarding-border rounded-lg p-7": true,
+          "bg-onboarding-card duration-300 border border-onboarding-border rounded-lg p-7 outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--colors-active))]": true,
           "hover:bg-onboarding-cardHover transition-colors cursor-pointer":
             !!props.onClick,
         },
         props.className,
       )}
       onClick={props.onClick}
+      onKeyDown={(e) => {
+        if (props.onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          props.onClick();
+        }
+      }}
+      role={props.onClick ? "button" : undefined}
+      tabIndex={props.onClick ? 0 : undefined}
     >
       {props.children}
     </div>
@@ -33,14 +41,19 @@ export function CardContent(props: {
   subtitle: ReactNode;
   colorClass: string;
   children?: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className="grid grid-rows-[1fr,auto] h-full">
       <div>
-        <Icon
-          icon={Icons.RISING_STAR}
-          className={classNames("text-4xl mb-8 block", props.colorClass)}
-        />
+        {props.icon ? (
+          props.icon
+        ) : (
+          <Icon
+            icon={Icons.RISING_STAR}
+            className={classNames("text-4xl mb-8 block", props.colorClass)}
+          />
+        )}
         <Heading3
           className={classNames(
             "!mt-0 !mb-0 !text-xs uppercase",
@@ -106,13 +119,20 @@ export function Link(props: {
   const navigate = useNavigate();
   return (
     <a
-      onClick={() => {
+      onClick={(e) => {
+        if (!props.href) e.preventDefault();
         if (props.to) navigate(props.to);
       }}
-      href={props.href}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          if (!props.href) e.preventDefault();
+          if (props.to) navigate(props.to);
+        }
+      }}
+      href={props.href ?? "#"}
       target={props.target}
       className={classNames(
-        "text-onboarding-link cursor-pointer inline-flex gap-2 items-center group hover:opacity-75 transition-opacity",
+        "text-onboarding-link cursor-pointer inline-flex gap-2 items-center group hover:opacity-75 transition-opacity outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--colors-active))] rounded-sm",
         props.className,
       )}
       rel="noreferrer"

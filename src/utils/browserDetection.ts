@@ -76,7 +76,7 @@ export function detectBrowser(): BrowserInfo {
     logo: "🌐",
     emoji: "🌐",
     chromeDirectUrl:
-      "https://chromewebstore.google.com/detail/p-stream-extension/gnheenieicoichghfmjlpofcaebbgclh",
+      "https://chromewebstore.google.com/detail/lordflix-extension/kadaciphkadjdmibffgjlgnomecepmke",
     violentmonkeyUrl:
       "https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag",
     userscriptManager: {

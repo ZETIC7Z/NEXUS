@@ -1,6 +1,6 @@
 import { proxiedFetch } from "@/backend/helpers/fetch";
-import { usePreferencesStore } from "@/stores/preferences";
 import { conf } from "@/setup/config";
+import { usePreferencesStore } from "@/stores/preferences";
 
 export interface FemboxSource {
   url: string;

@@ -98,9 +98,9 @@ export function CaptionDelay(props: {
           <div
             role="slider"
             aria-label={props.label}
-            aria-valuemin={props.min}
-            aria-valuemax={props.max}
-            aria-valuenow={props.value}
+            aria-valuemin={String(props.min)}
+            aria-valuemax={String(props.max)}
+            aria-valuenow={String(props.value)}
             tabIndex={0}
             className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}
@@ -286,9 +286,9 @@ export function CaptionSetting(props: {
           <div
             role="slider"
             aria-label={props.label}
-            aria-valuemin={props.min}
-            aria-valuemax={props.max}
-            aria-valuenow={props.value}
+            aria-valuemin={String(props.min)}
+            aria-valuemax={String(props.max)}
+            aria-valuenow={String(props.value)}
             tabIndex={0}
             className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}
@@ -358,9 +358,7 @@ export function CaptionSetting(props: {
               }
             />
           ) : (
-            <div
-              className="relative outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
-            >
+            <div className="relative outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded">
               <button
                 className={classNames(
                   inputClasses,
@@ -371,7 +369,9 @@ export function CaptionSetting(props: {
                 title={`Edit ${props.label}`}
                 aria-label={`Edit ${props.label}`}
                 onClick={() => {
-                  setInputValue(props.value.toFixed(props.decimalsAllowed ?? 0));
+                  setInputValue(
+                    props.value.toFixed(props.decimalsAllowed ?? 0),
+                  );
                   setIsFocused(true);
                 }}
               >
@@ -386,12 +386,10 @@ export function CaptionSetting(props: {
                       type="button"
                       title="Decrease value"
                       aria-label="Decrease value"
-                      onClick={
-                        () =>
-                          props.onChange?.(
-                            props.value -
-                              1 / 10 ** (props.decimalsAllowed ?? 0),
-                          )
+                      onClick={() =>
+                        props.onChange?.(
+                          props.value - 1 / 10 ** (props.decimalsAllowed ?? 0),
+                        )
                       }
                       className={arrowButtonClasses}
                     >
@@ -403,12 +401,10 @@ export function CaptionSetting(props: {
                       type="button"
                       title="Increase value"
                       aria-label="Increase value"
-                      onClick={
-                        () =>
-                          props.onChange?.(
-                            props.value +
-                              1 / 10 ** (props.decimalsAllowed ?? 0),
-                          )
+                      onClick={() =>
+                        props.onChange?.(
+                          props.value + 1 / 10 ** (props.decimalsAllowed ?? 0),
+                        )
                       }
                       className={arrowButtonClasses}
                     >

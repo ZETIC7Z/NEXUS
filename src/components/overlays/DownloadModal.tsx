@@ -191,10 +191,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
               <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative z-10 flex flex-col items-center gap-4 text-center">
                 <div className="p-4 bg-white/5 rounded-xl text-green-400 group-hover:text-green-300 group-hover:scale-110 transition-all duration-300">
-                  <Icon
-                    icon={Icons.ANDROID}
-                    className="text-3xl md:text-4xl"
-                  />
+                  <Icon icon={Icons.ANDROID} className="text-3xl md:text-4xl" />
                 </div>
                 <div>
                   <div className="text-white font-medium text-base md:text-lg">

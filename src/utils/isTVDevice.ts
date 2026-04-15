@@ -12,17 +12,17 @@ export function isTVDevice(): boolean {
     "appletv",
     "smarttv",
     "smart-tv",
-    "hbbtv",    // Hybrid Broadcast Broadband TV standard
-    "netcast",  // LG NetCast
-    "nettv",    // Philips Net TV
-    "web0s",    // LG webOS (old format)
-    "webos",    // LG webOS
-    "tizen",    // Samsung Tizen TVs
-    "aftm",     // Amazon Fire TV (AFTM models)
-    "aftb",     // Amazon Fire TV Stick (AFTB models)
-    "afts",     // Amazon Fire TV (AFTS models)
-    "aftt",     // Amazon Fire TV Stick (AFTT models)
-    "crkey",    // Chromecast
+    "hbbtv", // Hybrid Broadcast Broadband TV standard
+    "netcast", // LG NetCast
+    "nettv", // Philips Net TV
+    "web0s", // LG webOS (old format)
+    "webos", // LG webOS
+    "tizen", // Samsung Tizen TVs
+    "aftm", // Amazon Fire TV (AFTM models)
+    "aftb", // Amazon Fire TV Stick (AFTB models)
+    "afts", // Amazon Fire TV (AFTS models)
+    "aftt", // Amazon Fire TV Stick (AFTT models)
+    "crkey", // Chromecast
   ];
 
   // Check user agent for TV-specific strings

@@ -60,6 +60,16 @@ export function isNativeApp(): boolean {
   );
 }
 
+// ─── Internal ────────────────────────────────────────────────────────────────
+
+function assertBridgeAvailable(): void {
+  if (!isNativeApp()) {
+    throw new Error(
+      "NexusBridge is not available. Are you running inside the NEXUS Android app?",
+    );
+  }
+}
+
 // ─── API ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -120,14 +130,4 @@ export async function resolveMedia(
     throw new Error("No servers available for this media");
   }
   return getVideo(servers[0]);
-}
-
-// ─── Internal ────────────────────────────────────────────────────────────────
-
-function assertBridgeAvailable(): void {
-  if (!isNativeApp()) {
-    throw new Error(
-      "NexusBridge is not available. Are you running inside the NEXUS Android app?",
-    );
-  }
 }

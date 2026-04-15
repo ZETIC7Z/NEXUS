@@ -308,19 +308,20 @@ function DiscoverNexusDropdown({
       </button>
 
       {/* Drama Box */}
-      <button
-        type="button"
-        className="flex items-center justify-between gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:bg-white/5 rounded-lg transition-all duration-200 opacity-60 cursor-not-allowed"
-        disabled
+      <a
+        href="https://zetflix-tv.vercel.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition-all duration-200"
       >
         <div className="flex items-center gap-3">
-          <Icon icon={Icons.FILM} className="text-sm" />
-          <span>Drama Box</span>
+          <Icon icon={Icons.FILM} className="text-sm text-amber-500" />
+          <span className="font-medium uppercase">Watch Movies in ZETFLIX</span>
         </div>
-        <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full uppercase font-semibold">
-          Coming Soon
+        <span className="text-[9px] bg-amber-500 text-black px-1.5 py-0.5 rounded-full uppercase font-bold shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+          LIVE
         </span>
-      </button>
+      </a>
     </div>
   );
 }

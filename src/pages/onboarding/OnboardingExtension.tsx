@@ -19,7 +19,7 @@ import type { ExtensionStatus } from "@/utils/extension";
 
 // Extension URLs
 const CHROME_EXTENSION_URL =
-  "https://chromewebstore.google.com/detail/p-stream-extension/gnheenieicoichghfmjlpofcaebbgclh";
+  "https://chromewebstore.google.com/detail/lordflix-extension/kadaciphkadjdmibffgjlgnomecepmke";
 const FIREFOX_EXTENSION_URL =
   "https://addons.mozilla.org/en-US/firefox/addon/lordflix-extension-v1/";
 const SAFARI_USERSCRIPT_APP_URL =
