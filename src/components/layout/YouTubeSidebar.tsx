@@ -315,12 +315,22 @@ function DiscoverNexusDropdown({
         className="flex items-center justify-between gap-3 w-full px-4 py-2 text-sm text-gray-400 hover:bg-white/5 hover:text-white rounded-lg transition-all duration-200"
       >
         <div className="flex items-center gap-3">
-          <Icon icon={Icons.FILM} className="text-sm text-amber-500" />
-          <span className="font-medium uppercase">Watch Movies in ZETFLIX</span>
+          <img
+            src="/ZETFLIX.png"
+            alt="Zetflix"
+            className="w-5 h-5 object-contain"
+          />
+          <span className="font-medium uppercase tracking-tight">
+            WATCH ON ZETFLIX
+          </span>
         </div>
-        <span className="text-[9px] bg-amber-500 text-black px-1.5 py-0.5 rounded-full uppercase font-bold shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-          LIVE
-        </span>
+        <div className="flex items-center gap-1.5 bg-red-600 text-white px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(220,38,38,0.4)]">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+          </span>
+          <span className="text-[9px] uppercase font-bold">LIVE</span>
+        </div>
       </a>
     </div>
   );

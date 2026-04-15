@@ -98,9 +98,10 @@ export function CaptionDelay(props: {
           <div
             role="slider"
             aria-label={props.label}
-            aria-valuemin={String(props.min)}
-            aria-valuemax={String(props.max)}
-            aria-valuenow={String(props.value)}
+            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
+            aria-valuemin={props.min}
+            aria-valuemax={props.max}
+            aria-valuenow={props.value}
             tabIndex={0}
             className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}
@@ -286,9 +287,10 @@ export function CaptionSetting(props: {
           <div
             role="slider"
             aria-label={props.label}
-            aria-valuemin={String(props.min)}
-            aria-valuemax={String(props.max)}
-            aria-valuenow={String(props.value)}
+            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
+            aria-valuemin={props.min}
+            aria-valuemax={props.max}
+            aria-valuenow={props.value}
             tabIndex={0}
             className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
             onMouseDown={dragMouseDown}

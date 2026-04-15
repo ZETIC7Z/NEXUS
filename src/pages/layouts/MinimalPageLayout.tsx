@@ -5,15 +5,18 @@ import { BlurEllipsis } from "@/pages/layouts/SubPageLayout";
 export function MinimalPageLayout(props: { children: React.ReactNode }) {
   return (
     <div
-      className="bg-background-main min-h-screen"
+      className="bg-background-main min-h-screen relative overflow-x-hidden"
       style={{
         backgroundImage:
-          "linear-gradient(to bottom, var(--tw-gradient-from), var(--tw-gradient-to) 800px)",
+          "linear-gradient(to bottom, var(--tw-gradient-from), var(--tw-gradient-to))",
+        backgroundAttachment: "fixed",
       }}
     >
       <BlurEllipsis />
       {/* Main page */}
-      <div className="min-h-screen">{props.children}</div>
+      <div className="relative z-10 w-full min-h-screen flex flex-col">
+        {props.children}
+      </div>
     </div>
   );
 }

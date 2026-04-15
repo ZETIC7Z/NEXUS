@@ -338,98 +338,108 @@ export function OnboardingPage() {
 
       <BiggerCenterContainer>
         <Stepper steps={2} current={1} className="mb-12" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-4">
-          <div className="max-w-xl">
-            <Heading2 className="!mt-0 !text-3xl">
-              {t("onboarding.start.title")}
-            </Heading2>
-            <Paragraph>
-              {t("onboarding.start.explainer")}
-              <div
-                className="pt-4 flex cursor-pointer items-center text-type-link outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
-                onClick={() => infoModal.show()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    infoModal.show();
-                  }
-                }}
-                role="button"
-                tabIndex={0}
+        <div className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-8 mt-8">
+          {/* Left Column: Text & Player Options */}
+          <div className="flex flex-col gap-8">
+            <div className="max-w-xl">
+              <Heading2 className="!mt-0 !text-3xl">
+                {t("onboarding.start.title")}
+              </Heading2>
+              <Paragraph className="mb-0">
+                {t("onboarding.start.explainer")}
+                <div
+                  className="pt-4 flex cursor-pointer items-center text-type-link outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
+                  onClick={() => infoModal.show()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      infoModal.show();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <Trans i18nKey="onboarding.start.moreInfo.button" />
+                  <Icon className="pl-2" icon={Icons.CIRCLE_QUESTION} />
+                </div>
+              </Paragraph>
+            </div>
+
+            {/* Player Selection Cards */}
+            <div className="flex flex-col lg:flex-row w-full gap-4">
+              <Card
+                onClick={() => setIsExtensionModalOpen(true)}
+                className="flex-1 min-w-0"
               >
-                <Trans i18nKey="onboarding.start.moreInfo.button" />
-                <Icon className="pl-2" icon={Icons.CIRCLE_QUESTION} />
+                <CardContent
+                  colorClass="!text-amber-400"
+                  title="NEXUS PLAYER"
+                  subtitle="WITH SOURCE EXTENSION"
+                  description="Use browser extension to gain access to additional sources!"
+                >
+                  <Link className="!text-amber-400 font-bold ml-0 mt-2 block">
+                    Install extension &rarr;
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <div className="hidden lg:flex flex-col items-center justify-center pointer-events-none opacity-50">
+                <div className="w-px h-10 bg-white/20" />
+                <span className="text-[10px] uppercase font-bold py-2">OR</span>
+                <div className="w-px h-10 bg-white/20" />
               </div>
-            </Paragraph>
-          </div>
-          <div className="hidden md:flex flex-col items-center">
-            <img
-              src="/nexus-logo-gold.png"
-              className="w-64 h-auto drop-shadow-[0_0_20px_rgba(251,191,36,0.3)]"
-              alt="NEXUS"
-            />
-            <button
-              className="mt-4 bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold py-3 px-8 rounded-md flex items-center gap-2 transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(251,191,36,0.5)]"
-              onClick={() => setIsDownloadOpen(true)}
-            >
-              <Icon icon={Icons.DOWNLOAD} />
-              INSTALL NEXUS TO DEVICE
-            </button>
-            <div className="flex gap-4 mt-8 opacity-60">
-              <div className="flex flex-col items-center gap-1">
-                <Icon icon={Icons.WINDOWS} className="text-xl" />
-                <span className="text-[10px] uppercase">Windows</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <Icon icon={Icons.APPLE} className="text-xl" />
-                <span className="text-[10px] uppercase">macOS</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <Icon icon={Icons.LINUX} className="text-xl" />
-                <span className="text-[10px] uppercase">Linux</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <Icon icon={Icons.ANDROID} className="text-xl" />
-                <span className="text-[10px] uppercase">Android</span>
-              </div>
+
+              <Card
+                onClick={() => setIsZeticuzModalOpen(true)}
+                className="flex-1 min-w-0"
+              >
+                <CardContent
+                  colorClass="!text-amber-400"
+                  title="ZETICUZ PLAYER"
+                  subtitle="DIRECT EMBED SOURCE"
+                  description="Perfect for mobile/TV or if you can't install extensions."
+                />
+              </Card>
             </div>
           </div>
-        </div>
 
-        {/* Desktop Layout Cards */}
-        <div className="hidden md:flex w-full gap-4 pb-6 mt-8">
-          <Card
-            onClick={() => setIsExtensionModalOpen(true)}
-            className="md:w-[45%]"
-          >
-            <CardContent
-              colorClass="!text-amber-400"
-              title="NEXUS PLAYER"
-              subtitle="WITH SOURCE EXTENSION"
-              description="Install browser extension and gain access to additional sources! Remember to enable it for this site."
-            >
-              <Link className="!text-amber-400">Install extension &rarr;</Link>
-            </CardContent>
-          </Card>
-
-          <div className="hidden md:grid grid-rows-[1fr,auto,1fr] justify-center gap-4">
-            <VerticalLine className="items-end" />
-            <span className="text-xs uppercase font-bold">
-              {t("onboarding.start.options.or")}
-            </span>
-            <VerticalLine />
-          </div>
-
-          <Card
-            onClick={() => setIsZeticuzModalOpen(true)}
-            className="md:w-[45%]"
-          >
-            <CardContent
-              colorClass="!text-amber-400"
-              title="ZETICUZ PLAYER"
-              subtitle="DIRECT EMBED SOURCE"
-              description="The best choice for mobile and smart TV or Android device that doesn't have or cannot install extension, but if your device and browser can support extension, much better to use and install extension specially for PC/desktop device"
+          {/* Right Column: Branding & Installation */}
+          <div className="hidden md:flex flex-col items-center pt-8 border-l border-white/5 pl-8">
+            <img
+              src="/nexus-logo-gold.png"
+              className="w-72 h-auto drop-shadow-[0_0_30px_rgba(251,191,36,0.2)] mb-10"
+              alt="NEXUS"
             />
-          </Card>
+
+            <button
+              className="group relative bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold py-5 px-10 rounded-xl flex flex-col items-center gap-1 transition-all transform hover:scale-105 shadow-[0_0_40px_rgba(251,191,36,0.4)]"
+              onClick={() => setIsDownloadOpen(true)}
+            >
+              <div className="flex items-center gap-3 text-lg whitespace-nowrap">
+                <Icon icon={Icons.DOWNLOAD} />
+                INSTALL NEXUS TO DEVICE
+              </div>
+              <span className="text-[10px] opacity-90 font-medium">
+                Windows, Linux, macOS, Android
+              </span>
+              <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-20 group-hover:opacity-40 blur-xl transition-opacity animate-pulse" />
+            </button>
+
+            <div className="flex gap-6 mt-6 opacity-60 grayscale hover:grayscale-0 transition-all">
+              {[
+                { i: Icons.WINDOWS, n: "Windows" },
+                { i: Icons.APPLE, n: "macOS" },
+                { i: Icons.LINUX, n: "Linux" },
+                { i: Icons.ANDROID, n: "Android" },
+              ].map((os) => (
+                <div key={os.n} className="flex flex-col items-center gap-1">
+                  <Icon icon={os.i} className="text-xl" />
+                  <span className="text-[9px] uppercase font-bold tracking-tighter">
+                    {os.n}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Mobile Layout */}

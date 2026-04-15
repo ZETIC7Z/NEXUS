@@ -35,3 +35,5 @@ package-lock.json
 analyze_zxc.js
 .playwright-mcp/
 test-results/
+
+.vercel
