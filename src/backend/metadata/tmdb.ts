@@ -29,6 +29,8 @@ import {
 } from "./types/tmdb";
 import { mwFetch } from "../helpers/fetch";
 
+export { TMDBContentTypes };
+
 export function mediaTypeToTMDB(type: MWMediaType): TMDBContentTypes {
   if (type === MWMediaType.MOVIE) return TMDBContentTypes.MOVIE;
   if (type === MWMediaType.SERIES) return TMDBContentTypes.TV;
@@ -347,6 +349,34 @@ export async function getTrendingMovies(
   return data.results.map((result) => ({
     ...result,
     media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
+export async function getTrendingTV(
+  page: number = 1,
+): Promise<TMDBShowSearchResult[]> {
+  const data = await get<{
+    results: TMDBShowSearchResult[];
+  }>("trending/tv/day", {
+    page,
+  });
+  return data.results.map((result) => ({
+    ...result,
+    media_type: TMDBContentTypes.TV,
+  }));
+}
+
+export async function getUpcomingTV(
+  page: number = 1,
+): Promise<TMDBShowSearchResult[]> {
+  const data = await get<{
+    results: TMDBShowSearchResult[];
+  }>("tv/on_the_air", {
+    page,
+  });
+  return data.results.map((result) => ({
+    ...result,
+    media_type: TMDBContentTypes.TV,
   }));
 }
 

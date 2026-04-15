@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getTrendingMovies, getUpcomingMovies } from "@/backend/metadata/tmdb";
+import {
+  TMDBContentTypes,
+  getMediaDetails,
+  getTrendingMovies,
+  getTrendingTV,
+  getUpcomingMovies,
+  getUpcomingTV,
+} from "@/backend/metadata/tmdb";
+import { useBookmarkStore } from "@/stores/bookmarks";
+import { useHistoryStore } from "@/stores/history";
 import { useOverlayStack } from "@/stores/interface/overlayStack";
 
 import { NotificationItem } from "../types";
@@ -21,56 +30,129 @@ export function useNotifications() {
         // 1. ADD SYSTEM NOTIFICATIONS
         allNotifications.push({
           guid: "system-welcome-nexus",
-          title: "Welcome to NEXUS!",
-          description: "Enjoy zero setup movie playback on all your devices.",
+          title: "Welcome to NEXUS site!",
+          description:
+            "Your ultimate entertainment hub is ready. Explore localized trending content and seamless streaming.",
           pubDate: new Date().toISOString(),
           category: "Announcement",
           source: "NEXUS System",
           type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        allNotifications.push({
+          guid: "system-dev-intro",
+          title: "Message from Zeticuz",
+          description:
+            "I've optimized Nexus for the best viewing experience. Check out our new 'Zetflix' integration!",
+          pubDate: new Date().toISOString(),
+          category: "Developer",
+          source: "Zeticuz",
+          type: "system",
+          posterUrl: "/sam-photo.jpg",
         });
 
         // 2. FETCH TMDB DATA
         try {
-          const [trending, upcoming] = await Promise.all([
-            getTrendingMovies(),
-            getUpcomingMovies(),
-          ]);
+          const [trendingMovies, upcomingMovies, trendingTV, upcomingTV] =
+            await Promise.all([
+              getTrendingMovies(),
+              getUpcomingMovies(),
+              getTrendingTV(),
+              getUpcomingTV(),
+            ]);
 
-          trending.slice(0, 5).forEach((movie: any) => {
+          // Mix Movie & TV Trends
+          const combinedTrending = [
+            ...trendingMovies.slice(0, 4),
+            ...trendingTV.slice(0, 4),
+          ];
+          combinedTrending.forEach((media: any) => {
+            const isTV = !!media.name;
             allNotifications.push({
-              guid: `tmdb-trending-${movie.id}`,
-              title: `Trending: ${movie.title}`,
-              description: movie.overview,
+              guid: `tmdb-trending-${media.id}`,
+              title: `🔥 Trending: ${media.title || media.name}`,
+              description: media.overview,
               pubDate: new Date().toISOString(),
               category: "Trending",
               source: "TMDB",
-              posterUrl: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
-              type: "movie",
-              mediaId: movie.id.toString(),
-              mediaType: "movie",
+              posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+              type: isTV ? "show" : "movie",
+              mediaId: media.id.toString(),
+              mediaType: isTV ? "show" : "movie",
             });
           });
 
-          upcoming.slice(0, 5).forEach((movie: any) => {
+          // Upcoming Items
+          const combinedUpcoming = [
+            ...upcomingMovies.slice(0, 3),
+            ...upcomingTV.slice(0, 3),
+          ];
+          combinedUpcoming.forEach((media: any) => {
+            const isTV = !!media.name;
             allNotifications.push({
-              guid: `tmdb-upcoming-${movie.id}`,
-              title: `Upcoming: ${movie.title}`,
-              description: movie.overview,
-              pubDate: movie.release_date,
-              category: "Upcoming",
+              guid: `tmdb-upcoming-${media.id}`,
+              title: `📅 Upcoming: ${media.title || media.name}`,
+              description: media.overview,
+              pubDate:
+                media.release_date ||
+                media.first_air_date ||
+                new Date().toISOString(),
+              category: "Awaited",
               source: "TMDB",
-              posterUrl: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
-              type: "movie",
-              mediaId: movie.id.toString(),
-              mediaType: "movie",
-              releaseDate: movie.release_date,
+              posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+              type: isTV ? "show" : "movie",
+              mediaId: media.id.toString(),
+              mediaType: isTV ? "show" : "movie",
             });
           });
+
+          // 3. PERSONALIZED NOTIFICATIONS (Bookmarks/History)
+          const bookmarks = useBookmarkStore.getState().bookmarks;
+          const bookmarkedIds = Object.keys(bookmarks);
+
+          // Check for new episodes of bookmarked shows
+          for (const tmdbId of bookmarkedIds.slice(0, 5)) {
+            const item = bookmarks[tmdbId];
+            if (item.type === "show") {
+              try {
+                // We fetch simplified details to check latest status
+                const details = await getMediaDetails(
+                  tmdbId,
+                  TMDBContentTypes.TV,
+                  false,
+                );
+                const lastAirDate = details.last_air_date
+                  ? new Date(details.last_air_date)
+                  : null;
+                const now = new Date();
+
+                // If it aired in the last 7 days, notify
+                if (
+                  lastAirDate &&
+                  now.getTime() - lastAirDate.getTime() <
+                    7 * 24 * 60 * 60 * 1000
+                ) {
+                  allNotifications.push({
+                    guid: `personal-update-${tmdbId}-${details.last_episode_to_air?.id}`,
+                    title: `New Episode: ${item.title}`,
+                    description: `Episode ${details.last_episode_to_air?.episode_number} of Season ${details.last_episode_to_air?.season_number} is now available!`,
+                    pubDate: details.last_air_date,
+                    category: "My Series",
+                    source: "NEXUS Update",
+                    posterUrl: item.poster || "/nexus update logo.png",
+                    type: "show",
+                    mediaId: tmdbId,
+                    mediaType: "show",
+                  });
+                }
+              } catch (e) {
+                // skip
+              }
+            }
+          }
         } catch (tmdbError) {
-          console.error(
-            "Failed to fetch TMDB notifications for badge:",
-            tmdbError,
-          );
+          console.error("Failed to fetch TMDB notifications:", tmdbError);
         }
 
         // 3. FETCH RSS FEEDS
@@ -149,7 +231,12 @@ export function useNotifications() {
       }
     };
 
+    // Initial fetch
     fetchNotifications();
+
+    // Auto-update every 10 minutes
+    const interval = setInterval(fetchNotifications, 10 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const openNotifications = () => {

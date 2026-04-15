@@ -153,9 +153,15 @@ export function TechMarquee() {
       name: "TMDB",
     },
     {
-      id: "pstream",
-      icon: <Icon icon={Icons.P_STREAM} className="text-5xl text-white" />,
-      name: "P-STREAM",
+      id: "zeticuz",
+      icon: (
+        <img
+          src="/ZETICUZ.png"
+          alt="Zeticuz"
+          className="w-12 h-12 object-contain"
+        />
+      ),
+      name: "ZETICUZ",
     },
   ];
 

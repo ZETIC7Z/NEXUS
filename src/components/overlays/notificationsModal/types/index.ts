@@ -10,7 +10,7 @@ export interface NotificationItem {
   releaseDate?: string;
   mediaId?: string;
   mediaType?: "movie" | "show";
-  type?: "rss" | "movie" | "system";
+  type?: "rss" | "movie" | "system" | "show";
 }
 
 export interface NotificationModalProps {

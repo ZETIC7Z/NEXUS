@@ -29,7 +29,7 @@ export function DetailView({
           </div>
           Back
         </button>
-        
+
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -52,24 +52,30 @@ export function DetailView({
         <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-white/5">
           {selectedNotification.posterUrl ? (
             <div className="aspect-video w-full relative">
-              <img 
-                src={selectedNotification.posterUrl} 
-                alt="" 
+              <img
+                src={selectedNotification.posterUrl}
+                alt=""
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background-main via-background-main/20 to-black/40" />
             </div>
           ) : (
             <div className="h-32 w-full flex items-center justify-center bg-gradient-to-br from-type-link/20 to-purple-500/20">
-              <Icon icon={isMovie ? Icons.FILM : Icons.BELL} className="text-5xl text-white/20" />
+              <Icon
+                icon={isMovie ? Icons.FILM : Icons.BELL}
+                className="text-5xl text-white/20"
+              />
             </div>
           )}
 
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                getCategoryColor(selectedNotification.category) || "bg-white/10"
-              }`}>
+              <span
+                className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
+                  getCategoryColor(selectedNotification.category) ||
+                  "bg-white/10"
+                }`}
+              >
                 {getCategoryLabel(selectedNotification.category)}
               </span>
               <span className="text-[10px] text-white/50 font-bold px-2 py-1 bg-black/40 backdrop-blur-md rounded-md border border-white/5 uppercase">
@@ -96,10 +102,12 @@ export function DetailView({
             </div>
           </div>
 
-          <div 
+          <div
             className="text-base text-type-secondary leading-relaxed font-medium opacity-90"
             dangerouslySetInnerHTML={{
-              __html: formatNotificationDescription(selectedNotification.description)
+              __html: formatNotificationDescription(
+                selectedNotification.description,
+              ),
             }}
           />
         </div>
@@ -107,16 +115,23 @@ export function DetailView({
         {/* Actions Section */}
         {selectedNotification.link && (
           <div className="pt-6 border-t border-white/5 flex flex-wrap gap-4">
-            <Link 
-              href={selectedNotification.link} 
-              target={selectedNotification.link.startsWith("http") ? "_blank" : undefined}
+            <Link
+              href={selectedNotification.link}
+              target={
+                selectedNotification.link.startsWith("http")
+                  ? "_blank"
+                  : undefined
+              }
               className="px-8 py-3 bg-type-link hover:bg-type-linkHover text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-type-link/20 group"
             >
               <span>{isMovie ? "Watch Now" : "Learn More"}</span>
-              <Icon icon={Icons.CHEVRON_RIGHT} className="group-hover:translate-x-1 transition-transform" />
+              <Icon
+                icon={Icons.CHEVRON_RIGHT}
+                className="group-hover:translate-x-1 transition-transform"
+              />
             </Link>
-            
-            <button 
+
+            <button
               onClick={goBackToList}
               className="px-8 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all border border-white/5"
             >

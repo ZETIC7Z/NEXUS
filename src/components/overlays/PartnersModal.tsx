@@ -188,13 +188,17 @@ function GlowingFlowchart() {
 
         {/* Step 1: Source */}
         <div className="flow-node group">
-          <div className="node-circle">
-            <Icon icon={Icons.P_STREAM} className="text-4xl text-white" />
+          <div className="node-circle overflow-hidden">
+            <img
+              src="/ZETICUZ.png"
+              alt="Zeticuz"
+              className="w-full h-full object-cover"
+            />
             <div className="node-glow" />
           </div>
           <div className="node-content">
-            <h4 className="text-white font-bold text-lg">Data Source</h4>
-            <p className="text-xs text-gray-500">P-STREAM Backend</p>
+            <h4 className="text-white font-bold text-lg">Zeticuz Core</h4>
+            <p className="text-xs text-gray-500">ZETICUZ Backend</p>
           </div>
         </div>
 
@@ -261,8 +265,8 @@ export function PartnersModal(props: { id: string }) {
           {/* Technology Process */}
           <div className="space-y-12 pt-12 border-t border-white/5">
             <div className="text-center max-w-2xl mx-auto">
-              <Heading3 className="text-3xl font-black tracking-tight text-white mb-4">
-                Technology Process
+              <Heading3 className="text-5xl font-black tracking-tighter text-white mb-4">
+                Welcome to <span className="text-purple-500">nexus site</span>
               </Heading3>
               <Paragraph className="text-gray-400 leading-relaxed">
                 NEXUS leverages a cutting-edge distributed architecture to
@@ -311,6 +315,34 @@ export function PartnersModal(props: { id: string }) {
             </div>
           </div>
 
+          {/* Developer Section */}
+          <div className="space-y-12 pt-12 border-t border-white/5">
+            <div className="text-center max-w-2xl mx-auto space-y-6">
+              <div className="relative inline-block">
+                <div className="absolute inset-0 bg-purple-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+                <img
+                  src="/sam-photo.jpg"
+                  alt="Zeticuz"
+                  className="relative w-32 h-32 rounded-full border-2 border-white/10 p-1 object-cover mx-auto"
+                />
+              </div>
+              <div>
+                <Heading3 className="text-3xl font-black tracking-tight text-white mb-2">
+                  Developed by Zeticuz
+                </Heading3>
+                <div className="text-[10px] uppercase font-bold tracking-[0.2em] text-purple-400 mb-4">
+                  Full Stack Engineer & Visionary
+                </div>
+                <Paragraph className="text-gray-400 leading-relaxed">
+                  Nexus is the culmination of passion for high-performance web
+                  applications and seamless user experiences. This project
+                  represents a modern approach to content delivery, blending
+                  cutting-edge aesthetics with robust engineering.
+                </Paragraph>
+              </div>
+            </div>
+          </div>
+
           {/* Attribution Section */}
           <div className="text-center space-y-12 pt-12 border-t border-white/5">
             <div className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">
@@ -332,18 +364,18 @@ export function PartnersModal(props: { id: string }) {
                 </p>
               </div>
 
-              {/* P-STREAM */}
+              {/* ZETICUZ */}
               <div className="flex flex-col items-center gap-6 group">
-                <div className="relative w-48 h-24 flex items-center justify-center rounded-2xl bg-white/5 border border-white/5 group-hover:border-[#8b8bf5]/30 transition-all duration-500">
+                <div className="relative w-48 h-24 flex items-center justify-center rounded-2xl bg-white/5 border border-white/5 group-hover:border-[#8b8bf5]/30 transition-all duration-500 overflow-hidden">
                   <img
-                    src="/pstream-logo.png"
-                    alt="P-STREAM"
-                    className="h-16 w-auto object-contain opacity-80 group-hover:opacity-100 transition-opacity"
+                    src="/ZETICUZ.png"
+                    alt="ZETICUZ"
+                    className="h-full w-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                   />
                 </div>
                 <p className="text-[11px] text-gray-500 max-w-[200px] leading-relaxed">
                   Our core backend infrastructure powering high-quality
-                  streaming and real-time library updates.
+                  streaming and real-time library updates. Developed by Zeticuz.
                 </p>
               </div>
             </div>
