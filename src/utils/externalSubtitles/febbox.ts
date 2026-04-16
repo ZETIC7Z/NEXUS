@@ -1,5 +1,5 @@
-/* eslint-disable no-console */
-import { labelToLanguageCode } from "@/backend/providers/p-stream-mock";
+﻿/* eslint-disable no-console */
+import { labelToLanguageCode } from "@p-stream/providers";
 
 import { CaptionListItem } from "@/stores/player/slices/source";
 

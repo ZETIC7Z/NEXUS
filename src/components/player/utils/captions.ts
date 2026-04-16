@@ -1,4 +1,4 @@
-import { RunOutput } from "@/backend/providers/p-stream-mock";
+﻿import { RunOutput } from "@p-stream/providers";
 import DOMPurify from "dompurify";
 import { convert, detect, parse } from "subsrt-ts";
 import { ContentCaption } from "subsrt-ts/dist/types/handler";

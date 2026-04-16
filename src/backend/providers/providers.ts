@@ -1,8 +1,8 @@
-import {
+﻿import {
   makeProviders,
   makeStandardFetcher,
   targets,
-} from "@/backend/providers/p-stream-mock";
+} from "@p-stream/providers";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
 import {

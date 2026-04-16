@@ -58,11 +58,11 @@ export function useNotifications() {
 
         // 2. ADD SYSTEM NOTIFICATIONS
         allNotifications.push({
-          guid: "nexus-v2-1-patch",
-          title: "NEXUS v2.1 PATCH UPDATE",
+          guid: "nexus-v2-2-patch",
+          title: "NEXUS v2.2 PATCH UPDATE",
           description:
-            "Integrated a powerful notification engine for real-time movie and series updates. Refined the mobile onboarding experience for seamless device installation.",
-          pubDate: new Date().toISOString(),
+            "✅ Source providers restored — FebBox 4K, Streamtape, Tugaflix, FSOnline & more now working with P-Stream Extension. 🎬 ZETFLIX icon fixed in navigation. 🔧 Removed broken dependency — packages now vendored for stable builds. 🚀 Vercel deployment stabilized with no more black-page crashes.",
+          pubDate: new Date("2026-04-17").toISOString(),
           category: "Update",
           source: "NEXUS Core",
           type: "system",

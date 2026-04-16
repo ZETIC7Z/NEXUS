@@ -1,4 +1,4 @@
-import { RunOutput } from "@/backend/providers/p-stream-mock";
+﻿import { RunOutput } from "@p-stream/providers";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Navigate,
@@ -224,8 +224,8 @@ export function RealPlayerView() {
         />
       ) : null}
       {status === playerStatus.SCRAPING && scrapeMedia ? (
-        // ── When inside the NEXUS Android WebView, bypass the browser scraper
-        // ── and route directly through the Kotlin native extractors.
+        // â”€â”€ When inside the NEXUS Android WebView, bypass the browser scraper
+        // â”€â”€ and route directly through the Kotlin native extractors.
         isNativeApp() ? (
           <NativeScrapingPart
             key={`native-scraping-${resumeFromSourceId || "default"}`}

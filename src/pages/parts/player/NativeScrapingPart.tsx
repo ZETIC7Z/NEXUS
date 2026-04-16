@@ -1,5 +1,5 @@
-import { ScrapeMedia } from "@/backend/providers/p-stream-mock";
-import type { ProviderControls } from "@/backend/providers/p-stream-mock";
+﻿import { ScrapeMedia } from "@p-stream/providers";
+import type { ProviderControls } from "@p-stream/providers";
 import { useEffect, useRef, useState } from "react";
 import type { AsyncReturnType } from "type-fest";
 
@@ -10,7 +10,7 @@ import {
 } from "@/backend/native/nexusBridge";
 import { Loading } from "@/components/layout/Loading";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface NativeScrapingProps {
   media: ScrapeMedia;
@@ -18,7 +18,7 @@ interface NativeScrapingProps {
   onResult?: () => void;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * NativeScrapingPart
@@ -88,7 +88,7 @@ export function NativeScrapingPart(props: NativeScrapingProps) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-white p-8">
         <p className="text-red-400 font-bold mb-2">
-          ⚠ Native Extraction Failed
+          âš  Native Extraction Failed
         </p>
         <p className="text-sm text-gray-300 text-center">{errorMsg}</p>
       </div>
@@ -99,13 +99,13 @@ export function NativeScrapingPart(props: NativeScrapingProps) {
     <div className="flex flex-col items-center justify-center h-full gap-4">
       <Loading className="mb-4" />
       <p className="text-type-secondary text-sm">
-        Fetching stream via native engine…
+        Fetching stream via native engineâ€¦
       </p>
     </div>
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function extractMediaParams(media: ScrapeMedia): {
   tmdbId: string;

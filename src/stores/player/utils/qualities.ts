@@ -1,4 +1,4 @@
-import { Qualities, Stream } from "@/backend/providers/p-stream-mock";
+﻿import { Qualities, Stream } from "@p-stream/providers";
 
 import { QualityStore } from "@/stores/quality";
 
