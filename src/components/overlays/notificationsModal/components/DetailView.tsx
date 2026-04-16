@@ -4,10 +4,57 @@ import { Link } from "@/pages/migration/utils";
 import { DetailViewProps } from "../types";
 import { formatNotificationDescription } from "../utils";
 
+function GlowingDot({
+  color = "green",
+}: {
+  color?: "green" | "orange" | "cyan" | "yellow";
+}) {
+  const colorMap = {
+    green: {
+      ring: "bg-green-400",
+      pulse: "bg-green-400",
+      dot: "bg-green-500",
+      shadow: "shadow-[0_0_10px_#22c55e,0_0_20px_#22c55e]",
+    },
+    orange: {
+      ring: "bg-orange-400",
+      pulse: "bg-orange-400",
+      dot: "bg-orange-500",
+      shadow: "shadow-[0_0_10px_#f97316,0_0_20px_#f97316]",
+    },
+    cyan: {
+      ring: "bg-cyan-400",
+      pulse: "bg-cyan-400",
+      dot: "bg-cyan-500",
+      shadow: "shadow-[0_0_10px_#06b6d4,0_0_20px_#06b6d4]",
+    },
+    yellow: {
+      ring: "bg-yellow-400",
+      pulse: "bg-yellow-400",
+      dot: "bg-yellow-500",
+      shadow: "shadow-[0_0_10px_#eab308,0_0_20px_#eab308]",
+    },
+  };
+  const c = colorMap[color] || colorMap.green;
+
+  return (
+    <span className="relative flex h-1.5 w-1.5 items-center justify-center">
+      <span
+        className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.ring} opacity-60`}
+      />
+      <span
+        className={`animate-pulse absolute inline-flex h-full w-full rounded-full ${c.pulse} opacity-40 scale-[2.5]`}
+      />
+      <span
+        className={`relative inline-flex rounded-full h-1.5 w-1.5 ${c.dot} ${c.shadow}`}
+      />
+    </span>
+  );
+}
+
 export function DetailView({
   selectedNotification,
   goBackToList,
-  getCategoryColor,
   getCategoryLabel,
   formatDate,
   isRead,
@@ -70,14 +117,29 @@ export function DetailView({
 
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span
-                className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                  getCategoryColor(selectedNotification.category) ||
-                  "bg-white/10"
-                }`}
-              >
-                {getCategoryLabel(selectedNotification.category)}
-              </span>
+              <div className="flex items-center gap-3 px-0 py-1 backdrop-blur-md">
+                <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                  {getCategoryLabel(selectedNotification.category)}
+                </span>
+                
+                {/* Glowing Dot Section */}
+                {selectedNotification.category.toLowerCase() === "announcement" && (
+                  <GlowingDot color="orange" />
+                )}
+                {selectedNotification.category.toLowerCase() === "update" && (
+                  <GlowingDot color="orange" />
+                )}
+                {selectedNotification.category.toLowerCase() === "trending" && (
+                  <GlowingDot color="cyan" />
+                )}
+                {selectedNotification.category.toLowerCase() === "awaited" && (
+                  <GlowingDot color="yellow" />
+                )}
+                {/* Fallback dot for other categories to keep consistency */}
+                {!["announcement", "update", "trending", "awaited"].includes(
+                  selectedNotification.category.toLowerCase(),
+                ) && <GlowingDot color="orange" />}
+              </div>
               <span className="text-[10px] text-white/50 font-bold px-2 py-1 bg-black/40 backdrop-blur-md rounded-md border border-white/5 uppercase">
                 {selectedNotification.source}
               </span>
@@ -102,6 +164,7 @@ export function DetailView({
             </div>
           </div>
 
+          {/* eslint-disable-next-line react/no-danger */}
           <div
             className="text-base text-type-secondary leading-relaxed font-medium opacity-90"
             dangerouslySetInnerHTML={{

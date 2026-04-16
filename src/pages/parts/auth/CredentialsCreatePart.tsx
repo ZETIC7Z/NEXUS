@@ -25,12 +25,14 @@ interface CredentialsCreatePartProps {
     username: string;
     password: string;
     mnemonic: string;
-    nickname: string;
+    deviceName: string;
   }) => void;
 }
 
 export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
-  const [nickname, setNickname] = useState("");
+  const { t: _t } = useTranslation();
+
+  const [deviceName, setDeviceName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,22 +43,20 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
   const progressItems = useProgressStore((store) => store.items);
   const bookmarkItems = useBookmarkStore((store) => store.bookmarks);
   const backendUrl = useBackendUrl();
-  const { t: _t } = useTranslation();
   const { executeRecaptcha } = useGoogleReCaptcha();
-  const setAccountNickname = useAuthStore((s) => s.setAccountNickname);
   const setAccountUsername = useAuthStore((s) => s.setAccountUsername);
 
   const [result, execute] = useAsyncFn(
     async (
-      inputNickname: string,
+      inputDeviceName: string,
       inputUsername: string,
       inputPassword: string,
       inputConfirmPassword: string,
     ) => {
       // Validate inputs
-      const validatedNickname = inputNickname.trim();
-      if (validatedNickname.length < 2)
-        throw new Error("Nickname must be at least 2 characters");
+      const validatedDeviceName = inputDeviceName.trim();
+      if (validatedDeviceName.length < 2)
+        throw new Error("Device name must be at least 2 characters");
 
       const validatedUsername = inputUsername.trim();
       if (validatedUsername.length < 3)
@@ -86,30 +86,10 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
       );
 
       // Register the account
-      // Attempt to get a friendly device name from User Agent
-      let deviceName = "Unknown Device";
-      const ua = navigator.userAgent;
-      if (ua.indexOf("Windows") !== -1) deviceName = "Windows PC";
-      else if (ua.indexOf("Mac") !== -1) deviceName = "Macintosh";
-      else if (ua.indexOf("Linux") !== -1) deviceName = "Linux PC";
-      else if (ua.indexOf("Android") !== -1) deviceName = "Android Device";
-      else if (ua.indexOf("iPhone") !== -1) deviceName = "iPhone";
-      else if (ua.indexOf("iPad") !== -1) deviceName = "iPad";
-
-      // Append browser logic if needed or just use the generic name + UA snippet?
-      // The user wants "Android Samsung S8". This info is often in the UA for Android.
-      // Simple extraction:
-      if (ua.includes("Android")) {
-        const match = ua.match(/Android\s([0-9.]+);.*;\s(.+)\sBuild/);
-        if (match && match[2]) {
-          deviceName = match[2]; // Model name theoretically
-        }
-      }
-
       const account = await register({
         mnemonic,
         userData: {
-          device: deviceName,
+          device: validatedDeviceName,
           profile: {
             colorA: "#E50914",
             colorB: "#B20710",
@@ -124,12 +104,11 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
       await importData(account, progressItems, bookmarkItems);
       await restore(account);
 
-      // Store nickname and username locally
-      setAccountNickname(validatedNickname);
+      // Store username locally
       setAccountUsername(validatedUsername);
 
       props.onNext?.({
-        nickname: validatedNickname,
+        deviceName: validatedDeviceName,
         username: validatedUsername,
         password: inputPassword,
         mnemonic,
@@ -144,7 +123,6 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
       progressItems,
       bookmarkItems,
       importData,
-      setAccountNickname,
       setAccountUsername,
     ],
   );
@@ -156,12 +134,10 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
       </LargeCardText>
       <div className="space-y-4">
         <AuthInputBox
-          label="Nickname"
-          value={nickname}
-          autoComplete="nickname"
-          name="nickname"
-          onChange={setNickname}
-          placeholder="Enter your nickname"
+          label={_t("auth.deviceNameLabel")}
+          value={deviceName}
+          onChange={setDeviceName}
+          placeholder={_t("auth.deviceNamePlaceholder")}
         />
         <AuthInputBox
           label="Username"
@@ -229,7 +205,9 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
         <Button
           theme="purple"
           loading={result.loading}
-          onClick={() => execute(nickname, username, password, confirmPassword)}
+          onClick={() =>
+            execute(deviceName, username, password, confirmPassword)
+          }
         >
           Create Account
         </Button>

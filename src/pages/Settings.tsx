@@ -98,8 +98,6 @@ export function AccountSettings(props: {
   account: AccountWithToken;
   deviceName: string;
   setDeviceName: (s: string) => void;
-  nickname: string;
-  setNickname: (s: string) => void;
   colorA: string;
   setColorA: (s: string) => void;
   colorB: string;
@@ -122,8 +120,6 @@ export function AccountSettings(props: {
       <AccountEditPart
         deviceName={props.deviceName}
         setDeviceName={props.setDeviceName}
-        nickname={props.nickname}
-        setNickname={props.setNickname}
         colorA={props.colorA}
         setColorA={props.setColorA}
         colorB={props.colorB}
@@ -412,7 +408,6 @@ export function SettingsPage() {
   const account = useAuthStore((s) => s.account);
   const updateProfile = useAuthStore((s) => s.setAccountProfile);
   const updateDeviceName = useAuthStore((s) => s.updateDeviceName);
-  const updateNickname = useAuthStore((s) => s.setAccountNickname);
   const decryptedName = useMemo(() => {
     if (!account) return "";
     try {
@@ -459,7 +454,6 @@ export function SettingsPage() {
     appLanguage,
     subStyling,
     decryptedName,
-    account?.nickname || "",
     proxySet,
     backendUrlSetting,
     febboxKey,
@@ -611,12 +605,6 @@ export function SettingsPage() {
         });
         updateDeviceName(newDeviceName);
       }
-      if (state.nickname.changed) {
-        await editUser(backendUrl, account, {
-          nickname: state.nickname.state,
-        });
-        updateNickname(state.nickname.state);
-      }
       if (state.profile.changed && state.profile.state) {
         await editUser(backendUrl, account, {
           profile: state.profile.state,
@@ -699,7 +687,6 @@ export function SettingsPage() {
     setProxySet,
     updateDeviceName,
     updateProfile,
-    updateNickname,
     logout,
     setBackendUrl,
     setProxyTmdb,
@@ -732,8 +719,6 @@ export function SettingsPage() {
                 account={user.account}
                 deviceName={state.deviceName.state}
                 setDeviceName={state.deviceName.set}
-                nickname={state.nickname.state}
-                setNickname={state.nickname.set}
                 colorA={state.profile.state.colorA}
                 setColorA={(v) => {
                   state.profile.set((s) =>

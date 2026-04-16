@@ -13,8 +13,6 @@ import { ProfileEditModal } from "@/pages/parts/settings/ProfileEditModal";
 export function AccountEditPart(props: {
   deviceName: string;
   setDeviceName: (s: string) => void;
-  nickname: string;
-  setNickname: (s: string) => void;
   colorA: string;
   setColorA: (s: string) => void;
   colorB: string;
@@ -62,17 +60,6 @@ export function AccountEditPart(props: {
         </div>
         <div>
           <div className="flex flex-col md:flex-row md:gap-4 gap-4">
-            <div className="w-full">
-              <AuthInputBox
-                label={t("settings.account.accountDetails.nicknameLabel")}
-                placeholder={t(
-                  "settings.account.accountDetails.nicknamePlaceholder",
-                )}
-                value={props.nickname}
-                onChange={(value) => props.setNickname(value)}
-                className="w-full"
-              />
-            </div>
             <div className="w-full">
               <AuthInputBox
                 label={

@@ -1,8 +1,9 @@
 import classNames from "classnames";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { base64ToBuffer, decryptData } from "@/backend/accounts/crypto";
 import { getRoomStatuses } from "@/backend/player/status";
 import { UserAvatar } from "@/components/Avatar";
 import { Icon, Icons } from "@/components/Icon";
@@ -269,8 +270,19 @@ export function LinksDropdown(props: {
     setOpen((s) => !s);
   }, []);
 
-  // Get display name - prefer fullName, then nickname
-  const displayName = account?.fullName || account?.nickname || "";
+  // Decrypt device name for display
+  const decryptedDeviceName = useMemo(() => {
+    if (!account) return "";
+    try {
+      return decryptData(account.deviceName, base64ToBuffer(account.seed));
+    } catch (error) {
+      console.warn("Failed to decrypt device name in navigation:", error);
+      return "";
+    }
+  }, [account]);
+
+  // Get display name - prefer decrypted device name, then fullName
+  const displayName = decryptedDeviceName || account?.fullName || "";
 
   return (
     <div

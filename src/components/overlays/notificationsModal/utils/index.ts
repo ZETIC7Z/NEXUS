@@ -104,22 +104,7 @@ export const formatDate = (dateString: string) => {
 };
 
 export const getCategoryColor = (category: string) => {
-  if (!category || category.trim() === "") {
-    return "";
-  }
-
-  switch (category.toLowerCase()) {
-    case "announcement":
-      return "bg-blue-500";
-    case "feature":
-      return "bg-green-500";
-    case "update":
-      return "bg-yellow-500";
-    case "bugfix":
-      return "bg-red-500";
-    default:
-      return "";
-  }
+  return "";
 };
 
 export const getCategoryLabel = (category: string) => {

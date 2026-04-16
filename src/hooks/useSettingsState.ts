@@ -42,7 +42,6 @@ export function useSettingsState(
   appLanguage: string,
   subtitleStyling: SubtitleStyling,
   deviceName: string,
-  nickname: string,
   proxyUrls: string[] | null,
   backendUrl: string | null,
   febboxKey: string | null,
@@ -122,8 +121,6 @@ export function useSettingsState(
     resetDeviceName,
     deviceNameChanged,
   ] = useDerived(deviceName);
-  const [nicknameState, setNicknameState, resetNickname, nicknameChanged] =
-    useDerived(nickname);
   const [profileState, setProfileState, resetProfile, profileChanged] =
     useDerived(profile);
   const [
@@ -284,7 +281,6 @@ export function useSettingsState(
     resetdebridToken();
     resetTIDBKey();
     resetDeviceName();
-    resetNickname();
     resetProfile();
     resetEnableThumbnails();
     resetEnableAutoplay();
@@ -318,7 +314,6 @@ export function useSettingsState(
     appLanguageChanged ||
     subStylingChanged ||
     deviceNameChanged ||
-    nicknameChanged ||
     backendUrlChanged ||
     proxyUrlsChanged ||
     febboxKeyChanged ||
@@ -374,11 +369,6 @@ export function useSettingsState(
       state: deviceNameState,
       set: setDeviceNameState,
       changed: deviceNameChanged,
-    },
-    nickname: {
-      state: nicknameState,
-      set: setNicknameState,
-      changed: nicknameChanged,
     },
     proxyUrls: {
       state: proxyUrlsState,

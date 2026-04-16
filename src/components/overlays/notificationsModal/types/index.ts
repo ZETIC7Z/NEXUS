@@ -47,6 +47,7 @@ export interface ListViewProps {
   containerRef: React.RefObject<HTMLDivElement>;
   markAllAsRead: () => void;
   markAllAsUnread: () => void;
+  clearReadNotifications: () => void;
   isShiftHeld: boolean;
   onRefresh: () => void;
   onOpenSettings: () => void;
@@ -54,4 +55,6 @@ export interface ListViewProps {
   getCategoryColor: (category: string) => string;
   getCategoryLabel: (category: string) => string;
   formatDate: (dateString: string) => string;
+  deleteNotification: (guid: string, mediaId?: string) => void;
+  clearNotifications: (mode: "read" | "all") => void;
 }

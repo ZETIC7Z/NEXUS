@@ -648,3 +648,89 @@ export function getPersonProfileImage(
 
   if (profilePath) return imgUrl;
 }
+export async function getTrendingPeople(
+  page: number = 1,
+): Promise<TMDBPerson[]> {
+  const data = await get<{
+    results: TMDBPerson[];
+  }>("trending/person/day", {
+    page,
+  });
+  return data.results;
+}
+
+export async function getPersonCombinedCredits(
+  personId: string,
+): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
+  const data = await get<{
+    cast: (TMDBMovieSearchResult | TMDBShowSearchResult)[];
+  }>(`/person/${personId}/combined_credits`);
+  return data.cast;
+}
+
+export async function getDiscoverPH(
+  page: number = 1,
+): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
+  const data = await get<{
+    results: (TMDBMovieSearchResult | TMDBShowSearchResult)[];
+  }>("discover/movie", {
+    page,
+    region: "PH",
+    with_original_language: "tl",
+    sort_by: "release_date.desc",
+  });
+
+  return (data.results || []).map((m: any) => ({
+    ...m,
+    media_type: TMDBContentTypes.MOVIE,
+    title: m.title || m.original_title || "Unknown Movie",
+    original_title: m.original_title || m.title || "",
+    release_date: m.release_date || "",
+    video: m.video || false,
+  }));
+}
+
+export async function getUpcomingLongTerm(
+  page: number = 1,
+): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const startDate = tomorrow.toISOString().split("T")[0];
+  const endDate = "2026-12-31";
+
+  const [movieData, tvData] = await Promise.all([
+    get<{ results: any[] }>("discover/movie", {
+      page,
+      "primary_release_date.gte": startDate,
+      "primary_release_date.lte": endDate,
+      sort_by: "popularity.desc",
+    }),
+    get<{ results: any[] }>("discover/tv", {
+      page,
+      "first_air_date.gte": startDate,
+      "first_air_date.lte": endDate,
+      sort_by: "popularity.desc",
+    }),
+  ]);
+
+  const movies: TMDBMovieSearchResult[] = (movieData.results || []).map(
+    (m) => ({
+      ...m,
+      media_type: TMDBContentTypes.MOVIE,
+      title: m.title || m.original_title || "Unknown Movie",
+      original_title: m.original_title || m.title || "",
+      release_date: m.release_date || "",
+      video: m.video || false,
+    }),
+  );
+
+  const shows: TMDBShowSearchResult[] = (tvData.results || []).map((s) => ({
+    ...s,
+    media_type: TMDBContentTypes.TV,
+    name: s.name || s.original_name || "Unknown Show",
+    original_name: s.original_name || s.name || "",
+    first_air_date: s.first_air_date || "",
+  }));
+
+  return [...movies, ...shows].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+}

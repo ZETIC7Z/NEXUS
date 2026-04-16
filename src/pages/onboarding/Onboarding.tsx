@@ -465,24 +465,6 @@ export function OnboardingPage() {
               </span>
             </button>
           </div>
-
-          <Card onClick={() => setIsExtensionModalOpen(true)}>
-            <MiniCardContent
-              colorClass="!text-amber-400"
-              title="NEXUS PLAYER"
-              subtitle="WITH SOURCE EXTENSION"
-              description="Install browser extension and gain access to additional sources!"
-            />
-          </Card>
-
-          <Card onClick={() => setIsZeticuzModalOpen(true)}>
-            <MiniCardContent
-              colorClass="!text-amber-400"
-              title="ZETICUZ PLAYER"
-              subtitle="DIRECT EMBED SOURCE"
-              description="The best choice for mobile and smart TV or Android device."
-            />
-          </Card>
         </div>
 
         {(conf().ALLOW_FEBBOX_KEY || conf().ALLOW_DEBRID_KEY) === true && (

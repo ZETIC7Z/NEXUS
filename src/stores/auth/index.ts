@@ -11,6 +11,7 @@ export interface Account {
   nickname: string;
   fullName?: string;
   username?: string;
+  signupDate?: string;
 }
 
 export type AccountWithToken = Account & {
@@ -19,6 +20,7 @@ export type AccountWithToken = Account & {
   token: string;
   seed: string;
   deviceName: string;
+  signupDate?: string;
 };
 
 interface AuthStore {
