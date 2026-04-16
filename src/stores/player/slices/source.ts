@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { ScrapeMedia } from "@p-stream/providers";
+import { ScrapeMedia } from "@/backend/providers/p-stream-mock";
 
 import type { SegmentData } from "@/components/player/hooks/useSkipTime";
 import { MakeSlice } from "@/stores/player/slices/types";

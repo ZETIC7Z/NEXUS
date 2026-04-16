@@ -2,7 +2,7 @@ import {
   makeProviders,
   makeStandardFetcher,
   targets,
-} from "@p-stream/providers";
+} from "@/backend/providers/p-stream-mock";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
 import {

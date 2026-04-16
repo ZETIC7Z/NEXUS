@@ -1,4 +1,4 @@
-import { RunOutput } from "@p-stream/providers";
+import { RunOutput } from "@/backend/providers/p-stream-mock";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Navigate,

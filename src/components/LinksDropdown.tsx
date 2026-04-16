@@ -299,6 +299,7 @@ export function LinksDropdown(props: {
           !props.unstyled && (open ? "bg-opacity-100" : "bg-opacity-50"),
         )}
         tabIndex={0}
+        role="button"
         onClick={toggleOpen}
         onKeyUp={(evt) => evt.key === "Enter" && toggleOpen()}
       >

@@ -2,7 +2,7 @@ import {
   EmbedOutput,
   NotFoundError,
   SourcererOutput,
-} from "@p-stream/providers";
+} from "@/backend/providers/p-stream-mock";
 import { useAsyncFn } from "react-use";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";

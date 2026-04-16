@@ -732,5 +732,7 @@ export async function getUpcomingLongTerm(
     first_air_date: s.first_air_date || "",
   }));
 
-  return [...movies, ...shows].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  return [...movies, ...shows].sort(
+    (a, b) => (b.popularity || 0) - (a.popularity || 0),
+  );
 }

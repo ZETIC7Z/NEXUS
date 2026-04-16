@@ -2,7 +2,7 @@ import {
   Fetcher,
   makeSimpleProxyFetcher,
   setM3U8ProxyUrl,
-} from "@p-stream/providers";
+} from "@/backend/providers/p-stream-mock";
 
 import { sendExtensionRequest } from "@/backend/extension/messaging";
 import { getApiToken, setApiToken } from "@/backend/helpers/providerApi";

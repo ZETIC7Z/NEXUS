@@ -128,9 +128,11 @@ export function GroupDropdown({
             return (
               <label
                 key={group}
+                htmlFor={`group-${group}`}
                 className="flex items-center gap-2 mx-1 px-3 py-2 hover:bg-mediaCard-hoverBackground rounded-lg cursor-pointer transition-colors text-type-link/80"
               >
                 <input
+                  id={`group-${group}`}
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => handleToggleGroup(group)}

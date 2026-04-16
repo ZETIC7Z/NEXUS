@@ -2,7 +2,7 @@
  * nexusBridge.ts
  *
  * Drop-in module for the Flickv4 web frontend that replaces direct
- * @p-stream/providers calls with calls to the Kotlin native bridge
+ * @/backend/providers/p-stream-mock calls with calls to the Kotlin native bridge
  * (window.__nexus) when running inside the NEXUS Android WebView.
  *
  * Usage:

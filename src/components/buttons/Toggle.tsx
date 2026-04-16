@@ -8,6 +8,7 @@ export function Toggle(props: {
   return (
     <button
       type="button"
+      aria-label="Toggle"
       onClick={props.disabled ? undefined : props.onClick}
       disabled={props.disabled}
       className={classNames(

@@ -1,5 +1,5 @@
-import { ScrapeMedia } from "@p-stream/providers";
-import type { ProviderControls } from "@p-stream/providers";
+import { ScrapeMedia } from "@/backend/providers/p-stream-mock";
+import type { ProviderControls } from "@/backend/providers/p-stream-mock";
 import { useEffect, useRef, useState } from "react";
 import type { AsyncReturnType } from "type-fest";
 

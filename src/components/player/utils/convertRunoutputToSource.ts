@@ -1,4 +1,4 @@
-import { Stream } from "@p-stream/providers";
+import { Stream } from "@/backend/providers/p-stream-mock";
 
 import {
   SourceFileStream,

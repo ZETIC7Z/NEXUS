@@ -1,4 +1,4 @@
-import { FullScraperEvents, RunOutput, ScrapeMedia } from "@p-stream/providers";
+import { FullScraperEvents, RunOutput, ScrapeMedia } from "@/backend/providers/p-stream-mock";
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
