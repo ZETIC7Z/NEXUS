@@ -279,10 +279,14 @@ export function ListView({
                       )}
 
                       {/* Poster/Image */}
-                      <div className={`relative flex-shrink-0 rounded-xl overflow-hidden bg-white/5 border border-white/10 ${
+                      <div className={`relative flex-shrink-0 rounded-xl overflow-hidden border border-white/10 ${
                         ["trending", "awaited"].includes(notification.category.toLowerCase())
                           ? "w-24 self-stretch min-h-[140px]"
                           : "w-20 h-28"
+                      } ${
+                        notification.posterUrl === "/nexus update logo.png" || notification.source === "NEXUS Core"
+                          ? "bg-gradient-to-br from-[#1a1200] via-[#2a1e00] to-[#0d0d0d]"
+                          : "bg-white/5"
                       }`}>
                         {notification.posterUrl ? (
                           <img
@@ -292,7 +296,7 @@ export function ListView({
                               notification.posterUrl ===
                                 "/nexus update logo.png" ||
                               notification.source === "NEXUS Core"
-                                ? "object-contain bg-black/40 p-1"
+                                ? "object-contain p-1.5"
                                 : "object-cover"
                             }`}
                           />

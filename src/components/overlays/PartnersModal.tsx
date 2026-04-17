@@ -188,11 +188,11 @@ function GlowingFlowchart() {
 
         {/* Step 1: Source */}
         <div className="flow-node group">
-          <div className="node-circle overflow-hidden">
+          <div className="node-circle overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a1200, #0d0d0d)' }}>
             <img
               src="/ZETICUZ.png"
               alt="Zeticuz"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-2"
             />
             <div className="node-glow" />
           </div>
@@ -366,11 +366,11 @@ export function PartnersModal(props: { id: string }) {
 
               {/* ZETICUZ */}
               <div className="flex flex-col items-center gap-6 group">
-                <div className="relative w-48 h-24 flex items-center justify-center rounded-2xl bg-white/5 border border-white/5 group-hover:border-[#8b8bf5]/30 transition-all duration-500 overflow-hidden">
+                <div className="relative w-48 h-24 flex items-center justify-center rounded-2xl border border-white/5 group-hover:border-[#8b8bf5]/30 transition-all duration-500 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a1200, #111111)' }}>
                   <img
                     src="/ZETICUZ.png"
                     alt="ZETICUZ"
-                    className="h-full w-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                    className="h-full w-full object-contain p-3 opacity-90 group-hover:opacity-100 transition-opacity"
                   />
                 </div>
                 <p className="text-[11px] text-gray-500 max-w-[200px] leading-relaxed">
