@@ -473,11 +473,12 @@ function DiscoverNexusDropdown() {
             className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200"
           >
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0">
+              <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0" style={{ background: "#000" }}>
                 <img
                   src="/ZETFLIX.png"
                   alt="Zetflix"
                   className="w-full h-full object-contain"
+                  style={{ mixBlendMode: "screen" }}
                 />
               </div>
               <span className="text-base font-medium uppercase tracking-wider">

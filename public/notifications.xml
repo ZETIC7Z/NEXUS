@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>NEXUS Notifications</title>
     <link>https://zeticuz.online</link>
     <description>Site updates and important notifications for NEXUS users</description>
     <language>en</language>
-    <lastBuildDate>Tue, 10 Mar 2026 12:00:00 MST</lastBuildDate>
+    <lastBuildDate>Fri, 18 Apr 2026 04:00:00 GMT</lastBuildDate>
     <atom:link href="https://zeticuz.online/notifications.xml" rel="self" type="application/rss+xml" />
+
+    <item>
+      <guid>nexus-update-004</guid>
+      <title>NEXUS v2.0 — Animated Beam Interface</title>
+      <description>NEXUS v2.0 is here with a stunning new visual overhaul!
+
+- Brand-new Magic UI Animated Beam technology showcase in Partners section
+- Upgraded NEXUS logo integration across the entire platform
+- Performance improvements and smoother animations throughout
+- Improved mobile experience with better touch support
+- New Discover section with expanded content discovery tools
+
+Enjoy the next level of NEXUS!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Fri, 18 Apr 2026 04:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
 
     <item>
       <guid>nexus-update-003</guid>
@@ -20,8 +40,11 @@
 
 Enjoy the new mobile experience!</description>
       <link>https://zeticuz.online</link>
-      <pubDate>Tue, 10 Mar 2026 12:00:00 MST</pubDate>
+      <pubDate>Tue, 10 Mar 2026 12:00:00 GMT</pubDate>
       <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
     </item>
 
     <item>
@@ -29,8 +52,11 @@ Enjoy the new mobile experience!</description>
       <title>NEXUS Quality of Life Patches</title>
       <description>Smooth functionality patches are now live! We've focused heavily on player logic to ensure that video playbacks pause and unpause responsively across all desktop browsers. Additional backend infrastructure optimizations have also been pushed!</description>
       <link>https://zeticuz.online</link>
-      <pubDate>Mon, 02 Mar 2026 10:00:00 MST</pubDate>
+      <pubDate>Mon, 02 Mar 2026 10:00:00 GMT</pubDate>
       <category>bugfix</category>
+      <enclosure url="https://zeticuz.online/nexus-logo-full.png" length="145090" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus-logo-full.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus-logo-full.png" />
     </item>
 
     <item>
@@ -38,8 +64,11 @@ Enjoy the new mobile experience!</description>
       <title>Welcome to NEXUS!</title>
       <description>NEXUS is now officially live! Experience the next generation of streaming. Unlimited movies, TV shows, and anime in stunning quality. No ads, no sign-up, just pure entertainment. Stream effortlessly.</description>
       <link>https://zeticuz.online</link>
-      <pubDate>Sun, 01 Mar 2026 09:00:00 MST</pubDate>
+      <pubDate>Sun, 01 Mar 2026 09:00:00 GMT</pubDate>
       <category>announcement</category>
+      <enclosure url="https://zeticuz.online/nexus-logo-full.png" length="145090" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus-logo-full.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus-logo-full.png" />
     </item>
   </channel>
 </rss>

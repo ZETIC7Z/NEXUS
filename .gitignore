@@ -7,11 +7,11 @@ node_modules
 
 # testing
 /coverage
+test-results/
 
 # production
 /dist
 dev-dist
-/stats.html
 
 # misc
 .DS_Store
@@ -21,19 +21,35 @@ dev-dist
 .env.production.local
 
 npm-debug.log*
-
-# other package managers
 yarn.lock
 package-lock.json
 
-# config
+# secrets - keep .env out of git
 .env
 
+# vercel
 .vercel
-*.png
-*.txt
+
+# scripts / dev tools
 analyze_zxc.js
 .playwright-mcp/
-test-results/
 
-.vercel
+# generated files (large, auto-generated)
+stats.html
+vite.config.mts.timestamp-*.mjs
+
+# scratch files in root (screenshots etc - keep public/ images tracked!)
+browser_diagnosis_v2.png
+direct_zxcprime_music.png
+final_music_page_refinement.png
+final_music_search_verification.png
+music_page_diagnosis.png
+player_current_state.png
+build-error.txt
+build_error.txt
+lint-output.txt
+lint_output_fresh.txt
+lint_results.txt
+lint_unix.txt
+test-output.txt
+patch_info.txt

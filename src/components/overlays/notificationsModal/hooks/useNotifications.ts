@@ -308,6 +308,16 @@ export function useNotifications() {
                       const itemGuid = guid || link;
                       if (!itemGuid || !title) return;
 
+                      // Extract cover image from enclosure / media:content / media:thumbnail
+                      const enclosure = item.querySelector("enclosure");
+                      const mediaContent = item.querySelector("content");
+                      const mediaThumbnail = item.querySelector("thumbnail");
+                      const posterUrl =
+                        enclosure?.getAttribute("url") ||
+                        mediaContent?.getAttribute("url") ||
+                        mediaThumbnail?.getAttribute("url") ||
+                        undefined;
+
                       allNotifications.push({
                         guid: itemGuid,
                         title,
@@ -317,6 +327,7 @@ export function useNotifications() {
                         category,
                         source: getSourceName(feedUrl),
                         type: "rss",
+                        ...(posterUrl ? { posterUrl } : {}),
                       });
                     } catch (itemError) {
                       // skip
