@@ -67,7 +67,7 @@ export async function fetchFebboxQuota(febboxKey: string | null): Promise<any> {
 
   console.log("SetupPart.tsx: Fetching Febbox quota from Fembox API");
   try {
-    const url = `https://fembox.lordflix.club/api/user/quota?cookie=${febboxKey}`;
+    const url = `https://mznxiwqjdiq00239q.space/fedapi/quota?ui=${febboxKey}`;
     const data = await proxiedFetch<any>(url, {});
 
     if (data && data.success && data.data) {

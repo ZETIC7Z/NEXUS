@@ -168,11 +168,12 @@ export function SubtitleView(props: { controlsShown: boolean }) {
   return (
     <Transition animation="slide-up" show>
       <div
-        className="text-white absolute w-full flex flex-col items-center transition-[bottom] z-[80]"
+        className="pointer-events-none z-50 text-white absolute w-full flex flex-col items-center transition-[bottom]"
         style={{
           bottom: props.controlsShown
             ? "6rem"
             : `${styling.verticalPosition}rem`,
+          transform: "translateZ(0)",
         }}
       >
         <SubtitleRenderer />

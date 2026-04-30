@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useCaptions } from "@/components/player/hooks/useCaptions";
 import { useVolume } from "@/components/player/hooks/useVolume";
+import {
+  DEFAULT_PLAYER_GAMEPAD_MAPPING,
+  useGamepadPolling,
+} from "@/hooks/useGamepad";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { useOverlayStack } from "@/stores/interface/overlayStack";
 import { usePlayerStore } from "@/stores/player/store";
@@ -389,6 +393,67 @@ export function KeyboardEvents() {
       window.removeEventListener("keyup", keyupEventHandler);
     };
   }, []);
+
+  // ── Gamepad support ────────────────────────────────────────────────
+  const handleGamepadAction = useCallback(
+    (action: string) => {
+      switch (action) {
+        case "play-pause":
+          if (dataRef.current.mediaPlaying.isPaused)
+            dataRef.current.display?.play();
+          else dataRef.current.display?.pause();
+          break;
+        case "skip-forward":
+          dataRef.current.display?.setTime(dataRef.current.time + 10);
+          break;
+        case "skip-backward":
+          dataRef.current.display?.setTime(dataRef.current.time - 10);
+          break;
+        case "skip-forward-30":
+          dataRef.current.display?.setTime(dataRef.current.time + 30);
+          break;
+        case "skip-backward-30":
+          dataRef.current.display?.setTime(dataRef.current.time - 30);
+          break;
+        case "volume-up":
+          dataRef.current.setVolume(
+            (dataRef.current.mediaPlaying?.volume || 0) + 0.1,
+          );
+          break;
+        case "volume-down":
+          dataRef.current.setVolume(
+            (dataRef.current.mediaPlaying?.volume || 0) - 0.1,
+          );
+          break;
+        case "mute":
+          dataRef.current.toggleMute();
+          break;
+        case "toggle-fullscreen":
+          dataRef.current.display?.toggleFullscreen();
+          break;
+        case "toggle-captions":
+          dataRef.current.toggleLastUsed().catch(() => {});
+          break;
+        case "back":
+          dataRef.current.router.close();
+          break;
+        default:
+          break;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const { setMapping } = useGamepadPolling({
+    onAction: handleGamepadAction,
+    enabled: true,
+  });
+
+  useEffect(() => {
+    setMapping(DEFAULT_PLAYER_GAMEPAD_MAPPING);
+  }, [setMapping]);
+  // ─────────────────────────────────────────────────────────────────
 
   return null;
 }
