@@ -255,6 +255,19 @@ export function ZeticuzIframePlayer() {
         />
       )}
 
+      {/* ══════════════ Wake-up Overlay ══════════════
+          Captures initial mouse movement or tap over the iframe
+          when controls are hidden, so we can show them immediately.
+      */}
+      {!showControls && !isScreenLocked && (
+        <div
+          className="absolute inset-0 z-[50]"
+          onMouseMove={() => setShowControls(true)}
+          onTouchStart={() => setShowControls(true)}
+          onClick={() => setShowControls(true)}
+        />
+      )}
+
       {/* ══════════════ Lock Screen (Fullscreen Landscape Only) ══════════════
           Full-screen touch blocker when locked.
       */}

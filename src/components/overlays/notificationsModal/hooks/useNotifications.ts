@@ -58,6 +58,61 @@ export function useNotifications() {
 
         // 2. ADD SYSTEM NOTIFICATIONS
         allNotifications.push({
+          guid: "nexus-v2-3-patch",
+          title: "NEXUS v2.3 PATCH UPDATE",
+          description: `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">📱</span> PWA Installation Support – Install NEXUS anywhere</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Progressive Web App capability allowing full device installation.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Click the "Install NEXUS to Device" button or use your browser's "Add to Home Screen" option. It will install as a native-feeling app on Windows, macOS, Linux, Android, and iOS.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Enjoy a full-screen, distraction-free viewing experience without browser tabs, plus faster load times.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🔒</span> Security Upgrades – Infrastructure Obfuscation</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Advanced masking of our core backend APIs and worker nodes.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> All public-facing requests now route through secure decoy URLs (e.g., backend.zeticuz.com). Real infrastructure details are hidden from network inspectors.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Protects our private APIs from scraping and abuse, ensuring stable uptime for real users.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">⚡</span> Streaming Enhancements – Stable M3U8 Proxy</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> A completely overhauled proxy system for handling HLS (m3u8) video streams.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Video chunks are now routed through an optimized proxy layer that bypasses CORS restrictions and handles cross-origin buffering flawlessly.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Eliminates buffering, reduces stream dropping, and ensures maximum quality even on unreliable networks.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">✨</span> Interface Polishing – Hover & Fade Animations</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Fluid motion design across the notification system.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Modals now smoothly fade in and out. Notification items physically respond to hover and tap gestures, scaling dynamically to your interaction.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Creates a premium, tactile, and highly responsive user experience that feels alive.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎬</span> Media Trailers – Direct Auto-Play</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Instant access to movie and show trailers directly inside notifications.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> When viewing a media notification, our system automatically fetches the highest quality trailer from YouTube and embeds it directly. It auto-plays with full audio controls.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Decide what to watch faster without leaving the app or opening new tabs.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎯</span> Zeticuz Player – Instant Controls</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Cross-origin interaction detection for the Zeticuz iframe player.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Deploys a transparent wake-up overlay that instantly catches mouse movement or taps, instantly revealing the player's Back button and controls.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Ensures you never have to guess how to bring the controls back up. One touch, and they are there.</p>
+              </div>
+            </div>
+          `,
+          pubDate: new Date().toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        allNotifications.push({
           guid: "nexus-v2-2-patch",
           title: "NEXUS v2.2 PATCH UPDATE",
           description:
@@ -230,7 +285,7 @@ export function useNotifications() {
                 const lastAirDate = details.last_air_date
                   ? new Date(details.last_air_date)
                   : null;
-                const now = new Date();
+                const currentTime = new Date();
 
                 // If it aired in the last 7 days, notify
                 if (

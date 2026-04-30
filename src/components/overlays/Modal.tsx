@@ -58,6 +58,7 @@ export function FancyModal(props: {
   id: string;
   children?: ReactNode;
   title?: string;
+  header?: ReactNode;
   size?: "md" | "lg" | "xl";
   oneTime?: boolean;
 }) {
@@ -80,7 +81,7 @@ export function FancyModal(props: {
   };
 
   return (
-    <OverlayPortal darken close={handleClose} show={modal.isShown}>
+    <OverlayPortal darken close={handleClose} show={modal.isShown} animation="fade">
       <Helmet>
         <html data-no-scroll />
       </Helmet>
@@ -101,12 +102,15 @@ export function FancyModal(props: {
               className="rounded-3xl bg-background-main group-hover:opacity-100"
             />
             <Flare.Child className="pointer-events-auto relative mb-2p-[0.4em] transition-transform duration-300">
-              <div className="flex justify-between items-center mb-4">
-                {props.title && (
-                  <Heading2 className="!mt-0 !mb-0 pr-6">
-                    {props.title}
-                  </Heading2>
-                )}
+              <div className="flex justify-between items-center mb-4 min-h-[40px]">
+                <div className="flex items-center gap-4 flex-1">
+                  {props.header}
+                  {props.title && !props.header && (
+                    <Heading2 className="!mt-0 !mb-0 pr-6">
+                      {props.title}
+                    </Heading2>
+                  )}
+                </div>
                 <button
                   type="button"
                   className="text-s font-semibold text-type-secondary hover:text-white transition-transform hover:scale-95"

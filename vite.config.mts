@@ -8,6 +8,8 @@ import { handlebars } from "./plugins/handlebars";
 import { PluginOption, loadEnv, splitVendorChunkPlugin } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
+import basicSsl from '@vitejs/plugin-basic-ssl';
+
 import tailwind from "tailwindcss";
 import rtl from "postcss-rtlcss";
 
@@ -24,7 +26,15 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
     base: env.VITE_BASE_URL || "/",
+    
+    // ITO YUNG DINAGDAG NATIN PARA MA-ACCESS SA PHONE
+    server: {
+      host: true,
+      port: 5173, // Siguraduhin nating 5173 ang gamit
+    },
+
     plugins: [
+      basicSsl(),
       handlebars({
         vars: {
           opensearchEnabled: env.VITE_OPENSEARCH_ENABLED === "true",
@@ -106,15 +116,14 @@ export default defineConfig(({ mode }) => {
         overlay: {
           position: "tr",
         },
-        typescript: true, // check typescript build errors in dev server
+        typescript: true,
         eslint: {
-          // check lint errors in dev server only
           lintCommand: "eslint --ext .tsx,.ts src",
           dev: {
             logLevel: ["error"],
           },
         },
-        enableBuild: false, // disable checking during build to prevent warnings from blocking
+        enableBuild: false,
       }),
       splitVendorChunkPlugin(),
       visualizer() as PluginOption,

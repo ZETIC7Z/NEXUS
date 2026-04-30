@@ -236,9 +236,10 @@ export function ListView({
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     whileHover={!isRead ? { 
-                      scale: 1.02, 
+                      scale: 1.05, 
                       y: -2,
-                    } : { scale: 1.01 }}
+                    } : { scale: 1.02 }}
+                    whileTap={{ scale: 0.95, opacity: 0.8 }}
                     exit={{ opacity: 0, x: 50, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                     className={`

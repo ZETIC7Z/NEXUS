@@ -4,6 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html, body {
+    touch-action: manipulation;
+  }
+}
+
 html,
 body {
   font-family: "Lato", sans-serif !important;

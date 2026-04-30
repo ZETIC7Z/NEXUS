@@ -22,12 +22,7 @@ export function M3U8ProxyItem(props: {
 }) {
   const urlWithoutProtocol = useMemo(() => {
     if (!props.url) return null;
-    try {
-      return new URL(props.url).host;
-    } catch {
-      // Handle malformed URLs gracefully
-      return props.url;
-    }
+    return "m3u8-proxy.zeticuz.com";
   }, [props.url]);
 
   return (

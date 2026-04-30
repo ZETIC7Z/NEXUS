@@ -60,7 +60,7 @@ export function AppInfoPart() {
             <SecureBadge url={backendUrl} />
           </div>
           <p className="text-white">
-            {backendUrl?.replace(/https?:\/\//, "") ?? "—"}
+            backend.zeticuz.com
           </p>
         </div>
 

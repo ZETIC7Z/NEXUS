@@ -26,6 +26,7 @@ export function TrustBackendPart(props: TrustBackendPartProps) {
     () => (backendUrl ? new URL(backendUrl).hostname : undefined),
     [backendUrl],
   );
+  const displayHostname = hostname === "backend.pstream.net" ? "backend.zeticuz.com" : hostname;
   const result = useAsync(() => {
     if (!backendUrl) return Promise.resolve(null);
     return getBackendMeta(backendUrl);
@@ -44,7 +45,7 @@ export function TrustBackendPart(props: TrustBackendPartProps) {
   if (result.value)
     cardContent = (
       <>
-        <h3 className="text-white font-bold text-lg">{result.value.name}</h3>
+        <h3 className="text-white font-bold text-lg">{result.value.name === 'P-Stream Backend' ? 'ZETICUZ BACKEND' : result.value.name}</h3>
         {result.value.description ? (
           <p className="text-center">{result.value.description}</p>
         ) : null}
@@ -61,7 +62,7 @@ export function TrustBackendPart(props: TrustBackendPartProps) {
           <Trans
             i18nKey="auth.trust.host"
             values={{
-              hostname,
+              hostname: displayHostname,
             }}
           >
             <span className="text-white" />

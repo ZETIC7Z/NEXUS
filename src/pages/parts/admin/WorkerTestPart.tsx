@@ -17,7 +17,7 @@ export function WorkerItem(props: {
   errorText?: string;
   url?: string;
 }) {
-  const urlWithoutProtocol = props.url ? new URL(props.url).host : null;
+  const urlWithoutProtocol = props.url ? "worker.zeticuz.com" : null;
 
   return (
     <div className="flex mb-2">

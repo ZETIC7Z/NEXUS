@@ -9,6 +9,25 @@
     <atom:link href="https://zeticuz.online/notifications.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <guid>nexus-update-005</guid>
+      <title>NEXUS v5.6.0 — Sync &amp; Stability</title>
+      <description>We've completed a major upstream synchronization!
+
+- **Gamepad Controller Support:** Full navigation, playback control, volume, and fullscreen toggling via controllers!
+- **Subtitle Fixes:** Subtitles now display perfectly during fullscreen controls fading.
+- **Mobile PWA Optimizations:** Fixed zoom scaling issues on mobile devices for a true app-like feel.
+- **Core Stability:** Re-aligned with the latest upstream backend logic and providers.
+
+Enjoy the smoothest NEXUS experience yet!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Thu, 30 Apr 2026 12:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
       <guid>nexus-update-004</guid>
       <title>NEXUS v2.0 — Animated Beam Interface</title>
       <description>NEXUS v2.0 is here with a stunning new visual overhaul!

@@ -78,7 +78,7 @@ export function BackendTestPart() {
                   <span className="inline-block w-36 text-white font-medium">
                     Backend name:
                   </span>
-                  {status.value?.name}
+                  {status.value?.name ? "ZETICUZ BACKEND" : "Not set"}
                 </p>
                 <p>
                   <span className="inline-block w-36 text-white font-medium">

@@ -1,9 +1,9 @@
 import {
-  TailwindIcon,
-  TSIcon,
   ReactIcon,
-  ViteIcon,
   ReactRouterIcon,
+  TSIcon,
+  TailwindIcon,
+  ViteIcon,
   PWAIcon,
   MongoDBIcon,
   // Provider pills

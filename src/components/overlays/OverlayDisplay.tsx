@@ -4,7 +4,7 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import { Transition } from "@/components/utils/Transition";
+import { Transition, TransitionAnimations } from "@/components/utils/Transition";
 import {
   useInternalOverlayRouter,
   useRouterAnchorUpdate,
@@ -78,6 +78,7 @@ export function OverlayPortal(props: {
   close?: () => void;
   durationClass?: string;
   zIndex?: number;
+  animation?: TransitionAnimations;
 }) {
   const [portalElement, setPortalElement] = useState<Element | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -160,7 +161,7 @@ export function OverlayPortal(props: {
                     />
                   </Transition>
                   <Transition
-                    animation="slide-up"
+                    animation={props.animation ?? "slide-up"}
                     className="absolute inset-0 pointer-events-none"
                     isChild
                     durationClass={props.durationClass ?? "duration-200"}

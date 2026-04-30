@@ -99,11 +99,23 @@ export function NotificationModal({ id }: NotificationModalProps) {
       title={
         currentView === "list"
           ? "Notifications"
-          : currentView === "detail" && selectedNotification
-            ? selectedNotification.title
-            : currentView === "settings"
-              ? "Settings"
-              : "Notifications"
+          : currentView === "settings"
+            ? "Settings"
+            : undefined
+      }
+      header={
+        currentView === "detail" && selectedNotification ? (
+          <button
+            type="button"
+            onClick={goBackToList}
+            className="group flex items-center gap-2 text-type-secondary hover:text-white transition-all text-sm font-bold"
+          >
+            <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10 transition-colors">
+              <Icon icon={Icons.CHEVRON_LEFT} className="text-xs" />
+            </div>
+            Back
+          </button>
+        ) : undefined
       }
       size="lg"
     >
