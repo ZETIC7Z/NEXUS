@@ -8,7 +8,7 @@ import { handlebars } from "./plugins/handlebars";
 import { PluginOption, loadEnv, splitVendorChunkPlugin } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
-import basicSsl from '@vitejs/plugin-basic-ssl';
+// import basicSsl from '@vitejs/plugin-basic-ssl';
 
 import tailwind from "tailwindcss";
 import rtl from "postcss-rtlcss";
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      basicSsl(),
+// basicSsl(),
       handlebars({
         vars: {
           opensearchEnabled: env.VITE_OPENSEARCH_ENABLED === "true",

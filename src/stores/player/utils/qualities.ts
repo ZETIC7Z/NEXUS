@@ -1,4 +1,4 @@
-﻿import { Qualities, Stream } from "@p-stream/providers";
+import { Qualities, Stream } from "@p-stream/providers";
 
 import { QualityStore } from "@/stores/quality";
 
@@ -7,7 +7,7 @@ export type SourceQuality = Qualities;
 export type StreamType = "hls" | "mp4";
 
 export type SourceFileStream = {
-  type: "mp4";
+  type: "mp4" | "hls";
   url: string;
 };
 

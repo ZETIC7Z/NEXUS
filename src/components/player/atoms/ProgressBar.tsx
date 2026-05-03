@@ -58,6 +58,7 @@ function ThumbnailDisplay(props: { at: number; show: boolean }) {
           >
             {currentThumbnail && (
               <img
+                alt=""
                 src={currentThumbnail.data}
                 className="h-24 border rounded-xl border-gray-800 no-fade"
               />

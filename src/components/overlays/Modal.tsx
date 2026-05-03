@@ -113,6 +113,7 @@ export function FancyModal(props: {
                 </div>
                 <button
                   type="button"
+                  aria-label="Close"
                   className="text-s font-semibold text-type-secondary hover:text-white transition-transform hover:scale-95"
                   onClick={handleClose}
                 >

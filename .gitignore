@@ -53,3 +53,12 @@ lint_results.txt
 lint_unix.txt
 test-output.txt
 patch_info.txt
+
+# scratch dir and p-stream repo clone
+scratch/
+p-stream-repo/
+
+# leftover root-level artifacts
+pstream-vite.ts
+test-lang.ts
+AREAX.png

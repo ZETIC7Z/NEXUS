@@ -62,6 +62,18 @@ export function PreferencesPart(props: {
 
   const hasFebboxKey = usePreferencesStore((s) => !!s.febboxKey);
 
+  // Extract store state at the top level (not inside handlers) to comply with Rules of Hooks
+  const enableAutoSkipSegments = usePreferencesStore(
+    (s) => s.enableAutoSkipSegments,
+  );
+  const setEnableAutoSkipSegments = usePreferencesStore(
+    (s) => s.setEnableAutoSkipSegments,
+  );
+  const enablePauseOverlay = usePreferencesStore((s) => s.enablePauseOverlay);
+  const setEnablePauseOverlay = usePreferencesStore(
+    (s) => s.setEnablePauseOverlay,
+  );
+
   const allSources = useMemo(() => {
     const sources = getAllProviders().listSources();
 
@@ -325,23 +337,15 @@ export function PreferencesPart(props: {
             <div
               role="button"
               tabIndex={0}
-              onClick={() => {
-                const store = usePreferencesStore.getState();
-                store.setEnableAutoSkipSegments(!store.enableAutoSkipSegments);
-              }}
+              onClick={() => setEnableAutoSkipSegments(!enableAutoSkipSegments)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
-                  const store = usePreferencesStore.getState();
-                  store.setEnableAutoSkipSegments(
-                    !store.enableAutoSkipSegments,
-                  );
+                  setEnableAutoSkipSegments(!enableAutoSkipSegments);
                 }
               }}
               className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
-              <Toggle
-                enabled={usePreferencesStore((s) => s.enableAutoSkipSegments)}
-              />
+              <Toggle enabled={enableAutoSkipSegments} />
               <p className="flex-1 text-white font-bold">
                 {t(
                   "settings.preferences.autoSkipSegmentsLabel",
@@ -365,21 +369,15 @@ export function PreferencesPart(props: {
             <div
               role="button"
               tabIndex={0}
-              onClick={() => {
-                const store = usePreferencesStore.getState();
-                store.setEnablePauseOverlay(!store.enablePauseOverlay);
-              }}
+              onClick={() => setEnablePauseOverlay(!enablePauseOverlay)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
-                  const store = usePreferencesStore.getState();
-                  store.setEnablePauseOverlay(!store.enablePauseOverlay);
+                  setEnablePauseOverlay(!enablePauseOverlay);
                 }
               }}
               className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
             >
-              <Toggle
-                enabled={usePreferencesStore((s) => s.enablePauseOverlay)}
-              />
+              <Toggle enabled={enablePauseOverlay} />
               <p className="flex-1 text-white font-bold">
                 {t("settings.preferences.pauseOverlayLabel", "Pause overlay")}
               </p>

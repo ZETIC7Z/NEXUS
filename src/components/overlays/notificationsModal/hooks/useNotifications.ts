@@ -57,6 +57,46 @@ export function useNotifications() {
         const signupTime = signupDate ? new Date(signupDate).getTime() : 0;
 
         // 2. ADD SYSTEM NOTIFICATIONS
+        // ADD V2.4 UPDATE — always shown first (pinned system notice)
+        allNotifications.push({
+          guid: "nexus-v2-4-patch",
+          title: "NEXUS v2.4 — New Sources & Fixes 🔥",
+          description: `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">⚡</span> NEW: ZeticuzApi 🔥 — GoatAPI Lightning Streams</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Brand new source powered by GoatAPI's Lightning engine — no token required.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Fetches HLS m3u8 streams directly from GoatAPI Lightning, proxied through GoatAPI's own CDN for maximum compatibility. Falls back to FebBox 4K quality map when authenticated with your FebBox token.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Fast, reliable, no account needed. FebBox UI token from Settings unlocks 4K quality on top.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🔧</span> FIXED: Tugaflix 🔥 — Streamtape MP4 Redirect</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was wrong:</strong> Tugaflix was treating Streamtape URLs as HLS streams, causing playback failures.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was fixed:</strong> The scraper now correctly follows the 302 redirect from Streamtape's <code>/get_video</code> endpoint to the final <code>tapecontent.net</code> CDN MP4, and returns it as a direct file stream.</p>
+                <p class="text-type-secondary text-sm"><strong>Result:</strong> Tugaflix now plays movies correctly without buffering or type errors.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎬</span> UPDATED: FSOnline Doodstream — Newer CDN Support</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What changed:</strong> FSOnline's Doodstream embed scraper now handles both the classic pass_md5 token pattern and the newer direct Cloudatacdn URL pattern used in 2026.</p>
+                <p class="text-type-secondary text-sm"><strong>Result:</strong> FSOnline streams work again with proper User-Agent headers and both CDN routing methods supported.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">✨</span> HLS Type Fix — No More "unrecognized file type" Errors</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was wrong:</strong> The player's source converter rejected HLS quality entries inside file-type streams, causing console errors and failed playbacks.</p>
+                <p class="text-type-secondary text-sm"><strong>What was fixed:</strong> <code>allowedFileTypes</code> and <code>SourceFileStream</code> type updated to accept both <code>mp4</code> and <code>hls</code> quality entries.</p>
+              </div>
+            </div>
+          `,
+          pubDate: new Date("2026-05-03").toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
         allNotifications.push({
           guid: "nexus-v2-3-patch",
           title: "NEXUS v2.3 PATCH UPDATE",
@@ -412,7 +452,10 @@ export function useNotifications() {
           if (dismissedSet.has(n.guid)) return false;
           if (n.mediaId && blacklistSet.has(n.mediaId)) return false;
 
-          // 2. Strict Date Filter
+          // 2. System/update notifications always show regardless of signup date
+          if (n.type === "system" || n.source === "NEXUS Core") return true;
+
+          // 3. Strict Date Filter for media/rss notifications
           const pubTime = new Date(n.pubDate).getTime();
           if (pubTime < signupTime) return false;
 

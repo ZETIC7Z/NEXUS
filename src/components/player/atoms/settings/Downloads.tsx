@@ -199,6 +199,7 @@ export function DownloadView({ id }: { id: string }) {
                   <a
                     className="text-type-link"
                     href="https://hls-downloader.pstream.mov/"
+                    aria-label="HLS Downloader"
                   />
                 </Trans>
               </p>

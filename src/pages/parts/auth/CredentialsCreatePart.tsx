@@ -160,13 +160,16 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
             passwordToggleable={false}
           />
           <input
+            id="password-hidden"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-label="Password"
             className="hidden"
           />
           <button
             type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-9 text-gray-400 hover:text-white transition-colors"
           >
@@ -187,6 +190,7 @@ export function CredentialsCreatePart(props: CredentialsCreatePartProps) {
           />
           <button
             type="button"
+            aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             className="absolute right-3 top-9 text-gray-400 hover:text-white transition-colors"
           >

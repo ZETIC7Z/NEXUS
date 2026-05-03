@@ -1,4 +1,4 @@
-﻿import { FullScraperEvents, RunOutput, ScrapeMedia } from "@p-stream/providers";
+import { FullScraperEvents, RunOutput, ScrapeMedia } from "@p-stream/providers";
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
@@ -34,7 +34,7 @@ type ScraperEvent<Event extends keyof FullScraperEvents> = Parameters<
 
 // Custom sources that should appear in the spinner (defined outside to avoid recreating on every render)
 const customSources: ScrapingSegment[] = [
-  { id: "febbox", name: "FebBox (4K) â­", status: "waiting", percentage: 0 },
+  { id: "febbox", name: "FebBox (4K) ⭐", status: "waiting", percentage: 0 },
 ];
 
 function useBaseScrape() {

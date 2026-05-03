@@ -41,7 +41,9 @@ export function TopControls(props: {
       </div>
       <div
         onMouseOver={() => setHoveringAnyControls(true)}
-        onMouseOut={() => setHoveringAnyControls(false)}
+        onMouseLeave={() => setHoveringAnyControls(false)}
+        onFocus={() => setHoveringAnyControls(true)}
+        onBlur={() => setHoveringAnyControls(false)}
         className="pointer-events-auto pl-[calc(2rem+env(safe-area-inset-left))] pr-[calc(2rem+env(safe-area-inset-right))] pt-1 mt-[env(safe-area-inset-top)] absolute top-0 w-full"
         style={{
           top: `${bannerSize}px`,

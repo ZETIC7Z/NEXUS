@@ -194,6 +194,7 @@ export function GroupDropdown({
                   <button
                     type="button"
                     key={icon}
+                    aria-label={`Select icon ${icon}`}
                     className={`rounded p-1 border-2 ${
                       selectedIcon === icon
                         ? "border-type-link bg-mediaCard-hoverBackground"

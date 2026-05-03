@@ -1,4 +1,4 @@
-﻿import { Stream } from "@p-stream/providers";
+import { Stream } from "@p-stream/providers";
 
 import {
   SourceFileStream,
@@ -15,7 +15,7 @@ const allowedQualitiesMap: Record<SourceQuality, SourceQuality> = {
   unknown: "unknown",
 };
 const allowedQualities = Object.keys(allowedQualitiesMap);
-const allowedFileTypes = ["mp4"];
+const allowedFileTypes = ["mp4", "hls"];
 
 function isAllowedQuality(inp: string): inp is SourceQuality {
   return allowedQualities.includes(inp);

@@ -1,24 +1,24 @@
 import {
+  AMCIcon,
+  AppleTVIcon,
+  CrunchyrollIcon,
+  DisneyIcon,
+  FuboTVIcon,
+  HBOIcon,
+  HuluIcon,
+  MongoDBIcon,
+  NetflixIcon,
+  ParamountIcon,
+  PrimeVideoIcon,
+  // eslint-disable-next-line sort-imports
+  PWAIcon,
   ReactIcon,
   ReactRouterIcon,
-  TSIcon,
-  TailwindIcon,
-  ViteIcon,
-  PWAIcon,
-  MongoDBIcon,
-  // Provider pills
-  NetflixIcon,
-  TMDBIcon,
-  HBOIcon,
-  DisneyIcon,
-  AppleTVIcon,
-  PrimeVideoIcon,
-  HuluIcon,
-  ParamountIcon,
-  CrunchyrollIcon,
   ShudderIcon,
-  FuboTVIcon,
-  AMCIcon,
+  TailwindIcon,
+  TMDBIcon,
+  TSIcon,
+  ViteIcon,
 } from "@/components/TechIcons";
 
 // ── Tech Stack icon + label cell ──────────────────────────────────────────────
@@ -89,7 +89,8 @@ export function TechMarquee() {
           style={{ width: "max-content" }}
         >
           {techItems.map((item, i) => (
-            <div key={i} className="px-6">
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={`tech-${item.label}-${i}`} className="px-6">
               <TechItem icon={item.icon} label={item.label} />
             </div>
           ))}
@@ -106,7 +107,8 @@ export function TechMarquee() {
           style={{ width: "max-content" }}
         >
           {providerItems.map((icon, i) => (
-            <div key={i} className="px-4">
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={`provider-${i}`} className="px-4">
               <ProviderItem icon={icon} />
             </div>
           ))}
