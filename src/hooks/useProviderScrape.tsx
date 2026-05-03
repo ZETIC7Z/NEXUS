@@ -37,6 +37,19 @@ const customSources: ScrapingSegment[] = [
   { id: "febbox", name: "FebBox (4K) ⭐", status: "waiting", percentage: 0 },
 ];
 
+// Source name overrides for builtin providers (adds emojis etc.)
+const SOURCE_NAME_OVERRIDES: Record<string, string> = {
+  tugaflix: "Tugaflix 🔥",
+};
+
+function applyNameOverrides(
+  metadata: { id: string; name: string }[],
+): { id: string; name: string }[] {
+  return metadata.map((s) =>
+    SOURCE_NAME_OVERRIDES[s.id] ? { ...s, name: SOURCE_NAME_OVERRIDES[s.id] } : s,
+  );
+}
+
 function useBaseScrape() {
   const [sources, setSources] = useState<Record<string, ScrapingSegment>>({});
   const [sourceOrder, setSourceOrder] = useState<ScrapingItems[]>([]);
@@ -57,9 +70,10 @@ function useBaseScrape() {
         }
       });
 
-      // Add regular provider sources
+      // Add regular provider sources (with name overrides applied)
+      const patchedMeta = applyNameOverrides(getCachedMetadata());
       evt.sourceIds.forEach((v) => {
-        const source = getCachedMetadata().find((s) => s.id === v);
+        const source = patchedMeta.find((s) => s.id === v);
         if (!source) return;
         const out: ScrapingSegment = {
           name: source.name,
@@ -257,17 +271,21 @@ export function useScrape() {
         )
         .map((source) => source.id);
 
-      // Inject FebBox into the available sources list if key is present
+      // Inject FebBox into the available sources list at rank position 880
+      // (after ZeticuzApi rank 890, before Tugaflix rank ~806)
+      // This gives: VidLink > ZeticuzApi > FebBox > Tugaflix > FSOnline > ...
       if (hasFebboxKey && !availableSources.includes("febbox")) {
-        availableSources.push("febbox");
+        const zeticuzIdx = availableSources.indexOf("zeticuzapi-custom");
+        if (zeticuzIdx !== -1) {
+          // Insert after ZeticuzApi
+          availableSources.splice(zeticuzIdx + 1, 0, "febbox");
+        } else {
+          // Fallback: insert at position 2 (after VidLink and ZeticuzApi slot)
+          availableSources.splice(2, 0, "febbox");
+        }
       }
 
       let baseSourceOrder = availableSources;
-
-      // Ensure febbox is in the list if key present
-      if (hasFebboxKey && !baseSourceOrder.includes("febbox")) {
-        baseSourceOrder.push("febbox");
-      }
 
       // Apply custom source ordering if enabled (from settings)
       if (enableSourceOrder && (preferredSourceOrder || []).length > 0) {
@@ -296,14 +314,8 @@ export function useScrape() {
             ...baseSourceOrder.filter((id) => id !== lastSuccessfulSource),
           ];
         }
-      } else {
-        // Default: FebBox first if no lastSuccessfulSource
-        const febboxIdx = baseSourceOrder.indexOf("febbox");
-        if (febboxIdx > 0) {
-          baseSourceOrder.splice(febboxIdx, 1);
-          baseSourceOrder = ["febbox", ...baseSourceOrder];
-        }
       }
+      // Otherwise: natural rank-based ordering is used (VidLink 900 > ZeticuzApi 890 > FebBox 880 > Tugaflix > FSOnline...)
 
       // If starting from a specific source ID, filter the order to start AFTER that source
       let filteredSourceOrder = baseSourceOrder;
@@ -346,11 +358,9 @@ export function useScrape() {
           }
         }
 
-        // If we reached the end of the list, loop back to the beginning EXCEPT to the source we just came from
+        // If we reached the end of the list, DO NOT loop back — return empty so error screen shows
         if (filteredSourceOrder.length === 0) {
-          filteredSourceOrder = baseSourceOrder.filter(
-            (id) => id !== startFromSourceId,
-          );
+          filteredSourceOrder = [];
         }
       }
 
@@ -382,11 +392,13 @@ export function useScrape() {
           const custom = customSources.find((c) => c.id === id);
           if (custom) return { ...custom, status: "waiting" as const };
 
-          // Otherwise it's a provider source
+          // Otherwise it's a provider source — apply name overrides (e.g. Tugaflix 🔥)
           const source = allSources.find((s) => s.id === id);
+          const rawName = source?.name || id;
+          const patchedName = SOURCE_NAME_OVERRIDES[id] ?? rawName;
           return {
             id,
-            name: source?.name || id,
+            name: patchedName,
             status: "waiting" as const,
             percentage: 0,
           };

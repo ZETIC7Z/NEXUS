@@ -123,7 +123,7 @@ async function comboScraper(
 export const vidlinkScraper = makeSourcerer({
   id: "vidlink-custom",
   name: "VidLink \uD83D\uDD25",
-  rank: 810,
+  rank: 900,
   disabled: false,
   flags: [],
   scrapeMovie: comboScraper,
@@ -138,7 +138,7 @@ export const rgshowsScraper = null as any;
 export const yesmoviesScraper = makeSourcerer({
   id: "yesmovies-custom",
   name: "YesMovies",
-  rank: 815,
+  rank: 860,
   flags: [],
   scrapeMovie: async (ctx: MovieScrapeContext) => {
     const res = await ctx.proxiedFetcher<any>(
@@ -552,7 +552,7 @@ async function zeticuzApiLogic(
 export const zeticuzApiScraper = makeSourcerer({
   id: "zeticuzapi-custom",
   name: "ZeticuzApi 🔥",
-  rank: 811,
+  rank: 890,
   flags: [],
   scrapeMovie: zeticuzApiLogic,
   scrapeShow: zeticuzApiLogic,
