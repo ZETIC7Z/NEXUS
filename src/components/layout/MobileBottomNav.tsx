@@ -60,6 +60,8 @@ export function MobileBottomNav() {
   }, [location.pathname, showMenu]);
 
   if (!isMobile) return null;
+  // Cuts page is full-screen — hide bottom nav so it doesn't overlap
+  if (location.pathname === "/cuts" || location.pathname.startsWith("/cuts")) return null;
 
   const handleNavigation = (path: string) => {
     window.scrollTo(0, 0);

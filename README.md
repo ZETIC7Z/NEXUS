@@ -55,6 +55,18 @@
 
 ## 🆕 What's New
 
+### v6.1.0 - May 29, 2026 (Updated: 6:20 PM PHT)
+
+#### 📱 Cuts — Full Mobile Overhaul
+
+- **Mobile Side Panel Fixed** - Removed the "Coming Soon" blocker from the mobile sidebar. Cuts now navigates correctly from the Browse dropdown and slide-out menu panel on all mobile devices.
+- **True Fullscreen on Mobile** - Cuts now uses `position: fixed; inset: 0` with `z-index: 900`, taking over the entire viewport like TikTok/Reels/YouTube Shorts. The bottom navigation bar automatically hides when Cuts is open.
+- **iOS Safe Area Support** - Action buttons (Save, Mute, Next) and the bottom info panel now respect `env(safe-area-inset-bottom)` so they never hide behind the iPhone home indicator or Android gesture bar.
+- **Dynamic Viewport Height** - Uses `100dvh` (dynamic viewport height) for pixel-perfect fullscreen on mobile browsers where the URL bar hides/shows on scroll.
+- **Watch Now Stops Trailer** - Pressing "Watch Now" now immediately pauses and mutes the YouTube player before opening the movie details modal — no more audio bleed-through into the movie page.
+
+---
+
 ### v6.0.0 - May 29, 2026 (Updated: 5:58 PM PHT)
 
 #### 🎬 Cuts — TikTok/Reels-Style Trailer Feed *(Brand New Feature)*

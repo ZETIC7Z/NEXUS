@@ -650,10 +650,6 @@ export function YouTubeSidebar() {
 
   // Close sidebar when navigating
   const handleNavigation = (path: string) => {
-    if (path === "/cuts") {
-      alert("Coming Soon");
-      return;
-    }
     navigate(path);
     if (window.innerWidth < 768) {
       setMobileOpen(false);

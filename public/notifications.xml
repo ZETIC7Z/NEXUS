@@ -9,6 +9,24 @@
     <atom:link href="https://zeticuz.online/notifications.xml" rel="self" type="application/rss+xml" />
 
     <item>
+      <guid>nexus-update-008</guid>
+      <title>NEXUS v6.1.0 — Cuts Mobile Overhaul &amp; Watch Now Fix</title>
+      <description>Mobile experience for Cuts is now fully revamped!
+
+- **Cuts Now Works on Mobile 📱:** Fixed the "Coming Soon" block that prevented Cuts from opening in the mobile side panel. Cuts now opens properly from all navigation menus on mobile.
+- **True Full-Screen Cuts Experience:** On mobile, Cuts now renders in full fixed-position viewport — exactly like TikTok, Instagram Reels, and YouTube Shorts. The bottom navigation bar automatically hides when Cuts is open.
+- **iOS Safe Area Support:** Action buttons and bottom info panel now respect iPhone notch/home indicator safe areas for a polished look on all devices.
+- **Watch Now Stops Trailer 🔇:** Pressing the Watch Now button now immediately pauses and mutes the trailer before opening the movie details modal — no more audio bleed-through.
+- **Cross-browser Fix:** All these improvements work in Chrome, Firefox, Safari, and Edge on both Android and iOS.</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Thu, 29 May 2026 18:20:00 +0800</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
       <guid>nexus-update-007</guid>
       <title>NEXUS v6.0.0 — Cuts Reels, Continue Watching &amp; Downloads</title>
       <description>We've launched an extensive set of upgrades to improve content discovery, streaming, and downloads!

@@ -318,6 +318,13 @@ function ReelVideo({
   const [doubleTapAnim, setDoubleTapAnim] = useState(false);
   const lastTapRef = useRef(0);
 
+  // stopVideo: pause + mute player so no audio bleeds through when modal opens
+  const stopVideo = useCallback(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    try { p.pauseVideo(); p.mute(); } catch { /* ignore */ }
+  }, []);
+
   const applyMuteState = useCallback((nextMuted: boolean) => {
     const p = playerRef.current;
     if (!p) return;
@@ -539,8 +546,8 @@ function ReelVideo({
       </div>
 
       {/* ── Right side action buttons (TikTok / Reels style) ── */}
-      <div className="absolute right-3 z-40 flex flex-col items-center gap-4"
-        style={{ bottom: "120px", touchAction: "pan-y" }}>
+      <div className="cuts-action-col absolute right-3 z-40 flex flex-col items-center gap-4"
+        style={{ touchAction: "pan-y" }}>
 
         {/* Bookmark / Save */}
         <button
@@ -616,7 +623,7 @@ function ReelVideo({
       />
 
       {/* ── Bottom info panel ── */}
-      <div className="absolute inset-x-0 bottom-0 z-40 px-4 pb-5"
+      <div className="cuts-bottom-info absolute inset-x-0 bottom-0 z-40 px-4"
         style={{ touchAction: "pan-y" }}>
         {/* Progress bar (YouTube Shorts style — thin, at very bottom above info) */}
         <div className="mb-3">
@@ -707,7 +714,7 @@ function ReelVideo({
           ) : (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onWatchNow(); }}
+              onClick={(e) => { e.stopPropagation(); stopVideo(); onWatchNow(); }}
               className="cuts-watch-btn flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-bold text-white transition-all"
               style={{
                 background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
@@ -882,11 +889,32 @@ function ReelsPage() {
   }
 
   return (
-    <>
+    <div className="cuts-page-root">
       {/* Global Cuts CSS — animations + layout */}
       <style>{`
+        /* ── Force full-screen on Cuts page (hide bottom mobile nav) ── */
+        body:has(.cuts-page-root) .magic-navigation-wrapper,
+        body:has(.cuts-page-root) [class*="MobileBottomNav"],
+        body:has(.cuts-page-root) .fixed.bottom-0.left-0.right-0.z-50.md\\:hidden {
+          display: none !important;
+        }
+
+        /* ── Cuts page root fills full screen ── */
+        .cuts-page-root {
+          position: fixed;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          height: 100dvh;
+          background: #000;
+          z-index: 900;
+          overflow: hidden;
+        }
+
         /* ── Scroll container ── */
         .cuts-container {
+          width: 100%;
+          height: 100%;
           height: 100dvh;
           overflow-y: scroll;
           scroll-snap-type: y mandatory;
@@ -925,6 +953,26 @@ function ReelsPage() {
           max-width: 540px;
         }
 
+        /* ── Right action buttons — respect iOS safe area ── */
+        .cuts-action-col {
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+        }
+        @media (max-width: 768px) {
+          .cuts-action-col {
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+          }
+        }
+
+        /* ── Bottom info panel — respect iOS notch/home bar ── */
+        .cuts-bottom-info {
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+        }
+        @media (max-width: 768px) {
+          .cuts-bottom-info {
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+          }
+        }
+
         /* ── Action button circle ── */
         .cuts-action-circle {
           display: flex;
@@ -961,11 +1009,6 @@ function ReelsPage() {
           transition: width 0.25s linear;
         }
 
-        /* ── Page entry animation ── */
-        .cuts-reel-slide {
-          animation: cuts-slide-in 0.3s ease-out;
-        }
-
         /* ── Keyframes ── */
         @keyframes cuts-spin { to { transform: rotate(360deg); } }
         @keyframes cuts-bounce {
@@ -994,13 +1037,7 @@ function ReelsPage() {
           100% { opacity: 0; transform: translateY(-20px); }
         }
 
-        /* ── Mobile bottom nav clearance ── */
-        @media (max-width: 768px) {
-          .cuts-reel-item .cuts-bottom-panel {
-            padding-bottom: 90px;
-          }
-        }
-        /* ── Desktop: center the feed with sidebar feel ── */
+        /* ── Desktop: center the feed ── */
         @media (min-width: 769px) {
           .cuts-reel-slide {
             background: #0a0a0a;
@@ -1011,14 +1048,14 @@ function ReelsPage() {
         }
       `}</style>
 
-      {/* ── Close Button (top-left) — back to /discover ── */}
+      {/* ── Close Button (top-right) — back to /discover ── */}
       <button
         type="button"
         aria-label="Close Cuts"
         onClick={() => navigate("/discover")}
-        className="fixed z-[100] flex items-center justify-center"
+        className="absolute z-[100] flex items-center justify-center"
         style={{
-          top: 16,
+          top: `max(16px, env(safe-area-inset-top, 0px))`,
           right: 16,
           width: 44,
           height: 44,
@@ -1064,7 +1101,7 @@ function ReelsPage() {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
