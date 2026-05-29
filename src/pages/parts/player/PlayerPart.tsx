@@ -1,0 +1,283 @@
+import { ReactNode, useRef, useState } from "react";
+
+import { BrandPill } from "@/components/layout/BrandPill";
+import { Player } from "@/components/player";
+import { MobileLockButton } from "@/components/player/atoms/MobileLockButton";
+import { MobileLockScreen } from "@/components/player/atoms/MobileLockScreen";
+import { MobilePlayerLogo } from "@/components/player/atoms/MobilePlayerLogo";
+import { SkipSegmentButton } from "@/components/player/atoms/SkipSegmentButton";
+import { ThumbsFeedback } from "@/components/player/atoms/ThumbsFeedback";
+import { UnreleasedEpisodeOverlay } from "@/components/player/atoms/UnreleasedEpisodeOverlay";
+import { WatchPartyStatus } from "@/components/player/atoms/WatchPartyStatus";
+import { useShouldShowControls } from "@/components/player/hooks/useShouldShowControls";
+import { useSkipTime } from "@/components/player/hooks/useSkipTime";
+import type { SegmentData } from "@/components/player/hooks/useSkipTime";
+import { AutoSkipSegments } from "@/components/player/internals/AutoSkipSegments";
+import { PauseOverlay } from "@/components/player/overlays/PauseOverlay";
+import { useMobileFeatures } from "@/hooks/useMobileFeatures";
+import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
+import { usePlayerStore } from "@/stores/player/store";
+import { usePreferencesStore } from "@/stores/preferences";
+import { useWatchPartyStore } from "@/stores/watchParty";
+
+import { ScrapingPartInterruptButton, Tips } from "./ScrapingPart";
+
+export interface PlayerPartProps {
+  children?: ReactNode;
+  backUrl: string;
+  onLoad?: () => void;
+  onMetaChange?: (meta: PlayerMeta) => void;
+}
+
+export function PlayerPart(props: PlayerPartProps) {
+  const { showTargets, showTouchTargets } = useShouldShowControls();
+  const status = usePlayerStore((s) => s.status);
+  const { isMobile, isIOS, isPWA } = useMobileFeatures();
+  const manualSourceSelection = usePreferencesStore(
+    (s) => s.manualSourceSelection,
+  );
+  const isLoading = usePlayerStore((s) => s.mediaPlaying.isLoading);
+  const { isHost, enabled } = useWatchPartyStore();
+
+  const inControl = !enabled || isHost;
+
+  const [isShifting, setIsShifting] = useState(false);
+  const [isHoldingFullscreen, setIsHoldingFullscreen] = useState(false);
+  const holdTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Shift") {
+      setIsShifting(true);
+    }
+  });
+
+  document.addEventListener("keyup", (event) => {
+    if (event.key === "Shift") {
+      setIsShifting(false);
+    }
+  });
+
+  const handleTouchStart = () => {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+    }
+    holdTimeoutRef.current = setTimeout(() => {
+      setIsHoldingFullscreen(true);
+    }, 100);
+  };
+
+  const handleTouchEnd = () => {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+    }
+    holdTimeoutRef.current = setTimeout(() => {
+      setIsHoldingFullscreen(false);
+    }, 1000);
+  };
+
+  const [thumbsFeedbackData, setThumbsFeedbackData] = useState<{
+    key: string;
+    item: SegmentData;
+  } | null>(null);
+
+  const handleThumbsFeedback = (key: string, item: SegmentData) => {
+    setThumbsFeedbackData({ key, item });
+  };
+
+  const segments = useSkipTime();
+
+  return (
+    <Player.Container
+      onLoad={props.onLoad}
+      showingControls={showTargets}
+      data-player-page="true"
+    >
+      {props.children}
+      <Player.BlackOverlay
+        show={showTargets && status === playerStatus.PLAYING}
+      />
+      <Player.EpisodesRouter onChange={props.onMetaChange} />
+      <Player.SettingsRouter />
+      <Player.SubtitleView controlsShown={showTargets} />
+
+      {status === playerStatus.PLAYING ? (
+        <Player.CenterControls>
+          <AutoSkipSegments />
+          <SkipSegmentButton
+            controlsShowing={showTargets}
+            segments={segments}
+            inControl={inControl}
+            onChangeMeta={props.onMetaChange}
+          />
+          <Player.LoadingSpinner />
+          <Player.AutoPlayStart />
+          <Player.CastingNotification />
+        </Player.CenterControls>
+      ) : null}
+
+      {/* Mobile logo and lock screen - positioned independently outside center controls */}
+      <MobilePlayerLogo />
+      <MobileLockScreen />
+
+      <Player.CenterMobileControls
+        className="text-white"
+        show={showTouchTargets && status === playerStatus.PLAYING}
+      >
+        <Player.SkipBackward iconSizeClass="text-3xl" inControl={inControl} />
+        <Player.Pause
+          iconSizeClass="text-5xl"
+          className={isLoading ? "opacity-0" : "opacity-100"}
+        />
+        <Player.SkipForward iconSizeClass="text-3xl" inControl={inControl} />
+      </Player.CenterMobileControls>
+
+      <div
+        className={`absolute right-4 z-50 transition-all duration-300 ease-in-out ${
+          showTargets ? "top-4" : "top-1"
+        }`}
+      >
+        <WatchPartyStatus />
+      </div>
+
+      <Player.TopControls show={showTargets}>
+        <div className="grid grid-cols-[1fr,auto] xl:grid-cols-3 items-center">
+          <div className="flex space-x-3 items-center">
+            <Player.BackLink url={props.backUrl} />
+            <span className="text mx-3 text-type-secondary">/</span>
+            <Player.Title />
+
+            <Player.InfoButton />
+
+            <Player.BookmarkButton />
+
+            {/* Chromecast in top bar - next to bookmark (Image 3 request) */}
+            <Player.Chromecast />
+          </div>
+          <div className="text-center hidden xl:flex justify-center items-center">
+            <Player.EpisodeTitle />
+          </div>
+          <div className="hidden lg:flex items-center justify-end">
+            <BrandPill large />
+          </div>
+
+          <div className="flex lg:hidden items-center justify-end space-x-2">
+            <Player.Airplay />
+            <Player.Chromecast />
+          </div>
+        </div>
+      </Player.TopControls>
+
+      <Player.BottomControls show={showTargets}>
+        {status !== playerStatus.PLAYING && !manualSourceSelection && <Tips />}
+        <div className="flex items-center justify-center space-x-3 h-full">
+          {status === playerStatus.SCRAPING ? (
+            <ScrapingPartInterruptButton />
+          ) : null}
+          {status === playerStatus.PLAYING ? (
+            <>
+              {isMobile ? <Player.Time short /> : null}
+              <Player.ProgressBar />
+            </>
+          ) : null}
+        </div>
+        <div className="hidden lg:flex justify-between" dir="ltr">
+          <Player.LeftSideControls>
+            {status === playerStatus.PLAYING ? (
+              <>
+                <Player.Pause />
+                <Player.SkipBackward inControl={inControl} />
+                <Player.SkipForward inControl={inControl} />
+                <Player.Volume />
+                <Player.Time />
+              </>
+            ) : null}
+          </Player.LeftSideControls>
+          <div className="flex items-center space-x-3">
+            <Player.Episodes inControl={inControl} />
+            <Player.SkipEpisodeButton
+              inControl={inControl}
+              onChange={props.onMetaChange}
+            />
+            {status === playerStatus.PLAYING ? (
+              <>
+                <Player.Pip />
+                <Player.Airplay />
+                <Player.Chromecast />
+              </>
+            ) : null}
+            {status === playerStatus.PLAYBACK_ERROR ||
+            status === playerStatus.PLAYING ? (
+              <Player.Captions />
+            ) : null}
+            <Player.Settings />
+            {isShifting || isHoldingFullscreen ? (
+              <Player.Widescreen />
+            ) : (
+              <Player.Fullscreen />
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-[2.5rem,1fr,2.5rem] gap-3 lg:hidden">
+          {/* Lock button - leftmost position (Image 2 request) */}
+          <div className="flex items-center justify-start">
+            <MobileLockButton />
+          </div>
+          <div className="flex justify-center space-x-3">
+            {/* Disable PiP for iOS PWA */}
+            {!(isPWA && isIOS) && status === playerStatus.PLAYING && (
+              <Player.Pip />
+            )}
+            <Player.Episodes inControl={inControl} />
+            {status === playerStatus.PLAYING ? (
+              <div className="hidden ssm:block">
+                <Player.Captions />
+              </div>
+            ) : null}
+            <Player.Settings />
+          </div>
+          <div>
+            {status === playerStatus.PLAYING && (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="select-none touch-none tap-highlight-transparent"
+              >
+                {isHoldingFullscreen ? (
+                  <Player.Widescreen />
+                ) : (
+                  <Player.Fullscreen />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </Player.BottomControls>
+
+      <Player.VolumeChangedPopout />
+      <Player.SubtitleDelayPopout />
+      <Player.SpeedChangedPopout />
+      <UnreleasedEpisodeOverlay />
+
+      <Player.NextEpisodeButton
+        controlsShowing={showTargets}
+        onChange={props.onMetaChange}
+        inControl={inControl}
+      />
+
+      <SkipSegmentButton
+        controlsShowing={showTargets}
+        segments={segments}
+        inControl={inControl}
+        onChangeMeta={props.onMetaChange}
+      />
+
+      <AutoSkipSegments />
+      <PauseOverlay />
+
+      <ThumbsFeedback
+        controlsShowing={showTargets}
+        feedbackData={thumbsFeedbackData}
+        onAction={handleThumbsFeedback}
+      />
+    </Player.Container>
+  );
+}

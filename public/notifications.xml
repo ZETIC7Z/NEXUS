@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>NEXUS Notifications</title>
+    <link>https://zeticuz.online</link>
+    <description>Site updates and important notifications for NEXUS users</description>
+    <language>en</language>
+    <lastBuildDate>Fri, 29 May 2026 12:00:00 GMT</lastBuildDate>
+    <atom:link href="https://zeticuz.online/notifications.xml" rel="self" type="application/rss+xml" />
+
+    <item>
+      <guid>nexus-update-007</guid>
+      <title>NEXUS v6.0.0 — Cuts Reels, Continue Watching &amp; Downloads</title>
+      <description>We've launched an extensive set of upgrades to improve content discovery, streaming, and downloads!
+
+- **Introducing Cuts (Reels style) 🎬:** A new vertical-scrolling trailer feed resembling TikTok/YouTube Shorts/FB Reels. Discover movies instantly, with support for volume controls, mute toggles, clean UI animations, a close button, and a direct "Watch Now" link to play the movie. Fully optimized for cross-browser swipe and click gestures (including Chrome, Firefox, and Safari).
+- **Continue Watching in Discover ⏱️:** We moved and resized the "Continue Watching" panel from the Home page straight onto the Discover page above recommendations, matching the grid card size for a seamless flow.
+- **Upgraded Downloads Menu (p-stream style) 📥:** Easily download original movie files, copy Stream Links (HLS URLs) directly to your clipboard, and download subtitles/captions.
+- **FebBox &amp; Source Revamp:** Rebuilt FebBox scraper for GoatAPI worker integration. Added parallel validation pings (1080p primary priority), fail-safe CDN cold-start bypass, and dynamic HLS quality selection. Reranked and locked active sources to the top 5 (FebBox 4K ⭐, VidLink, LookMovies, ZeticuzApi, Tugaflix).
+- **Discover Page:** Fixed next page pagination buttons.
+
+Enjoy the brand new NEXUS experience!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Fri, 29 May 2026 12:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-006</guid>
+      <title>NEXUS v5.7.0 — Premium Source Optimization</title>
+      <description>We've reached a new level of streaming stability!
+
+- **VidLink 🔥 &amp; ZeticuzApi 🔥:** Optimized our primary sources for maximum reliability.
+- **FebBox (4K) ⭐ Integration:** Full native support for high-quality FebBox streams.
+- **Silent Failover Logic:** Experience seamless transitions between sources without error interruptions.
+- **New Onboarding UX:** A completely redesigned extension detection experience with real-time status updates.
+- **Visual Branding:** Fire icons added to our most powerful streaming providers!
+
+Enjoy the ultimate NEXUS experience!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Thu, 14 May 2026 12:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-005</guid>
+      <title>NEXUS v5.6.0 — Sync &amp; Stability</title>
+      <description>We've completed a major upstream synchronization!
+
+- **Gamepad Controller Support:** Full navigation, playback control, volume, and fullscreen toggling via controllers!
+- **Subtitle Fixes:** Subtitles now display perfectly during fullscreen controls fading.
+- **Mobile PWA Optimizations:** Fixed zoom scaling issues on mobile devices for a true app-like feel.
+- **Core Stability:** Re-aligned with the latest upstream backend logic and providers.
+
+Enjoy the smoothest NEXUS experience yet!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Thu, 30 Apr 2026 12:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-004</guid>
+      <title>NEXUS v2.0 — Animated Beam Interface</title>
+      <description>NEXUS v2.0 is here with a stunning new visual overhaul!
+
+- Brand-new Magic UI Animated Beam technology showcase in Partners section
+- Upgraded NEXUS logo integration across the entire platform
+- Performance improvements and smoother animations throughout
+- Improved mobile experience with better touch support
+- New Discover section with expanded content discovery tools
+
+Enjoy the next level of NEXUS!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Fri, 18 Apr 2026 04:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-003</guid>
+      <title>NEXUS v1.5 Update</title>
+      <description>We just rolled out highly requested mobile UI improvements!
+
+- Implemented standard mobile PWA edge-to-edge support with notch layout optimization.
+- Added native "Install NEXUS App" prompt within the sidebar Discover menu.
+- Fixed Sidebar navigation to instantly match desktop parity.
+- New Player Lock UI specifically tuned for Mobile with intuitive 3-second auto-hide mechanisms.
+
+Enjoy the new mobile experience!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Tue, 10 Mar 2026 12:00:00 GMT</pubDate>
+      <category>update</category>
+      <enclosure url="https://zeticuz.online/nexus update logo.png" length="534848" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus update logo.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus update logo.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-002</guid>
+      <title>NEXUS Quality of Life Patches</title>
+      <description>Smooth functionality patches are now live! We've focused heavily on player logic to ensure that video playbacks pause and unpause responsively across all desktop browsers. Additional backend infrastructure optimizations have also been pushed!</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Mon, 02 Mar 2026 10:00:00 GMT</pubDate>
+      <category>bugfix</category>
+      <enclosure url="https://zeticuz.online/nexus-logo-full.png" length="145090" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus-logo-full.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus-logo-full.png" />
+    </item>
+
+    <item>
+      <guid>nexus-update-001</guid>
+      <title>Welcome to NEXUS!</title>
+      <description>NEXUS is now officially live! Experience the next generation of streaming. Unlimited movies, TV shows, and anime in stunning quality. No ads, no sign-up, just pure entertainment. Stream effortlessly.</description>
+      <link>https://zeticuz.online</link>
+      <pubDate>Sun, 01 Mar 2026 09:00:00 GMT</pubDate>
+      <category>announcement</category>
+      <enclosure url="https://zeticuz.online/nexus-logo-full.png" length="145090" type="image/png" />
+      <media:content url="https://zeticuz.online/nexus-logo-full.png" medium="image" />
+      <media:thumbnail url="https://zeticuz.online/nexus-logo-full.png" />
+    </item>
+  </channel>
+</rss>

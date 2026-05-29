@@ -1,0 +1,665 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+  TMDBContentTypes,
+  getDiscoverPH,
+  getMediaDetails,
+  getPersonCombinedCredits,
+  getTrendingMovies,
+  getTrendingPeople,
+  getTrendingTV,
+  getUpcomingLongTerm,
+  getUpcomingMovies,
+  getUpcomingTV,
+} from "@/backend/metadata/tmdb";
+import { base64ToBuffer, decryptData } from "@/backend/accounts/crypto";
+import { useAuthStore } from "@/stores/auth";
+import { useBookmarkStore } from "@/stores/bookmarks";
+import { useHistoryStore } from "@/stores/history";
+import { useOverlayStack } from "@/stores/interface/overlayStack";
+
+import { NotificationItem } from "../types";
+import { fetchRssFeed, getAllFeeds, getSourceName } from "../utils";
+
+// Hook to manage notifications
+export function useNotifications() {
+  const { showModal, hideModal, isModalVisible } = useOverlayStack();
+  const modalId = "notifications";
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Fetch notifications for badge count
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const allNotifications: NotificationItem[] = [];
+
+        // 1. AUTH & SIGNUP DATE INITIALIZATION
+        const auth = useAuthStore.getState();
+        let nickname = "Friend";
+
+        if (auth.account && auth.account.deviceName) {
+          try {
+            nickname = decryptData(
+              auth.account.deviceName,
+              base64ToBuffer(auth.account.seed),
+            );
+          } catch (e) {
+            nickname = auth.account.nickname || "Friend";
+          }
+        }
+        let signupDate = auth.account?.signupDate;
+
+        if (auth.account && !signupDate) {
+          signupDate = new Date().toISOString();
+          auth.updateAccount({ signupDate });
+        }
+
+        const signupTime = signupDate ? new Date(signupDate).getTime() : 0;
+
+        // 2. ADD SYSTEM NOTIFICATIONS
+        // ADD V6.0.0 UPDATE — CUTS + DISCOVER OVERHAUL (pinned system notice)
+        allNotifications.push({
+          guid: "nexus-v6-0-cuts-discover",
+          title: "NEXUS v6.0 — Cuts Reels & Discover Overhaul 🎬✨",
+          description: `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎬</span> NEW: Cuts — TikTok/Reels-Style Trailer Feed</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> A brand-new fullscreen vertical Reels experience — watch movie &amp; TV trailers like TikTok, YouTube Shorts, and Facebook Reels.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Scroll through up to 50 trailers loaded from TMDB (Trending, Pinoy, Vivamax, Anime). Each reel auto-plays via YouTube and snaps to the next clip. Tap anywhere to pause/play.</p>
+                <p class="text-type-secondary text-sm"><strong>Features:</strong> Double-tap to bookmark ❤️ · Save button (persists across app) · Watch Now opens full movie details · Mute/Unmute · Progress bar · Fullscreen with no navigation bars.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">✕</span> Close Button &amp; Next Button Fixed</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>Close Button:</strong> A floating X button (top-left) in Cuts takes you back to the Discover page — just like TikTok and YouTube Shorts.</p>
+                <p class="text-type-secondary text-sm"><strong>Next Button:</strong> Fixed — now uses proper scroll math instead of <code>scrollIntoView</code>, fully compatible with CSS scroll-snap containers.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🔴</span> Animated "NEW" Badge on Cuts in Browse Menu</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> A glowing red animated badge next to "Cuts" in the Browse dropdown so users immediately notice the new feature.</p>
+                <p class="text-type-secondary text-sm"><strong>Effect:</strong> Pulsing red glow with "✦ NEW" label — can't miss it!</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🏠</span> Discover Page — Continue Watching &amp; Bookmarks Added</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> The /discover page now shows your Continue Watching carousel and Bookmarks carousel directly below the Movies / TV Shows / Editor Picks tabs.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>Continue Watching:</strong> Full edit mode — click the pencil icon to show X buttons and remove items. Cards sized to match Discover's media card style.</p>
+                <p class="text-type-secondary text-sm"><strong>Bookmarks:</strong> All your saved favorites are now visible on the Discover page with full group support and edit mode.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">📋</span> "Because You Watched" Moved Below New Sections</h3>
+                <p class="text-type-secondary text-sm">The recommendation row is now correctly positioned below Continue Watching and Bookmarks for a more logical content flow.</p>
+              </div>
+            </div>
+          `,
+          pubDate: new Date("2026-05-29T11:51:00+08:00").toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        // ADD V2.4 UPDATE — always shown first (pinned system notice)
+        allNotifications.push({
+          guid: "nexus-v2-4-patch",
+          title: "NEXUS v2.4 — New Sources & Fixes 🔥",
+          description: `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">⚡</span> NEW: ZeticuzApi 🔥 — GoatAPI Lightning Streams</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Brand new source powered by GoatAPI's Lightning engine — no token required.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Fetches HLS m3u8 streams directly from GoatAPI Lightning, proxied through GoatAPI's own CDN for maximum compatibility. Falls back to FebBox 4K quality map when authenticated with your FebBox token.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Fast, reliable, no account needed. FebBox UI token from Settings unlocks 4K quality on top.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🔧</span> FIXED: Tugaflix 🔥 — Streamtape MP4 Redirect</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was wrong:</strong> Tugaflix was treating Streamtape URLs as HLS streams, causing playback failures.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was fixed:</strong> The scraper now correctly follows the 302 redirect from Streamtape's <code>/get_video</code> endpoint to the final <code>tapecontent.net</code> CDN MP4, and returns it as a direct file stream.</p>
+                <p class="text-type-secondary text-sm"><strong>Result:</strong> Tugaflix now plays movies correctly without buffering or type errors.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎬</span> UPDATED: FSOnline Doodstream — Newer CDN Support</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What changed:</strong> FSOnline's Doodstream embed scraper now handles both the classic pass_md5 token pattern and the newer direct Cloudatacdn URL pattern used in 2026.</p>
+                <p class="text-type-secondary text-sm"><strong>Result:</strong> FSOnline streams work again with proper User-Agent headers and both CDN routing methods supported.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">✨</span> HLS Type Fix — No More "unrecognized file type" Errors</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What was wrong:</strong> The player's source converter rejected HLS quality entries inside file-type streams, causing console errors and failed playbacks.</p>
+                <p class="text-type-secondary text-sm"><strong>What was fixed:</strong> <code>allowedFileTypes</code> and <code>SourceFileStream</code> type updated to accept both <code>mp4</code> and <code>hls</code> quality entries.</p>
+              </div>
+            </div>
+          `,
+          pubDate: new Date("2026-05-03").toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        allNotifications.push({
+          guid: "nexus-v2-3-patch",
+          title: "NEXUS v2.3 PATCH UPDATE",
+          description: `
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">📱</span> PWA Installation Support – Install NEXUS anywhere</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Progressive Web App capability allowing full device installation.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Click the "Install NEXUS to Device" button or use your browser's "Add to Home Screen" option. It will install as a native-feeling app on Windows, macOS, Linux, Android, and iOS.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Enjoy a full-screen, distraction-free viewing experience without browser tabs, plus faster load times.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🔒</span> Security Upgrades – Infrastructure Obfuscation</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Advanced masking of our core backend APIs and worker nodes.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> All public-facing requests now route through secure decoy URLs (e.g., backend.zeticuz.com). Real infrastructure details are hidden from network inspectors.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Protects our private APIs from scraping and abuse, ensuring stable uptime for real users.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">⚡</span> Streaming Enhancements – Stable M3U8 Proxy</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> A completely overhauled proxy system for handling HLS (m3u8) video streams.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Video chunks are now routed through an optimized proxy layer that bypasses CORS restrictions and handles cross-origin buffering flawlessly.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Eliminates buffering, reduces stream dropping, and ensures maximum quality even on unreliable networks.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">✨</span> Interface Polishing – Hover & Fade Animations</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Fluid motion design across the notification system.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Modals now smoothly fade in and out. Notification items physically respond to hover and tap gestures, scaling dynamically to your interaction.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Creates a premium, tactile, and highly responsive user experience that feels alive.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎬</span> Media Trailers – Direct Auto-Play</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Instant access to movie and show trailers directly inside notifications.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> When viewing a media notification, our system automatically fetches the highest quality trailer from YouTube and embeds it directly. It auto-plays with full audio controls.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Decide what to watch faster without leaving the app or opening new tabs.</p>
+              </div>
+
+              <div>
+                <h3 class="text-white font-bold text-lg mb-1 flex items-center gap-2"><span class="text-xl">🎯</span> Zeticuz Player – Instant Controls</h3>
+                <p class="text-type-secondary text-sm mb-1"><strong>What it is:</strong> Cross-origin interaction detection for the Zeticuz iframe player.</p>
+                <p class="text-type-secondary text-sm mb-1"><strong>How it works:</strong> Deploys a transparent wake-up overlay that instantly catches mouse movement or taps, instantly revealing the player's Back button and controls.</p>
+                <p class="text-type-secondary text-sm"><strong>Why use it:</strong> Ensures you never have to guess how to bring the controls back up. One touch, and they are there.</p>
+              </div>
+            </div>
+          `,
+          pubDate: new Date().toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        allNotifications.push({
+          guid: "nexus-v2-2-patch",
+          title: "NEXUS v2.2 PATCH UPDATE",
+          description:
+            "✅ Source providers restored — FebBox 4K, Streamtape, Tugaflix, FSOnline & more now working with P-Stream Extension. 🎬 ZETFLIX icon fixed in navigation. 🔧 Removed broken dependency — packages now vendored for stable builds. 🚀 Vercel deployment stabilized with no more black-page crashes.",
+          pubDate: new Date("2026-04-17").toISOString(),
+          category: "Update",
+          source: "NEXUS Core",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        allNotifications.push({
+          guid: "system-welcome-personalized",
+          title: `Welcome back, ${nickname}!`,
+          description:
+            "We're glad to have you back on NEXUS. Your personalized entertainment dashboard is ready.",
+          pubDate: signupDate || new Date().toISOString(),
+          category: "Announcement",
+          source: "NEXUS System",
+          type: "system",
+          posterUrl: "/nexus update logo.png",
+        });
+
+        // 3. SCHEDULED NOTIFICATIONS (6AM, 1PM, 9PM)
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        // 6AM SLOT: Upcoming & New
+        if (currentHour >= 6) {
+          try {
+            const [upcomingMovies, trendingMovies] = await Promise.all([
+              getUpcomingMovies(),
+              getTrendingMovies(),
+            ]);
+            const movie = upcomingMovies[0] || trendingMovies[0];
+            if (movie) {
+              allNotifications.push({
+                guid: `scheduled-6am-${movie.id}`,
+                title: `🌅 Morning Buzz: ${movie.title}`,
+                description: `Start your day with the latest trending release: ${movie.overview}`,
+                pubDate: new Date(now.setHours(6, 0, 0, 0)).toISOString(),
+                category: "Morning Pick",
+                source: "NEXUS Scheduler",
+                posterUrl: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+                type: "movie",
+                mediaId: movie.id.toString(),
+                mediaType: "movie",
+              });
+            }
+          } catch (e) {}
+        }
+
+        // 1PM SLOT: Actor Highlight
+        if (currentHour >= 13) {
+          try {
+            const people = await getTrendingPeople();
+            const person = people[Math.floor(Math.random() * Math.min(5, people.length))];
+            if (person) {
+              const credits = await getPersonCombinedCredits(person.id.toString());
+              const project = credits[0];
+              if (project) {
+                allNotifications.push({
+                  guid: `scheduled-1pm-${person.id}`,
+                  title: `🎭 Star Spot: ${person.name}`,
+                  description: `${person.name} is trending! Check out their project: ${
+                    (project as any).title || (project as any).name || "New Release"
+                  }`,
+                  pubDate: new Date(now.setHours(13, 0, 0, 0)).toISOString(),
+                  category: "Actor Highlight",
+                  source: "NEXUS Scheduler",
+                  posterUrl: `https://image.tmdb.org/t/p/w500${person.profile_path || project.poster_path}`,
+                  type: project.media_type === TMDBContentTypes.TV ? "show" : "movie",
+                  mediaId: project.id.toString(),
+                  mediaType: project.media_type === TMDBContentTypes.TV ? "show" : "movie",
+                });
+              }
+            }
+          } catch (e) {}
+        }
+
+        // 9PM SLOT: PH Content
+        if (currentHour >= 21) {
+          try {
+            const phContent = await getDiscoverPH();
+            const movie = phContent[0];
+            if (movie) {
+                allNotifications.push({
+                  guid: `scheduled-9pm-${movie.id}`,
+                  title: `🇵🇭 Local Hits: ${
+                    (movie as any).title || (movie as any).name || "New Release"
+                  }`,
+                  description: `Trending in the Philippines: ${movie.overview}`,
+                  pubDate: new Date(now.setHours(21, 0, 0, 0)).toISOString(),
+                  category: "PH Trending",
+                  source: "NEXUS Scheduler",
+                  posterUrl: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+                  type: (movie as any).title ? "movie" : "show",
+                  mediaId: movie.id.toString(),
+                  mediaType: (movie as any).title ? "movie" : "show",
+                });
+            }
+          } catch (e) {}
+        }
+
+        // 2. FETCH TMDB DATA
+        try {
+          const [trendingMovies, upcomingLongTerm, trendingTV] =
+            await Promise.all([
+              getTrendingMovies(),
+              getUpcomingLongTerm(),
+              getTrendingTV(),
+            ]);
+
+          // Mix Movie & TV Trends
+          const combinedTrending = [
+            ...trendingMovies.slice(0, 4),
+            ...trendingTV.slice(0, 4),
+          ];
+          combinedTrending.forEach((media: any) => {
+            const isTV = !!media.name;
+            allNotifications.push({
+              guid: `tmdb-trending-${media.id}`,
+              title: `🔥 Trending: ${media.title || media.name}`,
+              description: media.overview,
+              pubDate: new Date().toISOString(),
+              category: "Trending",
+              source: "TMDB",
+              posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+              type: isTV ? "show" : "movie",
+              mediaId: media.id.toString(),
+              mediaType: isTV ? "show" : "movie",
+            });
+          });
+
+          // Long Term Upcoming Items (Up to Dec 2026)
+          upcomingLongTerm.slice(0, 10).forEach((media: any) => {
+            const isTV = media.media_type === TMDBContentTypes.TV;
+            allNotifications.push({
+              guid: `tmdb-longupcoming-${media.id}`,
+              title: `📅 Upcoming: ${media.title || media.name}`,
+              description: media.overview,
+              pubDate:
+                media.release_date ||
+                media.first_air_date ||
+                new Date().toISOString(),
+              category: "Awaited",
+              source: "TMDB Discovery",
+              posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+              type: isTV ? "show" : "movie",
+              mediaId: media.id.toString(),
+              mediaType: isTV ? "show" : "movie",
+            });
+          });
+
+          // 3. PERSONALIZED NOTIFICATIONS (Bookmarks/History)
+          const bookmarks = useBookmarkStore.getState().bookmarks;
+          const bookmarkedIds = Object.keys(bookmarks);
+
+          // Check for new episodes of bookmarked shows
+          for (const tmdbId of bookmarkedIds.slice(0, 5)) {
+            const item = bookmarks[tmdbId];
+            if (item.type === "show") {
+              try {
+                // We fetch simplified details to check latest status
+                const details = await getMediaDetails(
+                  tmdbId,
+                  TMDBContentTypes.TV,
+                  false,
+                );
+                const lastAirDate = details.last_air_date
+                  ? new Date(details.last_air_date)
+                  : null;
+                const currentTime = new Date();
+
+                // If it aired in the last 7 days, notify
+                if (
+                  lastAirDate &&
+                  now.getTime() - lastAirDate.getTime() <
+                    7 * 24 * 60 * 60 * 1000
+                ) {
+                  allNotifications.push({
+                    guid: `personal-update-${tmdbId}-${details.last_episode_to_air?.id}`,
+                    title: `New Episode: ${item.title}`,
+                    description: `Episode ${details.last_episode_to_air?.episode_number} of Season ${details.last_episode_to_air?.season_number} is now available!`,
+                    pubDate: details.last_air_date,
+                    category: "My Series",
+                    source: "NEXUS Update",
+                    posterUrl: item.poster || "/nexus update logo.png",
+                    type: "show",
+                    mediaId: tmdbId,
+                    mediaType: "show",
+                  });
+                }
+              } catch (e) {
+                // skip
+              }
+            }
+          }
+        } catch (tmdbError) {
+          console.error("Failed to fetch TMDB notifications:", tmdbError);
+        }
+
+        // 3. FETCH RSS FEEDS
+        const feeds = getAllFeeds();
+
+        for (const feedUrl of feeds) {
+          if (!feedUrl.trim()) continue;
+
+          try {
+            const xmlText = await fetchRssFeed(feedUrl);
+
+            if (
+              xmlText &&
+              (xmlText.includes("<rss") || xmlText.includes("<feed"))
+            ) {
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+              const parserError = xmlDoc.querySelector("parsererror");
+
+              if (!parserError && xmlDoc && xmlDoc.documentElement) {
+                const items = xmlDoc.querySelectorAll("item, entry");
+                if (items && items.length > 0) {
+                  items.forEach((item) => {
+                    try {
+                      const guid =
+                        item.querySelector("guid")?.textContent ||
+                        item.querySelector("id")?.textContent ||
+                        "";
+                      const title =
+                        item.querySelector("title")?.textContent || "";
+                      const link =
+                        item.querySelector("link")?.textContent ||
+                        item.querySelector("link")?.getAttribute("href") ||
+                        "";
+                      const description =
+                        item.querySelector("description")?.textContent ||
+                        item.querySelector("content")?.textContent ||
+                        item.querySelector("summary")?.textContent ||
+                        "";
+                      const pubDate =
+                        item.querySelector("pubDate")?.textContent ||
+                        item.querySelector("published")?.textContent ||
+                        item.querySelector("updated")?.textContent ||
+                        "";
+                      const category =
+                        item.querySelector("category")?.textContent || "";
+
+                      const itemGuid = guid || link;
+                      if (!itemGuid || !title) return;
+
+                      // Extract cover image from enclosure / media:content / media:thumbnail
+                      const enclosure = item.querySelector("enclosure");
+                      const mediaContent = item.querySelector("content");
+                      const mediaThumbnail = item.querySelector("thumbnail");
+                      const posterUrl =
+                        enclosure?.getAttribute("url") ||
+                        mediaContent?.getAttribute("url") ||
+                        mediaThumbnail?.getAttribute("url") ||
+                        undefined;
+
+                      allNotifications.push({
+                        guid: itemGuid,
+                        title,
+                        link,
+                        description,
+                        pubDate,
+                        category,
+                        source: getSourceName(feedUrl),
+                        type: "rss",
+                        ...(posterUrl ? { posterUrl } : {}),
+                      });
+                    } catch (itemError) {
+                      // skip
+                    }
+                  });
+                }
+              }
+            }
+          } catch (rssError) {
+            // skip
+          }
+        }
+
+        // 4. FILTER BY BLACKLIST, DISMISSED IDs, AND SIGNUP DATE (Strict)
+        const savedDismissed = localStorage.getItem("dismissed-notifications");
+        const dismissedSet = new Set(
+          savedDismissed ? JSON.parse(savedDismissed) : [],
+        );
+
+        const savedBlacklist = localStorage.getItem("blacklisted-media-ids");
+        const blacklistSet = new Set(
+          savedBlacklist ? JSON.parse(savedBlacklist) : [],
+        );
+
+        const filteredNotifications = allNotifications.filter((n) => {
+          // 1. Blacklist/Dismiss filters
+          if (dismissedSet.has(n.guid)) return false;
+          if (n.mediaId && blacklistSet.has(n.mediaId)) return false;
+
+          // 2. System/update notifications always show regardless of signup date
+          if (n.type === "system" || n.source === "NEXUS Core") return true;
+
+          // 3. Strict Date Filter for media/rss notifications
+          const pubTime = new Date(n.pubDate).getTime();
+          if (pubTime < signupTime) return false;
+
+          return true;
+        });
+
+        // 5. FORCE NEXUS LOGO FOR SYSTEM ITEMS
+        const brandedNotifications = filteredNotifications.map((n) => {
+          if (
+            (n.type === "system" || n.source === "NEXUS Core") &&
+            (!n.posterUrl || n.posterUrl.includes("nexus update logo.png"))
+          ) {
+            return { ...n, posterUrl: "/nexus update logo.png" };
+          }
+          return n;
+        });
+
+        setNotifications(brandedNotifications);
+      } catch (err) {
+        // fail silently for badge
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Auto-update every 10 minutes
+    const interval = setInterval(fetchNotifications, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const openNotifications = () => {
+    showModal(modalId);
+  };
+
+  const closeNotifications = () => {
+    hideModal(modalId);
+  };
+
+  const isNotificationsOpen = () => {
+    return isModalVisible(modalId);
+  };
+
+  // Manual Dismissal
+  const deleteNotification = (guid: string, mediaId?: string) => {
+    try {
+      // Add to dismissed GUIDs
+      const savedDismissed = localStorage.getItem("dismissed-notifications");
+      const dismissedArray = savedDismissed ? JSON.parse(savedDismissed) : [];
+      if (!dismissedArray.includes(guid)) {
+        dismissedArray.push(guid);
+        localStorage.setItem(
+          "dismissed-notifications",
+          JSON.stringify(dismissedArray),
+        );
+      }
+
+      // If it's a media item, blacklist the mediaId so it never returns
+      if (mediaId) {
+        const savedBlacklist = localStorage.getItem("blacklisted-media-ids");
+        const blacklistArray = savedBlacklist ? JSON.parse(savedBlacklist) : [];
+        if (!blacklistArray.includes(mediaId)) {
+          blacklistArray.push(mediaId);
+          localStorage.setItem(
+            "blacklisted-media-ids",
+            JSON.stringify(blacklistArray),
+          );
+        }
+      }
+
+      // Update local state for immediate response
+      setNotifications((prev) => {
+        const next = prev.filter((n) => n.guid.trim() !== guid.trim());
+        console.log(`[Persistence] Dismissed ${guid}. Remaining: ${next.length}`);
+        return next;
+      });
+    } catch (e) {
+      console.error("Failed to delete notification:", e);
+    }
+  };
+
+  // Unified Clear Logic
+  const clearNotifications = (mode: "read" | "all") => {
+    try {
+      const savedRead = localStorage.getItem("read-notifications");
+      const readArray = savedRead ? JSON.parse(savedRead) : [];
+      const readSet = new Set(readArray);
+
+      const savedDismissed = localStorage.getItem("dismissed-notifications");
+      const dismissedArray = savedDismissed ? JSON.parse(savedDismissed) : [];
+
+      const savedBlacklist = localStorage.getItem("blacklisted-media-ids");
+      const blacklistArray = savedBlacklist ? JSON.parse(savedBlacklist) : [];
+
+      const notificationsToClear = notifications.filter((n) => {
+        if (mode === "read") return readSet.has(n.guid);
+        return true;
+      });
+
+      notificationsToClear.forEach((n) => {
+        if (!dismissedArray.includes(n.guid)) dismissedArray.push(n.guid);
+        if (n.mediaId && !blacklistArray.includes(n.mediaId)) {
+          blacklistArray.push(n.mediaId);
+        }
+      });
+
+      localStorage.setItem(
+        "dismissed-notifications",
+        JSON.stringify(dismissedArray),
+      );
+      localStorage.setItem(
+        "blacklisted-media-ids",
+        JSON.stringify(blacklistArray),
+      );
+
+      // Local state update
+      const remainingGuids = new Set(notificationsToClear.map((n) => n.guid));
+      setNotifications((prev) =>
+        prev.filter((n) => !remainingGuids.has(n.guid)),
+      );
+    } catch {
+      // skip
+    }
+  };
+
+  // Get unread count for badge
+  const getUnreadCount = () => {
+    try {
+      const savedRead = localStorage.getItem("read-notifications");
+      const readArray = savedRead ? JSON.parse(savedRead) : [];
+      const readSet = new Set(readArray);
+
+      // Get count excluding read state
+      const count = notifications.filter((n) => !readSet.has(n.guid)).length;
+
+      return count > 99 ? "99+" : count;
+    } catch {
+      return 0;
+    }
+  };
+
+  const markAllAsRead = () => {
+    try {
+      const gids = notifications.map((n) => n.guid);
+      localStorage.setItem("read-notifications", JSON.stringify(gids));
+      // Sync local state read status here if needed
+    } catch {
+      // skip
+    }
+  };
+
+  return {
+    notifications,
+    openNotifications,
+    closeNotifications,
+    isNotificationsOpen,
+    getUnreadCount,
+    deleteNotification,
+    clearNotifications,
+    markAllAsRead,
+  };
+}
