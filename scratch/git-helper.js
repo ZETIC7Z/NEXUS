@@ -62,10 +62,38 @@ async function main() {
       message: msg,
     });
     console.log(`Committed successfully. SHA: ${sha}`);
-  } else if (action === 'push') {
-    console.log('Pushing to remote origin...');
+  } else if (action === 'pull') {
+    console.log('Pulling from remote origin...');
+    const config = fs.readFileSync(path.join(dir, '.git/config'), 'utf8');
+    const remoteMatch = config.match(/url\s*=\s*(https:\/\/([^@]+)@github\.com\/[^\s]+)/);
+    if (!remoteMatch) {
+      console.error('Could not find remote url with token in .git/config');
+      process.exit(1);
+    }
+    const token = remoteMatch[2];
+    const currentBranch = await git.currentBranch({ fs, dir }) || 'master';
     
-    // Read remote config to get token/url
+    try {
+      await git.pull({
+        fs,
+        http,
+        dir,
+        ref: currentBranch,
+        remote: 'origin',
+        onAuth: () => ({ username: token, password: '' }),
+        author: {
+          name: 'NEXUS Project',
+          email: 'nexus@project.local',
+        }
+      });
+      console.log('Pull completed successfully! ✅');
+    } catch (err) {
+      console.error('Pull failed:', err);
+    }
+  } else if (action === 'push') {
+    const force = process.argv[3] === 'force';
+    console.log(`Pushing to remote origin (force=${force})...`);
+    
     const config = fs.readFileSync(path.join(dir, '.git/config'), 'utf8');
     const remoteMatch = config.match(/url\s*=\s*(https:\/\/([^@]+)@github\.com\/[^\s]+)/);
     
@@ -74,6 +102,7 @@ async function main() {
       process.exit(1);
     }
     
+    const token = remoteMatch[2];
     const currentBranch = await git.currentBranch({ fs, dir }) || 'master';
     console.log(`Current branch is '${currentBranch}'. Executing push...`);
 
@@ -83,6 +112,7 @@ async function main() {
       dir,
       remote: 'origin',
       ref: currentBranch,
+      force,
       onAuth: () => ({ username: token, password: '' }),
     });
     
