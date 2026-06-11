@@ -122,6 +122,47 @@ async function main() {
     } else {
       console.error('Push failed:', result);
     }
+  } else if (action === 'push-main') {
+    const force = process.argv[3] === 'force';
+    console.log(`Setting up local 'main' branch and pushing to remote main (force=${force})...`);
+    
+    const config = fs.readFileSync(path.join(dir, '.git/config'), 'utf8');
+    const remoteMatch = config.match(/url\s*=\s*(https:\/\/([^@]+)@github\.com\/[^\s]+)/);
+    if (!remoteMatch) {
+      console.error('Could not find remote url with token in .git/config');
+      process.exit(1);
+    }
+    const token = remoteMatch[2];
+    
+    try {
+      await git.branch({
+        fs,
+        dir,
+        ref: 'main',
+        force: true
+      });
+      console.log("Local branch 'main' created/updated successfully pointing to HEAD.");
+    } catch (err) {
+      console.warn("Failed to create local 'main' branch:", err.message);
+    }
+
+    console.log("Pushing local 'main' branch to origin/main...");
+    const result = await git.push({
+      fs,
+      http,
+      dir,
+      remote: 'origin',
+      ref: 'main',
+      force,
+      onAuth: () => ({ username: token, password: '' }),
+    });
+    
+    console.log('Push result:', result);
+    if (result.ok) {
+      console.log('Push completed successfully to remote main branch! ✅');
+    } else {
+      console.error('Push failed:', result);
+    }
   }
 }
 
