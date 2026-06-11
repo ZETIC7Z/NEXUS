@@ -291,6 +291,7 @@ function IconChevronDown() {
 function ReelVideo({
   youtubeId, active, muted, poster, reel, bookmarked, index, total,
   onToggleMute, onToggleBookmark, onWatchNow, onEnded, onScrollNext,
+  isModalOpen,
 }: {
   youtubeId: string;
   active: boolean;
@@ -305,6 +306,7 @@ function ReelVideo({
   onWatchNow: () => void;
   onEnded: () => void;
   onScrollNext: () => void;
+  isModalOpen: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<any>(null);
@@ -361,7 +363,7 @@ function ReelVideo({
             setReady(true);
             setDuration(e.target.getDuration() || 0);
             applyMuteState(muted);
-            if (active) e.target.playVideo();
+            if (active && !isModalOpen) e.target.playVideo();
             startTimer = setTimeout(() => {
               try {
                 const YTState = (window as any).YT?.PlayerState;
@@ -407,17 +409,21 @@ function ReelVideo({
 
   useEffect(() => {
     if (!ready) return;
-    applyMuteState(muted);
-  }, [applyMuteState, muted, ready]);
+    if (isModalOpen) {
+      try { playerRef.current?.pauseVideo(); } catch { /* ignore */ }
+    } else {
+      applyMuteState(muted);
+    }
+  }, [applyMuteState, muted, ready, isModalOpen]);
 
   useEffect(() => {
     const p = playerRef.current;
     if (!ready || !p) return;
     try {
-      if (active) p.playVideo();
+      if (active && !isModalOpen) p.playVideo();
       else p.pauseVideo();
     } catch { /* ignore */ }
-  }, [active, ready]);
+  }, [active, ready, isModalOpen]);
 
   const togglePlay = () => {
     const p = playerRef.current;
@@ -784,7 +790,7 @@ function ReelsPage() {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const { bookmarks, addBookmark, removeBookmark } = useBookmarkStore();
-  const { showModal } = useOverlayStack();
+  const { showModal, modalStack } = useOverlayStack();
 
   useEffect(() => {
     fetchReels()
@@ -1097,6 +1103,7 @@ function ReelsPage() {
               onWatchNow={() => handleWatchNow(reel)}
               onEnded={() => scrollToNext(i)}
               onScrollNext={() => scrollToNext(i)}
+              isModalOpen={modalStack.length > 0}
             />
           </div>
         ))}

@@ -167,7 +167,6 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
       if (scrapeMedia.type === "movie") {
         femboxData = await scrapeFemboxMovie(
           scrapeMedia.tmdbId,
-          turnstileToken,
         );
       } else if (
         scrapeMedia.type === "show" &&
@@ -178,7 +177,6 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
           scrapeMedia.tmdbId,
           scrapeMedia.season.number,
           scrapeMedia.episode.number,
-          turnstileToken,
         );
       }
 
@@ -188,7 +186,7 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
           // Ensure the stream conforms to the required Stream interface by providing a fallback id
           const normalizedStream = {
             ...stream,
-            id: stream.id ?? `ext-${Date.now()}` as string,
+            id: `ext-${Date.now()}`,
           } as any; // cast to any to satisfy TypeScript for now
           if (isExtensionActiveCached()) await prepareStream(normalizedStream);
           setEmbedId(null);

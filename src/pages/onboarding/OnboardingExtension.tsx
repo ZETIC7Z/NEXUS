@@ -26,8 +26,8 @@ import { getExtensionState } from "@/utils/extension";
 import type { ExtensionStatus as ExtensionStatusType } from "@/utils/extension";
 
 // --- Configuration ---
-const CHROME_EXTENSION_URL = "https://chromewebstore.google.com/detail/lordflix-extension/kadaciphkadjdmibffgjlgnomecepmke";
-const FIREFOX_EXTENSION_URL = "https://addons.mozilla.org/en-US/firefox/addon/lordflix-extension-v1/";
+const CHROME_EXTENSION_URL = "https://chromewebstore.google.com/detail/p-stream-enchanced/geimjiobahmbkmaigaafjnoanebpmlmj";
+const FIREFOX_EXTENSION_URL = "https://addons.mozilla.org/en-US/firefox/addon/p-stream-extension-v1/";
 const USERSCRIPT_URL = "https://raw.githubusercontent.com/p-stream/Userscript/main/p-stream.user.js";
 
 // --- Helper Components ---
@@ -353,7 +353,7 @@ export function OnboardingExtensionPage() {
         <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[50%] bg-cyan-500/10 blur-[200px] rounded-full pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.03)_0%,transparent_70%)] pointer-events-none" />
 
-        <div className="w-full max-w-2xl z-10 flex flex-col items-center">
+        <div className="w-full max-w-5xl z-10 flex flex-col items-center">
           <Stepper steps={2} current={2} className="mb-16 opacity-60 hover:opacity-100 transition-opacity w-[120px]" />
           
           <div className="w-full">

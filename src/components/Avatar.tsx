@@ -1,6 +1,5 @@
 import classNames from "classnames";
 import { useTranslation } from "react-i18next";
-
 import { Icon, Icons } from "@/components/Icon";
 import { UserIcon, UserIcons } from "@/components/UserIcon";
 import { useAuthStore } from "@/stores/auth";
@@ -13,16 +12,17 @@ export interface AvatarProps {
     colorA: string;
     colorB: string;
     icon: UserIcons;
+    photoUrl?: string;
   };
 }
 
 export function Avatar(props: AvatarProps) {
   const { sizeClass, bottom, iconClass, profile } = props;
 
-  // Use user's selected icon and colors, or defaults
   const colorA = profile?.colorA ?? "#3B82F6";
   const colorB = profile?.colorB ?? "#EC4899";
   const userIcon = profile?.icon ?? UserIcons.CAT;
+  const photoUrl = profile?.photoUrl;
 
   return (
     <div className="relative inline-block">
@@ -31,14 +31,37 @@ export function Avatar(props: AvatarProps) {
           sizeClass ?? "w-8 h-8",
           "rounded-full overflow-hidden flex items-center justify-center",
         )}
-        style={{
-          background: `linear-gradient(135deg, ${colorA}, ${colorB})`,
-        }}
+        style={
+          photoUrl
+            ? undefined
+            : { background: `linear-gradient(135deg, ${colorA}, ${colorB})` }
+        }
       >
-        <UserIcon
-          icon={userIcon}
-          className={iconClass ?? "text-2xl text-white"}
-        />
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt="Profile"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to gradient+icon if image fails to load
+              const target = e.currentTarget;
+              target.style.display = "none";
+              const parent = target.parentElement;
+              if (parent) {
+                parent.style.background = `linear-gradient(135deg, ${colorA}, ${colorB})`;
+                const icon = document.createElement("span");
+                icon.textContent = "✗";
+                icon.style.color = "white";
+                parent.appendChild(icon);
+              }
+            }}
+          />
+        ) : (
+          <UserIcon
+            icon={userIcon}
+            className={iconClass ?? "text-2xl text-white"}
+          />
+        )}
       </div>
       {bottom ? (
         <div className="absolute bottom-0 left-1/2 transform translate-y-1/2 -translate-x-1/2">
@@ -72,6 +95,7 @@ export function UserAvatar(props: {
           colorA: auth.account.profile?.colorA ?? "#3B82F6",
           colorB: auth.account.profile?.colorB ?? "#EC4899",
           icon: (auth.account.profile?.icon as UserIcons) ?? UserIcons.CAT,
+          photoUrl: auth.account.profile?.photoUrl,
         }}
       />
 

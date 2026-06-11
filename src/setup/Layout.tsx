@@ -23,6 +23,7 @@ export function Layout(props: { children: React.ReactNode }) {
   const isOnboarding = location.startsWith("/onboarding");
   const isLogin = location.startsWith("/login");
   const isRegister = location.startsWith("/register");
+  const isProfileSelection = location.startsWith("/profile-selection");
   const isSettings = location.startsWith("/settings");
 
   const showSidebar =
@@ -31,11 +32,13 @@ export function Layout(props: { children: React.ReactNode }) {
     !isOnboarding &&
     !isLogin &&
     !isRegister &&
+    !isProfileSelection &&
     !isSettings;
 
   return (
     <>
-      {!isPlayerPage && <Navigation />}
+      {/* Hide Navigation on player, auth, and registration flow pages */}
+      {!isPlayerPage && !isRegister && !isProfileSelection && !isOnboarding && <Navigation />}
       {showSidebar && <YouTubeSidebar />}
       <div
         style={{

@@ -23,18 +23,257 @@ const captioningPackages = [
 ];
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
+  const env = loadEnv(mode, process.cwd(), ""); // '' prefix = load ALL env vars, not just VITE_*
   return {
     base: env.VITE_BASE_URL || "/",
     
-    // ITO YUNG DINAGDAG NATIN PARA MA-ACCESS SA PHONE
     server: {
-      host: true,
-      port: 5173, // Siguraduhin nating 5173 ang gamit
+      host: "localhost",
+      port: 5173,
     },
 
     plugins: [
 // basicSsl(),
+      // ── Local API middleware (replaces Vercel serverless functions during dev) ──
+      {
+        name: "local-api-middleware",
+        configureServer(server) {
+          const BLOB_TOKEN = env.BLOB_READ_WRITE_TOKEN || "vercel_blob_rw_GPYPOTy4nsuDbTkt_dqIwx7OMmVixumAmWdjgBMg8mcXTFu";
+          server.middlewares.use(async (req: any, res: any, next: any) => {
+          if (req.url === "/api/upload-avatar" && req.method === "POST") {
+            try {
+              const { put } = await import("@vercel/blob");
+              const chunks: any[] = [];
+              for await (const chunk of req) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const body = Buffer.concat(chunks);
+              const contentType = "image/jpeg";
+              const filename = (req.headers["x-filename"] as string) || `avatar-${Date.now()}.jpg`;
+
+              const blob = await put(`avatars/${filename}`, body, {
+                access: "public",
+                contentType,
+                token: BLOB_TOKEN,
+                addRandomSuffix: false,
+                allowOverwrite: true,
+              });
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ url: blob.url }));
+            } catch (err: any) {
+              console.error("[local-api] upload-avatar error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Upload failed" }));
+            }
+          } else if (req.url?.startsWith("/api/upload-avatar") && req.method === "DELETE") {
+            try {
+              const urlObj = new URL(req.url, `http://${req.headers.host}`);
+              const url = urlObj.searchParams.get("url");
+              if (!url) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "Missing url" }));
+                return;
+              }
+              const { del } = await import("@vercel/blob");
+              await del(url, { token: BLOB_TOKEN });
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ success: true }));
+            } catch (err: any) {
+              console.error("[local-api] upload-avatar delete error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Delete failed" }));
+            }
+          } else if (req.url?.startsWith("/api/profile") && req.method === "POST") {
+            try {
+              const chunks: any[] = [];
+              for await (const chunk of req) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const bodyStr = Buffer.concat(chunks).toString("utf-8");
+              const { seedHash, profileData } = JSON.parse(bodyStr);
+
+              const { put } = await import("@vercel/blob");
+              const blob = await put(`profiles/profile-${seedHash}.json`, JSON.stringify(profileData), {
+                access: "public",
+                contentType: "application/json",
+                addRandomSuffix: false,
+                token: BLOB_TOKEN,
+                allowOverwrite: true,
+              });
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ url: blob.url }));
+            } catch (err: any) {
+              console.error("[local-api] profile POST error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Failed to save profile" }));
+            }
+          } else if (req.url?.startsWith("/api/profile") && req.method === "GET") {
+            try {
+              const urlObj = new URL(req.url, `http://${req.headers.host}`);
+              const seedHash = urlObj.searchParams.get("seedHash");
+              if (!seedHash) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: "Missing seedHash" }));
+                return;
+              }
+
+              const { list } = await import("@vercel/blob");
+              const listResult = await list({
+                prefix: `profiles/profile-${seedHash}.json`,
+                token: BLOB_TOKEN,
+              });
+
+              const blobs = listResult.blobs || [];
+              if (blobs.length === 0) {
+                res.statusCode = 404;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "Profile not found" }));
+                return;
+              }
+
+              const latestBlob = blobs[0];
+              const fetchRes = await fetch(`${latestBlob.url}?t=${Date.now()}`, {
+                headers: {
+                  "Cache-Control": "no-store, no-cache, must-revalidate",
+                  "Pragma": "no-cache",
+                }
+              });
+              if (!fetchRes.ok) {
+                res.statusCode = fetchRes.status;
+                res.end(JSON.stringify({ error: "Failed to fetch profile content" }));
+                return;
+              }
+              const data = await fetchRes.json();
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(data));
+            } catch (err: any) {
+              console.error("Vite local profile GET error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Failed to get profile" }));
+            }
+          } else if (req.url?.startsWith("/api/qr-session") && req.method === "POST") {
+            try {
+              const chunks: any[] = [];
+              for await (const chunk of req) {
+                chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+              }
+              const bodyStr = Buffer.concat(chunks).toString("utf-8");
+              const { id, session } = JSON.parse(bodyStr);
+
+              const { put } = await import("@vercel/blob");
+              const blob = await put(`nexus-qr-${id}.json`, JSON.stringify(session), {
+                access: "public",
+                contentType: "application/json",
+                addRandomSuffix: false,
+                token: BLOB_TOKEN,
+                allowOverwrite: true,
+              });
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ url: blob.url }));
+            } catch (err: any) {
+              console.error("Vite local QR POST error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Failed to save session" }));
+            }
+          } else if (req.url?.startsWith("/api/qr-session") && req.method === "GET") {
+            try {
+              const urlObj = new URL(req.url, `http://${req.headers.host}`);
+              const id = urlObj.searchParams.get("id");
+              if (!id) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: "Missing session ID" }));
+                return;
+              }
+
+              const { list } = await import("@vercel/blob");
+              const listResult = await list({
+                prefix: `nexus-qr-${id}.json`,
+                token: BLOB_TOKEN,
+              });
+
+              const blobs = listResult.blobs || [];
+              if (blobs.length === 0) {
+                res.statusCode = 404;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "Session not found" }));
+                return;
+              }
+
+              const latestBlob = blobs[0];
+              const fetchRes = await fetch(`${latestBlob.url}?t=${Date.now()}`, {
+                headers: {
+                  "Cache-Control": "no-store, no-cache, must-revalidate",
+                  "Pragma": "no-cache",
+                }
+              });
+              if (!fetchRes.ok) {
+                res.statusCode = fetchRes.status;
+                res.end(JSON.stringify({ error: "Failed to fetch session content" }));
+                return;
+              }
+              const data = await fetchRes.json();
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(data));
+            } catch (err: any) {
+              console.error("Vite local QR GET error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Failed to get session" }));
+            }
+          } else if (req.url?.startsWith("/api/qr-session") && req.method === "DELETE") {
+            try {
+              const urlObj = new URL(req.url, `http://${req.headers.host}`);
+              const id = urlObj.searchParams.get("id");
+              if (!id) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: "Missing session ID" }));
+                return;
+              }
+
+              const { list, del } = await import("@vercel/blob");
+              const listResult = await list({
+                prefix: `nexus-qr-${id}.json`,
+                token: BLOB_TOKEN,
+              });
+
+              const blobs = listResult.blobs || [];
+              if (blobs.length > 0) {
+                const urls = blobs.map((b) => b.url);
+                await del(urls, { token: BLOB_TOKEN });
+              }
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ success: true }));
+            } catch (err: any) {
+              console.error("Vite local QR DELETE error:", err);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message || "Failed to delete session" }));
+            }
+          } else {
+            next();
+          }
+        });
+        },
+      },
       handlebars({
         vars: {
           opensearchEnabled: env.VITE_OPENSEARCH_ENABLED === "true",

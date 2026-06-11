@@ -53,6 +53,27 @@ const config: Config = {
           "0%": { opacity: "0", transform: "scale(0.95)" },
           "100%": { opacity: "1", transform: "scale(1)" },
         },
+        "scan-laser": {
+          "0%": { top: "10%" },
+          "50%": { top: "90%" },
+          "100%": { top: "10%" },
+        },
+        "scroll-slow-left": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-33.333%)" },
+        },
+        "scroll-slow-right": {
+          "0%": { transform: "translateX(-33.333%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
+        },
+        "slide-down": {
+          "0%": { transform: "translateY(-50%)" },
+          "100%": { transform: "translateY(0)" },
+        },
       },
       animation: {
         "loading-pin": "loading-pin 1.8s ease-in-out infinite",
@@ -62,6 +83,11 @@ const config: Config = {
         slideIn: "slideIn 0.3s ease-out forwards",
         slideRight: "slideRight 0.3s ease-out forwards",
         fadeIn: "fadeIn 0.3s ease-out forwards",
+        "scan-laser": "scan-laser 2s ease-in-out infinite",
+        "scroll-slow-left": "scroll-slow-left 30s linear infinite",
+        "scroll-slow-right": "scroll-slow-right 30s linear infinite",
+        "slide-up": "slide-up 20s linear infinite",
+        "slide-down": "slide-down 20s linear infinite",
       },
     },
   },

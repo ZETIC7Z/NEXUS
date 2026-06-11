@@ -38,6 +38,7 @@ import { usePreferencesStore } from "@/stores/preferences";
 import { useSubtitleStore } from "@/stores/subtitles";
 import { usePreviewThemeStore, useThemeStore } from "@/stores/theme";
 import { scrollToHash } from "@/utils/scroll";
+import { saveProfileToVercel } from "@/utils/uploadAvatar";
 
 import { SubPageLayout } from "./layouts/SubPageLayout";
 import { AppInfoPart } from "./parts/settings/AppInfoPart";
@@ -610,6 +611,14 @@ export function SettingsPage() {
           profile: state.profile.state,
         });
         updateProfile(state.profile.state);
+        try {
+          await saveProfileToVercel(account.seed, account.nickname, {
+            ...state.profile.state,
+            photoUrl: account.profile?.photoUrl,
+          });
+        } catch (err) {
+          console.error("Failed to sync profile to Vercel:", err);
+        }
       }
     }
 

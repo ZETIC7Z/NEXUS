@@ -8,7 +8,9 @@ import { useModal } from "@/components/overlays/Modal";
 import { AuthInputBox } from "@/components/text-inputs/AuthInputBox";
 import { UserIcons } from "@/components/UserIcon";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useAuthStore } from "@/stores/auth";
 import { ProfileEditModal } from "@/pages/parts/settings/ProfileEditModal";
+import { QRScannerModal } from "@/components/overlays/QRScannerModal";
 
 export function AccountEditPart(props: {
   deviceName: string;
@@ -23,6 +25,10 @@ export function AccountEditPart(props: {
   const { t } = useTranslation();
   const { logout } = useAuth();
   const profileEditModal = useModal("profile-edit");
+  const qrScannerModal = useModal("qr-scanner");
+
+  const accountState = useAuthStore((s) => s.account);
+  const photoUrl = accountState?.profile?.photoUrl;
 
   return (
     <SettingsCard paddingClass="px-8 py-10" className="!mt-8">
@@ -36,6 +42,10 @@ export function AccountEditPart(props: {
         userIcon={props.userIcon}
         setUserIcon={props.setUserIcon}
       />
+      <QRScannerModal
+        id={qrScannerModal.id}
+        close={qrScannerModal.hide}
+      />
       <div className="grid lg:grid-cols-[auto,1fr] gap-8">
         <div>
           <Avatar
@@ -43,6 +53,7 @@ export function AccountEditPart(props: {
               colorA: props.colorA,
               colorB: props.colorB,
               icon: props.userIcon,
+              photoUrl,
             }}
             iconClass="text-5xl"
             sizeClass="w-32 h-32"
@@ -76,7 +87,10 @@ export function AccountEditPart(props: {
               />
             </div>
           </div>
-          <div className="flex space-x-3 mt-4">
+          <div className="flex flex-wrap gap-3 mt-4">
+            <Button theme="purple" onClick={qrScannerModal.show}>
+              Scan QR Code
+            </Button>
             <Button className="logout-button" theme="danger" onClick={logout}>
               {t("settings.account.accountDetails.logoutButton")}
             </Button>

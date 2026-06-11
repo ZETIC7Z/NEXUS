@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 
 import { Icon, Icons } from "@/components/Icon";
 import { BrandPill } from "@/components/layout/BrandPill";
@@ -36,6 +36,54 @@ function UtilityLink(props: {
     <Link to={props.to || "#"} className="cursor-pointer">
       {content}
     </Link>
+  );
+}
+
+/** Social-icons-only footer shown on /register, /profile-selection, /onboarding */
+function FooterMinimal() {
+  return (
+    <footer className="mt-auto border-t border-white/5 bg-black/20 w-full">
+      <WideContainer ultraWide classNames="py-5">
+        <div className="flex flex-col items-center gap-4">
+          {/* Social icons only */}
+          <div className="flex items-center gap-4">
+            <SocialLink
+              href="https://facebook.com"
+              color="#1877F2"
+              icon={<Icon icon={Icons.FACEBOOK} className="text-lg" />}
+            />
+            <SocialLink
+              href="https://twitter.com"
+              color="#1DA1F2"
+              icon={<Icon icon={Icons.TWITTER} className="text-lg" />}
+            />
+            <SocialLink
+              href={conf().DISCORD_LINK || "#"}
+              color="#5865F2"
+              icon={<Icon icon={Icons.DISCORD} className="text-lg" />}
+            />
+            <SocialLink
+              href="mailto:samxerz12@gmail.com"
+              color="#EA4335"
+              icon={<Icon icon={Icons.MAIL} className="text-lg" />}
+            />
+          </div>
+
+          {/* Disclaimer text */}
+          <p className="text-gray-600 text-[10px] leading-relaxed max-w-xl text-center">
+            This site does not host or store any movie or media files on our
+            servers. We provide content from third-party services that host such
+            media. All trademarks and copyrights belong to their respective
+            owners.
+          </p>
+
+          {/* Copyright */}
+          <p className="text-gray-700 text-[10px] font-medium tracking-widest flex items-center justify-center gap-2 uppercase">
+            <span>©</span> 2025 - 2026 ZETICUZ · All Rights Reserved
+          </p>
+        </div>
+      </WideContainer>
+    </footer>
   );
 }
 
@@ -132,6 +180,19 @@ export function Footer() {
   );
 }
 
+/** Smart footer — shows minimal version on auth/registration flow pages */
+function SmartFooter() {
+  const location = useLocation().pathname;
+  const isAuthFlow =
+    location.startsWith("/register") ||
+    location.startsWith("/profile-selection") ||
+    location.startsWith("/onboarding") ||
+    location.startsWith("/login");
+
+  if (isAuthFlow) return <FooterMinimal />;
+  return <Footer />;
+}
+
 export function FooterView(props: {
   children: React.ReactNode;
   className?: string;
@@ -143,7 +204,7 @@ export function FooterView(props: {
       )}
     >
       <div style={{ flex: "1 0 auto" }}>{props.children}</div>
-      <Footer />
+      <SmartFooter />
     </div>
   );
 }

@@ -105,7 +105,7 @@ export function progressResponsesToEntries(responses: ProgressResponse[]) {
       };
     }
 
-    if (item.type === "show" && v.season.id && v.episode.id) {
+    if (item.type === "show" && v.season?.id && v.episode?.id) {
       item.seasons[v.season.id] = {
         id: v.season.id,
         number: v.season.number ?? 0,

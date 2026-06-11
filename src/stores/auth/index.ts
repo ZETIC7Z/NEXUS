@@ -7,6 +7,7 @@ export interface Account {
     colorA: string;
     colorB: string;
     icon: string;
+    photoUrl?: string; // custom uploaded profile photo (Vercel Blob URL)
   };
   nickname: string;
   fullName?: string;
@@ -32,6 +33,7 @@ interface AuthStore {
   updateDeviceName(deviceName: string): void;
   updateAccount(acc: Partial<Account>): void;
   setAccountProfile(acc: Account["profile"]): void;
+  setAccountPhotoUrl(photoUrl: string | undefined): void;
   setAccountNickname(nickname: string): void;
   setAccountFullName(fullName: string): void;
   setAccountUsername(username: string): void;
@@ -69,6 +71,16 @@ export const useAuthStore = create(
         set((s) => {
           if (s.account) {
             s.account.profile = profile;
+          }
+        });
+      },
+      setAccountPhotoUrl(photoUrl) {
+        set((s) => {
+          if (s.account) {
+            s.account.profile = {
+              ...s.account.profile,
+              photoUrl,
+            };
           }
         });
       },

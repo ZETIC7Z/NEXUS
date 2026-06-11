@@ -55,6 +55,25 @@
 
 ## 🆕 What's New
 
+### v6.2.0 - June 11, 2026 (Updated: 8:33 PM PHT)
+
+#### 📲 QR-Based Multi-Device Passwordless Login & Session Sync
+
+- **One-Click QR Code Generator** - Added "Log in using other device" button to the landing page that dynamically displays a clean, transparent QR code floating over the background movie posters.
+- **Magnification Modal** - Clicking the QR code opens a large overlay modal for quick and easy mobile camera scanning.
+- **Settings Camera Scanner & Upload** - Added a fully functional QR code scanner directly under `Settings > Scan QR Code`. Supports laptop/mobile live camera permissions or uploading a screenshot/image of the QR code.
+- **Secure Auth Claim Page (`QRLoginClaimPage`)** - Implemented a dedicated authorization endpoint that allows any logged-in device to scan the QR, review the connection request, and securely authenticate the new device.
+- **Client Recognition & Animated Confirmation** - The scanning device displays a purple badge with the requestor's device browser metadata (e.g. "Chrome on Linux") and an animated double-pulsing green checkmark once authorized.
+- **Real-Time Redirection** - Initiating tab detects the approved authorization, displays "Login request approved" with a check animation, and instantly redirects to the onboarding path.
+- **Clean Interface Design** - Removed the dark backdrop from the landing page QR code for a modern, borderless look, adding bold instructional text: *"Scan the QR code on your device to log in. Go to Settings > Scan QR Code."*
+
+#### 🖼️ User Profile Avatar Uploads & Vercel Blob Integration
+
+- **Vercel Blob Storage** - Integrated `@vercel/blob` storage to handle secure uploading and hosting of user-defined profile pictures.
+- **Dynamic Profile Editing** - Profile photos are instantly uploaded and updated across sessions via Vercel Blob.
+
+---
+
 ### v6.1.0 - May 29, 2026 (Updated: 6:20 PM PHT)
 
 #### 📱 Cuts — Full Mobile Overhaul
@@ -260,6 +279,9 @@ VITE_PWA_ENABLED=true
 VITE_HAS_ONBOARDING=true
 VITE_ALLOW_AUTOPLAY=true
 VITE_HIDE_PROXY_SETTINGS=true
+
+# Storage (Required for profile image uploads and QR session handshake data)
+BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
 ```
 
 ---
@@ -305,15 +327,19 @@ docker-compose up -d
 
 ## 🛠️ Tech Stack
 
-| Category | Technology               |
-| -------- | ------------------------ |
-| Frontend | React 18, TypeScript     |
-| Build    | Vite                     |
-| Styling  | Tailwind CSS             |
-| State    | Zustand                  |
-| Video    | HLS.js, Custom Player    |
-| PWA      | Workbox, Service Workers |
-| Routing  | React Router v6          |
+| Category | Technology                                         |
+| -------- | -------------------------------------------------- |
+| Frontend | React 18, TypeScript                               |
+| Build    | Vite                                               |
+| Styling  | Tailwind CSS                                       |
+| State    | Zustand                                            |
+| Video    | HLS.js, Custom Player                              |
+| PWA      | Workbox, Service Workers                           |
+| Routing  | React Router v6                                    |
+| Storage  | Vercel Blob Storage                                |
+| QR Code  | html5-qrcode, qrcode.react                         |
+| Animation| Framer Motion                                      |
+| Security | @noble/hashes, @scure/bip39, crypto-js, node-forge |
 
 ---
 

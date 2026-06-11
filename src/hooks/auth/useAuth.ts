@@ -30,6 +30,7 @@ import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
 import { AccountWithToken, useAuthStore } from "@/stores/auth";
 import { BookmarkMediaItem } from "@/stores/bookmarks";
 import { ProgressMediaItem } from "@/stores/progress";
+import { getProfileFromVercel } from "@/utils/uploadAvatar";
 
 export interface RegistrationData {
   recaptchaToken?: string;
@@ -83,7 +84,19 @@ export function useAuth() {
 
       const user = await getUser(backendUrl, loginResult.token);
       const seedBase64 = bytesToBase64(keys.seed);
-      return userDataLogin(loginResult, user.user, user.session, seedBase64);
+      const account = await userDataLogin(loginResult, user.user, user.session, seedBase64);
+
+      // Immediately load Vercel profile photo so it shows right after login
+      try {
+        const vercelProfile = await getProfileFromVercel(seedBase64);
+        if (vercelProfile?.profile?.photoUrl) {
+          useAuthStore.getState().setAccountPhotoUrl(vercelProfile.profile.photoUrl);
+        }
+      } catch {
+        // Non-critical: profile photo will load on next restore
+      }
+
+      return account;
     },
     [userDataLogin, backendUrl],
   );
@@ -181,20 +194,24 @@ export function useAuth() {
         throw err;
       }
 
-      const [bookmarks, progress, settings, groupOrder] = await Promise.all([
+      const [bookmarks, progress, settings, groupOrder, vercelProfile] = await Promise.all([
         getBookmarks(backendUrl, account),
         getProgress(backendUrl, account),
         getSettings(backendUrl, account),
         getGroupOrder(backendUrl, account),
+        getProfileFromVercel(account.seed),
       ]);
 
-      // Update account store with fresh user data (including nickname)
+      // Update account store with fresh user data (including nickname and Vercel profile details)
       const { setAccount } = useAuthStore.getState();
       if (account) {
         setAccount({
           ...account,
           nickname: user.user.nickname,
-          profile: user.user.profile,
+          profile: {
+            ...user.user.profile,
+            photoUrl: vercelProfile?.profile?.photoUrl || account.profile?.photoUrl,
+          },
         });
       }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { LoginFormPart } from "@/pages/parts/auth/LoginFormPart";
 import { conf } from "@/setup/config";
@@ -165,6 +165,8 @@ function PostLoginIntro({ onComplete }: { onComplete: () => void }) {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const [showIntro, setShowIntro] = useState(false);
   const onboardingCompleted = useOnboardingStore((s) => s.completed);
 
@@ -176,8 +178,10 @@ export function LoginPage() {
       );
 
     if (isMobile) {
-      // Skip intro on mobile, go directly to discover or onboarding
-      if (!onboardingCompleted) {
+      // Skip intro on mobile, go directly to redirect, discover or onboarding
+      if (redirect) {
+        navigate(redirect);
+      } else if (!onboardingCompleted) {
         navigate("/onboarding");
       } else {
         navigate("/discover");
@@ -190,8 +194,9 @@ export function LoginPage() {
   };
 
   const handleIntroComplete = async () => {
-    // Check if user needs onboarding (first time user)
-    if (!onboardingCompleted) {
+    if (redirect) {
+      navigate(redirect);
+    } else if (!onboardingCompleted) {
       // Navigate to onboarding for new users
       navigate("/onboarding");
     } else {

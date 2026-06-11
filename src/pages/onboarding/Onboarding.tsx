@@ -336,12 +336,13 @@ export function OnboardingPage() {
         </div>
       </OnboardingInfoModal>
 
-      <BiggerCenterContainer>
-        <Stepper steps={2} current={1} className="mb-12" />
-        <div className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-8 mt-8">
+      <div className="min-h-screen w-full flex justify-center px-4 md:px-8 py-16 lg:py-24 items-center">
+        <div className="w-full max-w-none px-2 md:px-6 lg:px-8">
+          <Stepper steps={2} current={1} className="mb-12" />
+          <div className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-8 mt-8">
           {/* Left Column: Text & Player Options */}
           <div className="flex flex-col gap-8">
-            <div className="max-w-xl">
+            <div className="max-w-3xl">
               <Heading2 className="!mt-0 !text-3xl">
                 {t("onboarding.start.title")}
               </Heading2>
@@ -364,12 +365,39 @@ export function OnboardingPage() {
               </Paragraph>
             </div>
 
+            {/* Styles for breathing glow effect */}
+            <style>{`
+              @keyframes nexus-breathing-glow {
+                0%, 100% {
+                  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2), inset 0 0 10px rgba(245, 158, 11, 0.03);
+                  border-color: rgba(245, 158, 11, 0.25);
+                }
+                50% {
+                  box-shadow: 0 0 24px rgba(245, 158, 11, 0.45), inset 0 0 20px rgba(245, 158, 11, 0.1);
+                  border-color: rgba(245, 158, 11, 0.65);
+                }
+              }
+              .nexus-player-card {
+                animation: nexus-breathing-glow 2.5s ease-in-out infinite;
+                background: rgba(245, 158, 11, 0.02) !important;
+                border-width: 1px;
+                border-style: solid;
+                position: relative;
+              }
+              .zeticuz-player-card {
+                position: relative;
+              }
+            `}</style>
+
             {/* Player Selection Cards */}
             <div className="flex flex-col lg:flex-row w-full gap-4">
               <Card
                 onClick={() => setIsExtensionModalOpen(true)}
-                className="flex-1 min-w-0"
+                className="flex-1 min-w-0 nexus-player-card"
               >
+                <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-widest bg-amber-500 text-black px-2.5 py-0.5 rounded-full shadow-lg z-10">
+                  Recommended
+                </span>
                 <CardContent
                   colorClass="!text-amber-400"
                   title="NEXUS PLAYER"
@@ -390,8 +418,11 @@ export function OnboardingPage() {
 
               <Card
                 onClick={() => setIsZeticuzModalOpen(true)}
-                className="flex-1 min-w-0"
+                className="flex-1 min-w-0 zeticuz-player-card"
               >
+                <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider bg-white/10 text-white/60 px-2 py-0.5 rounded-full border border-white/5 z-10">
+                  Alternative
+                </span>
                 <CardContent
                   colorClass="!text-amber-400"
                   title="ZETICUZ PLAYER"
@@ -403,23 +434,19 @@ export function OnboardingPage() {
           </div>
 
           {/* Right Column: Branding & Installation */}
-          <div className="hidden md:flex flex-col items-center justify-center pt-8 border-l border-white/5 pl-8 w-full max-w-sm">
-            <img
-              src="/nexus-logo-gold.png"
-              className="w-72 h-auto drop-shadow-[0_0_30px_rgba(251,191,36,0.2)] mb-8"
-              alt="NEXUS"
-            />
+          <div className="hidden md:flex flex-col items-center justify-center pt-8 border-l border-white/5 pl-8 w-full max-w-lg">
+
 
             <button
               type="button"
-              className="group relative bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold py-5 px-10 rounded-xl flex flex-col items-center gap-1 transition-all transform hover:scale-105 shadow-[0_0_40px_rgba(251,191,36,0.4)]"
+              className="group relative bg-gradient-to-b from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold py-6 px-12 rounded-xl flex flex-col items-center gap-1 transition-all transform hover:scale-105 shadow-[0_0_40px_rgba(251,191,36,0.4)] w-full max-w-md"
               onClick={() => setIsDownloadOpen(true)}
             >
-              <div className="flex items-center gap-3 text-lg whitespace-nowrap">
+              <div className="flex items-center gap-3 text-lg whitespace-nowrap font-black">
                 <Icon icon={Icons.DOWNLOAD} />
                 INSTALL NEXUS TO DEVICE
               </div>
-              <span className="text-[10px] opacity-90 font-medium">
+              <span className="text-[10px] opacity-90 font-medium uppercase tracking-wider">
                 Windows, Linux, macOS, Android
               </span>
               <div className="absolute inset-0 rounded-xl bg-amber-400 opacity-20 group-hover:opacity-40 blur-xl transition-opacity animate-pulse" />
@@ -446,11 +473,6 @@ export function OnboardingPage() {
         {/* Mobile Layout */}
         <div className="md:hidden flex w-full flex-col gap-4 pb-6 mt-12">
           <div className="flex flex-col items-center mb-10">
-            <img
-              src="/nexus-logo-gold.png"
-              className="w-56 h-auto drop-shadow-[0_0_15px_rgba(251,191,36,0.3)] mb-6"
-              alt="NEXUS"
-            />
             <button
               type="button"
               className="group relative bg-gradient-to-b from-amber-400 to-amber-600 text-black font-bold py-4 px-8 rounded-xl flex flex-col items-center gap-1 shadow-[0_0_25px_rgba(251,191,36,0.4)] w-full max-w-xs transition-all active:scale-95"
@@ -486,7 +508,8 @@ export function OnboardingPage() {
             mode="onboarding"
           />
         </div>
-      </BiggerCenterContainer>
+      </div>
+    </div>
       <DownloadModal
         isOpen={isDownloadOpen}
         onClose={() => setIsDownloadOpen(false)}

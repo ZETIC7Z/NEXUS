@@ -48,6 +48,7 @@ import { OnboardingExtensionPage } from "@/pages/onboarding/OnboardingExtension"
 import { OnboardingProxyPage } from "@/pages/onboarding/OnboardingProxy";
 import { ProfileSelectionPage } from "@/pages/ProfileSelectionPage";
 import { RegisterPage } from "@/pages/Register";
+import { QRLoginClaimPage } from "@/pages/QRLoginClaimPage";
 import { SupportPage } from "@/pages/Support";
 import { TVSeriesPage } from "@/pages/TVSeriesPage";
 import { WatchHistory } from "@/pages/WatchHistory";
@@ -154,6 +155,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile-selection" element={<ProfileSelectionPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/qr-login/:sessionId" element={<QRLoginClaimPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/help" element={<HelpPage />} />
           {shouldHaveLegalPage() ? (
