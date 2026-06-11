@@ -74,15 +74,15 @@ async function main() {
       process.exit(1);
     }
     
-    const token = remoteMatch[2];
-    console.log('Remote URL token found. Executing push...');
+    const currentBranch = await git.currentBranch({ fs, dir }) || 'master';
+    console.log(`Current branch is '${currentBranch}'. Executing push...`);
 
     const result = await git.push({
       fs,
       http,
       dir,
       remote: 'origin',
-      ref: 'main',
+      ref: currentBranch,
       onAuth: () => ({ username: token, password: '' }),
     });
     
