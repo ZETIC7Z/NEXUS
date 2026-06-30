@@ -26,7 +26,8 @@ import {
   getUser,
 } from "@/backend/accounts/user";
 import { useAuthData } from "@/hooks/auth/useAuthData";
-import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
+import { useBackendUrl, switchBackend } from "@/hooks/auth/useBackendUrl";
+import { conf } from "@/setup/config";
 import { AccountWithToken, useAuthStore } from "@/stores/auth";
 import { BookmarkMediaItem } from "@/stores/bookmarks";
 import { ProgressMediaItem } from "@/stores/progress";
@@ -63,27 +64,54 @@ export function useAuth() {
     syncData,
   } = useAuthData();
 
+  const callWithFallback = useCallback(
+    async <T>(fn: (url: string) => Promise<T>): Promise<T> => {
+      let currentUrl = backendUrl;
+      if (!currentUrl) throw new Error("No backend URL available");
+
+      try {
+        return await fn(currentUrl);
+      } catch (err) {
+        console.warn(`[useAuth] Request failed on ${currentUrl}. Trying failover...`, err);
+        const nextUrl = switchBackend();
+        if (nextUrl && nextUrl !== currentUrl) {
+          try {
+            return await fn(nextUrl);
+          } catch (retryErr) {
+            switchBackend();
+            throw retryErr;
+          }
+        }
+        throw err;
+      }
+    },
+    [backendUrl],
+  );
+
   const login = useCallback(
     async (loginData: LoginData) => {
-      if (!backendUrl) return;
       const keys = await keysFromMnemonic(loginData.mnemonic);
       const publicKeyBase64Url = bytesToBase64Url(keys.publicKey);
-      const { challenge } = await getLoginChallengeToken(
-        backendUrl,
-        publicKeyBase64Url,
-      );
-      const signature = await signChallenge(keys, challenge);
-      const loginResult = await loginAccount(backendUrl, {
-        challenge: {
-          code: challenge,
-          signature,
-        },
-        publicKey: publicKeyBase64Url,
-        device: await encryptData(loginData.userData.device, keys.seed),
+      const seedBase64 = bytesToBase64(keys.seed);
+      const encryptedDevice = await encryptData(loginData.userData.device, keys.seed);
+
+      const loginResult = await callWithFallback(async (url) => {
+        const { challenge } = await getLoginChallengeToken(
+          url,
+          publicKeyBase64Url,
+        );
+        const signature = await signChallenge(keys, challenge);
+        return await loginAccount(url, {
+          challenge: {
+            code: challenge,
+            signature,
+          },
+          publicKey: publicKeyBase64Url,
+          device: encryptedDevice,
+        });
       });
 
-      const user = await getUser(backendUrl, loginResult.token);
-      const seedBase64 = bytesToBase64(keys.seed);
+      const user = await callWithFallback((url) => getUser(url, loginResult.token));
       const account = await userDataLogin(loginResult, user.user, user.session, seedBase64);
 
       // Immediately load Vercel profile photo so it shows right after login
@@ -98,47 +126,82 @@ export function useAuth() {
 
       return account;
     },
-    [userDataLogin, backendUrl],
+    [userDataLogin, callWithFallback],
   );
 
   const logout = useCallback(async () => {
-    if (!currentAccount || !backendUrl) return;
-    try {
-      await removeSession(
-        backendUrl,
-        currentAccount.token,
-        currentAccount.sessionId,
-      );
-    } catch {
-      // we dont care about failing to delete session
-    }
+    if (!currentAccount) return;
+    const urls = conf().BACKEND_URLS;
+    // Log out of all backends in parallel
+    await Promise.allSettled(
+      urls.map(async (url) => {
+        try {
+          await removeSession(
+            url,
+            currentAccount.token,
+            currentAccount.sessionId,
+          );
+        } catch {
+          // ignore
+        }
+      })
+    );
     await userDataLogout();
-  }, [userDataLogout, backendUrl, currentAccount]);
+  }, [userDataLogout, currentAccount]);
 
   const register = useCallback(
     async (registerData: RegistrationData) => {
-      if (!backendUrl) return;
-      const { challenge } = await getRegisterChallengeToken(
-        backendUrl,
-        registerData.recaptchaToken,
-      );
+      const urls = conf().BACKEND_URLS;
+      if (urls.length === 0) return;
+
       const keys = await keysFromMnemonic(registerData.mnemonic);
-      const signature = await signChallenge(keys, challenge);
-      const registerResult = await registerAccount(backendUrl, {
-        challenge: {
-          code: challenge,
-          signature,
-        },
-        publicKey: bytesToBase64Url(keys.publicKey),
-        device: await encryptData(registerData.userData.device, keys.seed),
-        profile: registerData.userData.profile,
+      const publicKey = bytesToBase64Url(keys.publicKey);
+      const device = await encryptData(registerData.userData.device, keys.seed);
+      const seedBase64 = bytesToBase64(keys.seed);
+
+      let primaryResult: any = null;
+      let lastError: any = null;
+
+      // Register on all backends in parallel
+      const registrations = urls.map(async (url) => {
+        try {
+          const { challenge } = await getRegisterChallengeToken(
+            url,
+            registerData.recaptchaToken,
+          );
+          const signature = await signChallenge(keys, challenge);
+          const result = await registerAccount(url, {
+            challenge: {
+              code: challenge,
+              signature,
+            },
+            publicKey,
+            device,
+            profile: registerData.userData.profile,
+          });
+          if (url === backendUrl || !primaryResult) {
+            primaryResult = result;
+          }
+          console.log(`[useAuth] Registration successful on backend: ${url}`);
+          return result;
+        } catch (err) {
+          console.error(`[useAuth] Registration failed on backend ${url}:`, err);
+          lastError = err;
+          throw err;
+        }
       });
 
+      await Promise.allSettled(registrations);
+
+      if (!primaryResult) {
+        throw lastError || new Error("Registration failed on all backends");
+      }
+
       return userDataLogin(
-        registerResult,
-        registerResult.user,
-        registerResult.session,
-        bytesToBase64(keys.seed),
+        primaryResult,
+        primaryResult.user,
+        primaryResult.session,
+        seedBase64,
       );
     },
     [backendUrl, userDataLogin],
@@ -166,20 +229,21 @@ export function useAuth() {
         bookmarkMediaToInput(tmdbId, item),
       );
 
-      await Promise.all([
-        importProgress(backendUrl, account, progressInputs),
-        importBookmarks(backendUrl, account, bookmarkInputs),
-      ]);
+      await callWithFallback(async (url) => {
+        await Promise.all([
+          importProgress(url, account, progressInputs),
+          importBookmarks(url, account, bookmarkInputs),
+        ]);
+      });
     },
-    [backendUrl],
+    [backendUrl, callWithFallback],
   );
 
   const restore = useCallback(
     async (account: AccountWithToken) => {
-      if (!backendUrl) return;
       let user: { user: UserResponse; session: SessionResponse };
       try {
-        user = await getUser(backendUrl, account.token);
+        user = await callWithFallback((url) => getUser(url, account.token));
       } catch (err) {
         const anyError: any = err;
         if (
@@ -194,13 +258,17 @@ export function useAuth() {
         throw err;
       }
 
-      const [bookmarks, progress, settings, groupOrder, vercelProfile] = await Promise.all([
-        getBookmarks(backendUrl, account),
-        getProgress(backendUrl, account),
-        getSettings(backendUrl, account),
-        getGroupOrder(backendUrl, account),
-        getProfileFromVercel(account.seed),
-      ]);
+      const [bookmarks, progress, settings, groupOrder, vercelProfile] = await callWithFallback(
+        async (url) => {
+          return Promise.all([
+            getBookmarks(url, account),
+            getProgress(url, account),
+            getSettings(url, account),
+            getGroupOrder(url, account),
+            getProfileFromVercel(account.seed),
+          ]);
+        }
+      );
 
       // Update account store with fresh user data (including nickname and Vercel profile details)
       const { setAccount } = useAuthStore.getState();
@@ -224,7 +292,7 @@ export function useAuth() {
         groupOrder,
       );
     },
-    [backendUrl, syncData, logout],
+    [callWithFallback, syncData, logout],
   );
 
   return {

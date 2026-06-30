@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  KeyboardShortcuts,
+} from "@/utils/keyboardShortcuts";
+
 export interface PreferencesStore {
   enableThumbnails: boolean;
   enableAutoplay: boolean;
@@ -35,6 +40,12 @@ export interface PreferencesStore {
   febboxUseMp4: boolean;
   enableAutoSkipSegments: boolean;
   enablePauseOverlay: boolean;
+  enableAutoSubtitleSync: boolean;
+  enableGamepadControls: boolean;
+  gamepadMapping: Record<string, string>;
+  wyzieKey: string | null;
+  keyboardShortcuts: KeyboardShortcuts;
+  enableNumberKeySeeking: boolean;
 
   setEnableThumbnails(v: boolean): void;
   setEnableAutoplay(v: boolean): void;
@@ -68,6 +79,12 @@ export interface PreferencesStore {
   setEnableAutoSkipSegments(v: boolean): void;
   setEnablePauseOverlay(v: boolean): void;
   setTIDBKey(v: string | null): void;
+  setEnableAutoSubtitleSync(v: boolean): void;
+  setEnableGamepadControls(v: boolean): void;
+  setGamepadMapping(v: Record<string, string>): void;
+  setWyzieKey(v: string | null): void;
+  setKeyboardShortcuts(v: KeyboardShortcuts): void;
+  setEnableNumberKeySeeking(v: boolean): void;
 }
 
 export const usePreferencesStore = create(
@@ -105,6 +122,12 @@ export const usePreferencesStore = create(
       febboxUseMp4: false,
       enableAutoSkipSegments: false,
       enablePauseOverlay: true,
+      enableAutoSubtitleSync: false,
+      enableGamepadControls: false,
+      gamepadMapping: {},
+      wyzieKey: null,
+      keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
+      enableNumberKeySeeking: true,
       setEnableThumbnails(v) {
         set((s) => {
           s.enableThumbnails = v;
@@ -268,6 +291,36 @@ export const usePreferencesStore = create(
       setTIDBKey(v) {
         set((s) => {
           s.tidbKey = v;
+        });
+      },
+      setEnableAutoSubtitleSync(v) {
+        set((s) => {
+          s.enableAutoSubtitleSync = v;
+        });
+      },
+      setEnableGamepadControls(v) {
+        set((s) => {
+          s.enableGamepadControls = v;
+        });
+      },
+      setGamepadMapping(v) {
+        set((s) => {
+          s.gamepadMapping = v;
+        });
+      },
+      setWyzieKey(v) {
+        set((s) => {
+          s.wyzieKey = v;
+        });
+      },
+      setKeyboardShortcuts(v) {
+        set((s) => {
+          s.keyboardShortcuts = v;
+        });
+      },
+      setEnableNumberKeySeeking(v) {
+        set((s) => {
+          s.enableNumberKeySeeking = v;
         });
       },
     })),

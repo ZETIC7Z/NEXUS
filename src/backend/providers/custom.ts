@@ -762,3 +762,165 @@ export const yesmoviesScraper = null as any;
 // VidNest removed — iframe-only, no real stream extraction
 export const vidnestScraper = null as any;
 export const vidnestEmbeds: any[] = [];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MiruroAPI Anime Provider (rank 950)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MIRURO_API_BASE = "http://localhost:3000/api";
+
+async function scrapeMiruro(
+  ctx: MovieScrapeContext | ShowScrapeContext,
+): Promise<SourcererOutput> {
+  const isMovie = ctx.media.type === "movie";
+  const title = ctx.media.title;
+
+  ctx.progress(10);
+  // Search for the anime on MiruroAPI
+  const searchUrl = `${MIRURO_API_BASE}/search`;
+  const searchResult = await ctx.proxiedFetcher<any>(searchUrl, {
+    method: "GET",
+    query: { query: title },
+  });
+
+  if (!searchResult?.success || !Array.isArray(searchResult?.results) || searchResult.results.length === 0) {
+    throw new NotFoundError("MiruroAPI: no search results for title: " + title);
+  }
+
+  ctx.progress(30);
+
+  // Simple title similarity matching
+  const normalizedTargetTitle = normalizeTitle(title);
+  let bestMatch = searchResult.results.find((item: any) => {
+    const titles = [
+      item.title?.english,
+      item.title?.romaji,
+      item.title?.userPreferred,
+    ].filter(Boolean);
+    return titles.some((t) => normalizeTitle(t) === normalizedTargetTitle);
+  });
+
+  // Fallback to the first result
+  if (!bestMatch && searchResult.results.length > 0) {
+    bestMatch = searchResult.results[0];
+  }
+
+  if (!bestMatch) {
+    throw new NotFoundError("MiruroAPI: anime matching not found");
+  }
+
+  const anilistId = bestMatch.id;
+  ctx.progress(50);
+
+  // Fetch episodes for the matching AniList ID
+  const episodesUrl = `${MIRURO_API_BASE}/episodes/${anilistId}`;
+  const episodesResult = await ctx.proxiedFetcher<any>(episodesUrl);
+  if (!episodesResult?.success || !Array.isArray(episodesResult?.results) || episodesResult.results.length === 0) {
+    throw new NotFoundError("MiruroAPI: no episodes found for ID: " + anilistId);
+  }
+
+  ctx.progress(70);
+
+  // Match the episode number
+  const targetEpisodeNum = isMovie ? 1 : (ctx as ShowScrapeContext).media.episode.number;
+  const matchedEpisode = episodesResult.results.find((ep: any) => ep.number === targetEpisodeNum);
+  if (!matchedEpisode) {
+    throw new NotFoundError(`MiruroAPI: episode ${targetEpisodeNum} not found`);
+  }
+
+  const providers = matchedEpisode.providers || {};
+  const providerNames = Object.keys(providers);
+  if (providerNames.length === 0) {
+    throw new NotFoundError("MiruroAPI: no streaming providers available for episode");
+  }
+
+  // Preferred order of providers
+  const preferredProviders = ["kiwi", "bonk", "pewe", "bee", "ally"];
+  const sortedProviders = providerNames.sort((a, b) => {
+    const indexA = preferredProviders.indexOf(a);
+    const indexB = preferredProviders.indexOf(b);
+    if (indexA === -1 && indexB === -1) return 0;
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
+  // Try each provider until we successfully fetch stream URLs
+  for (const provider of sortedProviders) {
+    const subCategories = providers[provider] || {};
+    const category = subCategories.sub ? "sub" : subCategories.dub ? "dub" : null;
+    if (!category) continue;
+
+    const slug = subCategories[category];
+    if (!slug) continue;
+
+    // Fetch watch sources from the provider
+    const watchUrl = `${MIRURO_API_BASE}/watch/${provider}/${anilistId}/${category}/${slug}`;
+    try {
+      const watchResult = await ctx.proxiedFetcher<any>(watchUrl);
+      if (watchResult?.success && Array.isArray(watchResult?.results?.sources) && watchResult.results.sources.length > 0) {
+        ctx.progress(90);
+        const streams = watchResult.results.sources.map((s: any, idx: number) => {
+          const referer = s.referer || "https://kwik.cx/";
+          // Wrap with MiruroAPI local proxy
+          const proxiedUrl = `${MIRURO_API_BASE}/proxy?url=${encodeURIComponent(s.url)}&referer=${encodeURIComponent(referer)}`;
+
+          if (s.isM3U8 || s.url.includes(".m3u8")) {
+            return {
+              id: `${provider}-${idx}`,
+              type: "hls",
+              playlist: proxiedUrl,
+              headers: {
+                Referer: referer,
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+              },
+              flags: [],
+              captions: [],
+            };
+          } else {
+            return {
+              id: `${provider}-${idx}`,
+              type: "file",
+              qualities: {
+                [s.quality || "default"]: {
+                  type: "mp4",
+                  url: proxiedUrl,
+                },
+              },
+              headers: {
+                Referer: referer,
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+              },
+              flags: [],
+              captions: [],
+            };
+          }
+        });
+
+        if (streams.length > 0) {
+          ctx.progress(100);
+          return {
+            embeds: [],
+            stream: streams,
+          };
+        }
+      }
+    } catch {
+      // Continue to next provider
+    }
+  }
+
+  throw new NotFoundError("MiruroAPI: no working streams found across providers");
+}
+
+export const miruroApiScraper = makeSourcerer({
+  id: "miruroapi-custom",
+  name: "MiruroAPI 🌸",
+  rank: 950,
+  disabled: false,
+  flags: [],
+  scrapeMovie: scrapeMiruro,
+  scrapeShow: scrapeMiruro,
+});

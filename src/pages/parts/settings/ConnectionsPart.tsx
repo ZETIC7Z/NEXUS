@@ -1,16 +1,16 @@
-import PropTypes from "prop-types";
 import {
   Dispatch,
   SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { updateSettings } from "@/backend/accounts/settings";
 import { Button } from "@/components/buttons/Button";
 import { Toggle } from "@/components/buttons/Toggle";
+import { BackendSelector } from "@/components/form/BackendSelector";
 import { Dropdown } from "@/components/form/Dropdown";
 import { Icon, Icons } from "@/components/Icon";
 import { SettingsCard } from "@/components/layout/SettingsCard";
@@ -23,7 +23,7 @@ import { MwLink } from "@/components/text/Link";
 import { AuthInputBox } from "@/components/text-inputs/AuthInputBox";
 import { Divider } from "@/components/utils/Divider";
 import { Heading1, Heading2, Paragraph } from "@/components/utils/Text";
-import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
+import { useIsDesktopApp } from "@/hooks/useIsDesktopApp";
 import {
   SetupPart,
   Status,
@@ -35,6 +35,9 @@ import {
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
 import { usePreferencesStore } from "@/stores/preferences";
+import { useSimklStore } from "@/stores/simkl/store";
+import { useTraktStore } from "@/stores/trakt/store";
+import { simklService } from "@/utils/simkl";
 
 import { RegionSelectorPart } from "./RegionSelectorPart";
 
@@ -52,20 +55,21 @@ interface BackendEditProps {
 
 interface FebboxKeyProps {
   febboxKey: string | null;
-  setFebboxKey: Dispatch<SetStateAction<string | null>>;
-}
-
-interface TIDBEditProps {
-  tidbKey: string | null;
-  setTIDBKey: Dispatch<SetStateAction<string | null>>;
+  setFebboxKey: (value: string | null) => void;
 }
 
 interface DebridProps {
   debridToken: string | null;
-  setdebridToken: Dispatch<SetStateAction<string | null>>;
+  setdebridToken: (value: string | null) => void;
   debridService: string;
-  setdebridService: Dispatch<SetStateAction<string>>;
+  setdebridService: (value: string) => void;
+  // eslint-disable-next-line react/no-unused-prop-types
   mode?: "onboarding" | "settings";
+}
+
+interface TIDBKeyProps {
+  tidbKey: string | null;
+  setTIDBKey: (value: string | null) => void;
 }
 
 function ProxyEdit({
@@ -114,7 +118,7 @@ function ProxyEdit({
           </p>
           <p className="max-w-[30rem] font-medium">
             <Trans i18nKey="settings.connections.workers.description">
-              <MwLink to="https://docs.pstream.mov/proxy/deploy">
+              <MwLink to="https://p-stream.github.io/docs/proxy/deploy">
                 {t("settings.connections.workers.documentation")}
               </MwLink>
             </Trans>
@@ -154,14 +158,6 @@ function ProxyEdit({
                   type="button"
                   onClick={() => removeItem(i)}
                   className="h-full scale-90 hover:scale-100 rounded-full aspect-square bg-authentication-inputBg hover:bg-authentication-inputBgHover flex justify-center items-center transition-transform duration-200 hover:text-white cursor-pointer"
-                  title={t(
-                    "settings.connections.workers.removeButton",
-                    "Remove Worker",
-                  )}
-                  aria-label={t(
-                    "settings.connections.workers.removeButton",
-                    "Remove Worker",
-                  )}
                 >
                   <Icon className="text-xl" icon={Icons.X} />
                 </button>
@@ -199,16 +195,51 @@ function ProxyEdit({
 function BackendEdit({ backendUrl, setBackendUrl }: BackendEditProps) {
   const { t } = useTranslation();
   const user = useAuthStore();
+  const config = conf();
+  const availableBackends =
+    config.BACKEND_URLS.length > 0
+      ? config.BACKEND_URLS
+      : config.BACKEND_URL
+        ? [config.BACKEND_URL]
+        : [];
+  const currentBackendUrl =
+    backendUrl ?? (availableBackends.length > 0 ? availableBackends[0] : null);
+  const [pendingBackendUrl, setPendingBackendUrl] = useState<string | null>(
+    currentBackendUrl,
+  );
+  const confirmationModal = useModal("backend-change-confirmation");
+
+  const handleBackendSelect = (url: string | null) => {
+    if (!user.account) {
+      // No account - just update without confirmation
+      setBackendUrl(url);
+      setPendingBackendUrl(url);
+    } else if (url !== currentBackendUrl) {
+      // User is logged in and changing backend - show confirmation
+      setPendingBackendUrl(url);
+      confirmationModal.show();
+    } else {
+      // Same backend - just update
+      setBackendUrl(url);
+      setPendingBackendUrl(url);
+    }
+  };
+
+  const handleConfirmChange = () => {
+    setBackendUrl(pendingBackendUrl);
+    confirmationModal.hide();
+  };
+
   return (
-    <SettingsCard>
-      <div className="flex justify-between items-center gap-4">
+    <>
+      <SettingsCard>
         <div className="my-3">
           <p className="text-white font-bold mb-3">
             {t("settings.connections.server.label")}
           </p>
           <p className="max-w-[30rem] font-medium">
             <Trans i18nKey="settings.connections.server.description">
-              <MwLink to="https://docs.pstream.mov/backend/deploy">
+              <MwLink to="https://p-stream.github.io/docs/backend/deploy">
                 {t("settings.connections.server.documentation")}
               </MwLink>
             </Trans>
@@ -226,27 +257,28 @@ function BackendEdit({ backendUrl, setBackendUrl }: BackendEditProps) {
             </div>
           )}
         </div>
-        <div>
-          <Toggle
-            onClick={() => setBackendUrl((s) => (s === null ? "" : null))}
-            enabled={backendUrl !== null}
-          />
-        </div>
-      </div>
-      {backendUrl !== null ? (
-        <>
-          <Divider marginClass="my-6 px-8 box-content -mx-8" />
-          <p className="text-white font-bold mb-3">
-            {t("settings.connections.server.urlLabel")}
-          </p>
-          <AuthInputBox
-            onChange={setBackendUrl}
-            value={backendUrl ?? ""}
-            placeholder="https://"
-          />
-        </>
-      ) : null}
-    </SettingsCard>
+      </SettingsCard>
+      {user.account && (
+        <Modal id={confirmationModal.id}>
+          <ModalCard>
+            <Heading2 className="!mt-0 !mb-4">
+              {t("settings.connections.server.changeWarningTitle")}
+            </Heading2>
+            <Paragraph className="!mt-1 !mb-6">
+              {t("settings.connections.server.changeWarning")}
+            </Paragraph>
+            <div className="flex justify-end gap-3">
+              <Button theme="secondary" onClick={confirmationModal.hide}>
+                {t("settings.connections.server.cancel")}
+              </Button>
+              <Button theme="purple" onClick={handleConfirmChange}>
+                {t("settings.connections.server.confirm")}
+              </Button>
+            </div>
+          </ModalCard>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -268,7 +300,6 @@ export function FebboxSetup({
   setFebboxKey,
   mode,
 }: FebboxSetupProps) {
-  const { t } = useTranslation();
   const [showVideo, setShowVideo] = useState(false);
   const user = useAuthStore();
   const preferences = usePreferencesStore();
@@ -317,30 +348,6 @@ export function FebboxSetup({
     checkTokenStatus();
   }, [febboxKey]);
 
-  // Auto-save to backend when token is valid
-  const backendUrl = useBackendUrl();
-  const account = useAuthStore((s) => s.account);
-  const setPreferencesFebboxKey = usePreferencesStore((s) => s.setFebboxKey);
-
-  useEffect(() => {
-    const autoSave = async () => {
-      if (status === "success" && febboxKey && account && backendUrl) {
-        // Save to preferences store
-        setPreferencesFebboxKey(febboxKey);
-
-        // Save to backend
-        try {
-          await updateSettings(backendUrl, account, {
-            febboxKey,
-          });
-        } catch (error) {
-          console.error("Failed to auto-save febbox token:", error);
-        }
-      }
-    };
-    autoSave();
-  }, [status, febboxKey, account, backendUrl, setPreferencesFebboxKey]);
-
   // Toggle handler based on mode
   const toggleFebboxExpanded = () => {
     if (mode === "onboarding") {
@@ -368,10 +375,13 @@ export function FebboxSetup({
           <div className="flex justify-between items-center gap-4">
             <div className="my-3">
               <p className="text-white font-bold mb-3">
-                {t("fedapi.onboarding.title")}
+                Aurora API (4K)
               </p>
               <p className="max-w-[30rem] font-medium">
-                <Trans i18nKey="fedapi.onboarding.description" />
+                Bring your own FREE Febbox account to unlock Aurora API — the best sources with 4K quality, Dolby Atmos, and the fastest load times.
+              </p>
+              <p className="max-w-[30rem] mt-2 text-sm text-type-secondary italic">
+                Aurora requires a Febbox token. Your token is never stored on our servers — it is sent directly from your browser to Febbox.
               </p>
             </div>
             <div>
@@ -389,23 +399,14 @@ export function FebboxSetup({
 
               <div className="my-3">
                 <p className="max-w-[30rem] font-medium">
-                  {t("fedapi.setup.title")}
+                  To get your Febbox token:
                   <br />
                   <div
-                    role="button"
-                    tabIndex={0}
                     onClick={() => setShowVideo(!showVideo)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        setShowVideo(!showVideo);
-                      }
-                    }}
-                    className="flex items-center justify-between p-1 px-2 my-2 w-fit border border-type-secondary rounded-lg cursor-pointer text-type-secondary hover:text-white transition-colors duration-200 outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
+                    className="flex items-center justify-between p-1 px-2 my-2 w-fit border border-type-secondary rounded-lg cursor-pointer text-type-secondary hover:text-white transition-colors duration-200"
                   >
                     <span className="text-sm">
-                      {showVideo
-                        ? t("fedapi.setup.hideVideo")
-                        : t("fedapi.setup.showVideo")}
+                      {showVideo ? "Hide Video Tutorial" : "Show Video Tutorial"}
                     </span>
                     {showVideo ? (
                       <Icon icon={Icons.CHEVRON_UP} className="pl-1" />
@@ -420,46 +421,34 @@ export function FebboxSetup({
                           src="https://player.vimeo.com/video/1059834885?h=c3ab398d42&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479"
                           allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
                           className="absolute top-0 left-0 w-full h-full border border-type-secondary rounded-lg bg-black"
-                          title="NEXUS FED API Setup Tutorial"
+                          title="Aurora API Setup Tutorial"
                         />
                       </div>
                       <br />
                     </>
                   )}
-                  <Trans i18nKey="fedapi.setup.step.1">
-                    <MwLink url="https://febbox.com" />
-                  </Trans>
+                  1. Go to <MwLink url="https://febbox.com">febbox.com</MwLink> and log in with Google (use a fresh account!)
                   <br />
-                  <Trans i18nKey="fedapi.setup.step.2" />
+                  2. Open DevTools or inspect the page
                   <br />
-                  <Trans i18nKey="fedapi.setup.step.3" />
+                  3. Go to Application tab &rarr; Cookies
                   <br />
-                  <Trans i18nKey="fedapi.setup.step.4" />{" "}
+                  4. Copy the &apos;ui&apos; cookie&apos;s value.{" "}
                   <button
                     type="button"
                     onClick={exampleModal.show}
                     className="text-type-link hover:text-type-linkHover"
-                    title={t(
-                      "fedapi.setup.tokenExample.button",
-                      "Token Example",
-                    )}
-                    aria-label={t(
-                      "fedapi.setup.tokenExample.button",
-                      "Token Example",
-                    )}
                   >
-                    <Trans i18nKey="fedapi.setup.tokenExample.button" />
+                    (Example)
                   </button>
                   <br />
-                  <Trans i18nKey="fedapi.setup.step.5" />
+                  5. Close the tab, but do NOT logout!
                 </p>
               </div>
 
               <Divider marginClass="my-6 px-8 box-content -mx-8" />
               <p className="text-white font-bold mb-3">
-                {mode === "settings"
-                  ? t("settings.connections.febbox.tokenLabel", "Token")
-                  : t("fedapi.setup.tokenLabel")}
+                Token
               </p>
               <div className="flex md:flex-row flex-col items-center w-full gap-4">
                 <div className="flex items-center w-full">
@@ -469,100 +458,80 @@ export function FebboxSetup({
                       setFebboxKey(newToken);
                     }}
                     value={febboxKey ?? ""}
-                    placeholder="eyJ0eXAi..."
+                    placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOi..."
                     passwordToggleable
                     className="flex-grow"
                   />
                 </div>
-                <div className="flex items-center">
-                  <RegionSelectorPart />
-                </div>
               </div>
               {status === "error" && (
                 <p className="text-type-danger mt-4">
-                  {t("fedapi.status.failure")}
+                  Failed to validate token. Please check your Febbox token.
                 </p>
               )}
               {status === "api_down" && (
                 <p className="text-type-danger mt-4">
-                  {t("fedapi.status.api_down")}
+                  Cannot reach Aurora API. Please try again later.
                 </p>
               )}
               {status === "invalid_token" && (
                 <p className="text-type-danger mt-4">
-                  {t("fedapi.status.invalid_token")}
+                  Your token is invalid or expired. Please get a new one from Febbox.
                 </p>
               )}
               {status === "success" &&
                 quota &&
                 (() => {
-                  if (!quota?.data?.flow) return null;
-                  const {
-                    traffic_usage: usedBytes,
-                    traffic_limit: limitBytes,
-                    reset_at: resetTimestamp,
-                  } = quota.data.flow;
-
-                  const used = `${(usedBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-                  const limit = `${(limitBytes / (1024 * 1024 * 1024)).toFixed(0)} GB`;
-
-                  const resetDate = new Date(resetTimestamp * 1000);
-                  const now = new Date();
-                  const diffTime = Math.abs(
-                    resetDate.getTime() - now.getTime(),
-                  );
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  const reset = `${diffDays} Days`;
-
+                  if (!quota?.traffic_today_usage) return null;
+                  const used = quota.traffic_today_usage;
+                  const limit = quota.traffic_limit;
+                  const reset = quota.reset_at;
                   return (
                     <>
                       <p className="text-sm text-green-500 mt-2">
-                        {t("fedapi.setup.traffic", { used, limit, reset })}
+                        {used} / {limit} High-speed Traffic (resets {reset})
                       </p>
                       <p className="max-w-[30rem] text-xs opacity-70 mt-2">
-                        {t("fedapi.setup.trafficExplanation")}
+                        Febbox gives you high-speed traffic per month. Streams may buffer more after you&apos;ve used your quota.
                       </p>
                     </>
                   );
                 })()}
+              <div className="flex justify-between items-center gap-4 mt-6">
+                <div className="my-3">
+                  <p className="max-w-[32rem] font-medium">
+                    Enable MP4 streams. May be faster outside of the U.S., but audio tracks cannot be changed.
+                  </p>
+                </div>
+                <div>
+                  <Toggle
+                    onClick={() =>
+                      preferences.setFebboxUseMp4(!preferences.febboxUseMp4)
+                    }
+                    enabled={preferences.febboxUseMp4}
+                  />
+                </div>
+              </div>
             </>
-          ) : null}
-          {/* MP4 Toggle */}
-          {isFebboxVisible && status === "success" ? (
-            <div className="flex justify-between items-center gap-4 mt-6">
-              <div className="my-3">
-                <p className="max-w-[32rem] font-medium">
-                  {t("fedapi.setup.useMp4")}
-                </p>
-              </div>
-              <div>
-                <Toggle
-                  onClick={() =>
-                    preferences.setFebboxUseMp4(!preferences.febboxUseMp4)
-                  }
-                  enabled={preferences.febboxUseMp4}
-                />
-              </div>
-            </div>
           ) : null}
         </SettingsCard>
         <Modal id={exampleModal.id}>
           <ModalCard>
             <Heading2 className="!mt-0 !mb-4 !text-2xl">
-              {t("fedapi.setup.tokenExample.title")}
+              Example Token
             </Heading2>
             <Paragraph className="!mt-1 !mb-6">
-              {t("fedapi.setup.tokenExample.description")}
+              This is what a Febbox UI token looks like:
             </Paragraph>
             <div className="bg-authentication-inputBg p-4 rounded-lg mb-6 font-mono text-sm break-all">
               eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NDc1MTI2MTksIm5iZiI6MTc0NzUxMjYxOSwiZXhwIjoxNzc4NjE2NjM5LCJkYXRhIjp7InVpZCI6NTI1NTc3LCsudujeI6IjE4NTQ4NmEwMzBjMGNlMWJjY2IzYWJjMjI2OTYwYzQ4dhdhs.qkuTF2aVPu54S0RFJS_ca7rlHuGz_Fe6kWkBydYQoCg
             </div>
             <Paragraph className="!mt-1 !mb-6 text-type-danger">
-              {t("fedapi.setup.tokenExample.warning")}
+              Don&apos;t try to use this — it&apos;s fake.
             </Paragraph>
             <div className="flex justify-end">
               <Button theme="secondary" onClick={exampleModal.hide}>
-                {t("fedapi.setup.tokenExample.close")}
+                Got it
               </Button>
             </div>
           </ModalCard>
@@ -735,61 +704,218 @@ export function DebridEdit({
   return null;
 }
 
-function TIDBEdit({ tidbKey, setTIDBKey }: TIDBEditProps) {
+export function TIDBEdit({ tidbKey, setTIDBKey }: TIDBKeyProps) {
+  const { t } = useTranslation();
+  const preferences = usePreferencesStore();
+  const initializedRef = useRef(false);
+
+  // Enable TIDB key when component loads
+  useEffect(() => {
+    if (!initializedRef.current && tidbKey === null && preferences.tidbKey) {
+      initializedRef.current = true;
+      setTIDBKey(preferences.tidbKey);
+    }
+  }, [tidbKey, preferences.tidbKey, setTIDBKey]);
+
   return (
-    <SettingsCard>
-      <div className="flex justify-between items-center gap-4">
-        <div className="my-3">
-          <p className="text-white font-bold mb-3">TIDB (The Intro DB)</p>
-          <p className="max-w-[30rem] font-medium">
-            API Key for The Intro DB integration.
-          </p>
-        </div>
-        <div>
-          <Toggle
-            onClick={() => setTIDBKey(tidbKey === null ? "" : null)}
-            enabled={tidbKey !== null}
-          />
-        </div>
-      </div>
-      {tidbKey !== null ? (
-        <>
-          <Divider marginClass="my-6 px-8 box-content -mx-8" />
-          <p className="text-white font-bold mb-3">API Key</p>
-          <AuthInputBox
-            onChange={setTIDBKey}
-            value={tidbKey}
-            placeholder="TIDB API Key"
-            passwordToggleable
-          />
-        </>
-      ) : null}
+    <SettingsCard paddingClass="px-5 py-4">
+      <p className="text-white font-bold mb-2">TheIntroDB</p>
+      <p className="font-medium text-sm mb-3 text-type-secondary">
+        <Trans i18nKey="settings.connections.tidb.description">
+          <MwLink to="https://theintrodb.org/" />
+        </Trans>
+      </p>
+      <p className="text-white font-bold mb-2 text-sm">
+        {t("settings.connections.tidb.tokenLabel")}
+      </p>
+      <AuthInputBox
+        onChange={(newToken) => {
+          setTIDBKey(newToken);
+        }}
+        value={tidbKey ?? ""}
+        placeholder="theintrodb:user..."
+        passwordToggleable
+        className="w-full"
+      />
     </SettingsCard>
   );
 }
 
-interface ConnectionsPartProps {
-  backendUrl: string | null;
-  setBackendUrl: Dispatch<SetStateAction<string | null>>;
-  proxyUrls: string[] | null;
-  setProxyUrls: Dispatch<SetStateAction<string[] | null>>;
-  febboxKey: string | null;
-  setFebboxKey: Dispatch<SetStateAction<string | null>>;
-  tidbKey: string | null;
-  setTIDBKey: Dispatch<SetStateAction<string | null>>;
-  proxyTmdb: boolean;
-  setProxyTmdb: Dispatch<SetStateAction<boolean>>;
+export function WyzieEdit() {
+  const wyzieKey = usePreferencesStore((s) => s.wyzieKey);
+  const setWyzieKey = usePreferencesStore((s) => s.setWyzieKey);
+  return (
+    <SettingsCard paddingClass="px-5 py-4">
+      <p className="text-white font-bold mb-2">Wyzie Subtitles</p>
+      <p className="font-medium text-sm mb-3 text-type-secondary">
+        Optional API key for better-synced subtitles. Stored only in your
+        browser. Get one at{" "}
+        <MwLink url="https://store.wyzie.io/redeem">
+          store.wyzie.io/redeem
+        </MwLink>
+        .
+      </p>
+      <p className="text-white font-bold mb-2 text-sm">API Key</p>
+      <AuthInputBox
+        onChange={(newKey) => {
+          setWyzieKey(newKey || null);
+        }}
+        value={wyzieKey ?? ""}
+        placeholder="wyzie-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        passwordToggleable
+        className="w-full"
+      />
+    </SettingsCard>
+  );
 }
 
-export function ConnectionsPart(props: ConnectionsPartProps) {
+export function TraktEdit() {
   const { t } = useTranslation();
+  const { user, status, logout, error } = useTraktStore();
+  const config = conf();
+
+  const connect = () => {
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: config.TRAKT_CLIENT_ID ?? "",
+      redirect_uri: config.TRAKT_REDIRECT_URI ?? "",
+    });
+    window.location.href = `https://trakt.tv/oauth/authorize?${params.toString()}`;
+  };
+
+  if (
+    !config.TRAKT_CLIENT_ID ||
+    !config.TRAKT_CLIENT_SECRET ||
+    !config.TRAKT_REDIRECT_URI
+  )
+    return null;
+
+  return (
+    <SettingsCard paddingClass="px-5 py-4">
+      <div className="flex flex-col h-full">
+        <p className="text-white font-bold mb-2">
+          {t("settings.connections.trakt.title")}
+        </p>
+        <p className="font-medium text-sm text-type-secondary mb-1">
+          {t("settings.connections.trakt.description")}
+        </p>
+        <p className="text-type-secondary text-xs mb-4">
+          {t("settings.connections.trakt.details")}
+        </p>
+        {error && <p className="text-type-danger text-sm mb-2">{error}</p>}
+        <div className="mt-auto">
+          {user ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                {user.images?.avatar?.full && (
+                  <img
+                    src={user.images.avatar.full}
+                    alt={user.username}
+                    className="w-7 h-7 rounded-full flex-shrink-0"
+                  />
+                )}
+                <span className="font-bold truncate">
+                  {user.name || user.username}
+                </span>
+              </div>
+              <Button theme="danger" onClick={logout}>
+                {t("settings.connections.trakt.disconnect")}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              theme="purple"
+              onClick={connect}
+              disabled={status === "syncing"}
+            >
+              {status === "syncing"
+                ? t("settings.connections.trakt.syncing")
+                : t("settings.connections.trakt.connect")}
+            </Button>
+          )}
+        </div>
+      </div>
+    </SettingsCard>
+  );
+}
+
+export function SimklEdit() {
+  const { user, status, logout, error } = useSimklStore();
+  const config = conf();
+
+  const connect = () => {
+    const url = simklService.getAuthUrl();
+    if (url) window.location.href = url;
+  };
+
+  if (
+    !config.SIMKL_CLIENT_ID ||
+    !config.SIMKL_CLIENT_SECRET ||
+    !config.SIMKL_REDIRECT_URI
+  )
+    return null;
+
+  const displayName = user?.user?.name;
+
+  return (
+    <SettingsCard paddingClass="px-5 py-4">
+      <div className="flex flex-col h-full">
+        <p className="text-white font-bold mb-2">Simkl</p>
+        <p className="font-medium text-sm text-type-secondary mb-1">
+          Sync your watchlist and history with Simkl.
+        </p>
+        <p className="text-type-secondary text-xs mb-4">
+          Syncing might take a few minutes. Local changes are prioritized on
+          conflict.
+        </p>
+        {error && <p className="text-type-danger text-sm mb-2">{error}</p>}
+        <div className="mt-auto">
+          {displayName ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                {user?.user?.avatar && (
+                  <img
+                    src={user.user.avatar}
+                    alt={displayName}
+                    className="w-7 h-7 rounded-full flex-shrink-0"
+                  />
+                )}
+                <span className="font-bold truncate">{displayName}</span>
+              </div>
+              <Button theme="danger" onClick={logout}>
+                Disconnect
+              </Button>
+            </div>
+          ) : (
+            <Button
+              theme="purple"
+              onClick={connect}
+              disabled={status === "syncing"}
+            >
+              {status === "syncing" ? "Connecting..." : "Connect Simkl"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </SettingsCard>
+  );
+}
+
+export function ConnectionsPart(
+  props: BackendEditProps &
+    ProxyEditProps &
+    FebboxKeyProps &
+    DebridProps &
+    TIDBKeyProps,
+) {
+  const { t } = useTranslation();
+  const isDesktopApp = useIsDesktopApp();
   return (
     <div>
       <Heading1 border>{t("settings.connections.title")}</Heading1>
       <div className="space-y-6">
         <SetupPart />
-        {/* Only show proxy settings if not hidden */}
-        {!conf().HIDE_PROXY_SETTINGS && (
+        {!isDesktopApp && (
           <ProxyEdit
             proxyUrls={props.proxyUrls}
             setProxyUrls={props.setProxyUrls}
@@ -806,30 +932,14 @@ export function ConnectionsPart(props: ConnectionsPartProps) {
           setFebboxKey={props.setFebboxKey}
           mode="settings"
         />
-        <TIDBEdit tidbKey={props.tidbKey} setTIDBKey={props.setTIDBKey} />
+        {/* Debrid section hidden per user request */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <TIDBEdit tidbKey={props.tidbKey} setTIDBKey={props.setTIDBKey} />
+          <WyzieEdit />
+          <TraktEdit />
+          <SimklEdit />
+        </div>
       </div>
     </div>
   );
 }
-ProxyEdit.propTypes = {
-  proxyUrls: PropTypes.arrayOf(PropTypes.string),
-  setProxyUrls: PropTypes.func.isRequired,
-  proxyTmdb: PropTypes.bool.isRequired,
-  setProxyTmdb: PropTypes.func.isRequired,
-};
-
-BackendEdit.propTypes = {
-  backendUrl: PropTypes.string,
-  setBackendUrl: PropTypes.func.isRequired,
-};
-
-FebboxSetup.propTypes = {
-  febboxKey: PropTypes.string,
-  setFebboxKey: PropTypes.func.isRequired,
-  mode: PropTypes.oneOf(["onboarding", "settings"]),
-};
-
-TIDBEdit.propTypes = {
-  tidbKey: PropTypes.string,
-  setTIDBKey: PropTypes.func.isRequired,
-};

@@ -6,11 +6,13 @@ import { Toggle } from "@/components/buttons/Toggle";
 import { Icon, Icons } from "@/components/Icon";
 import { useCaptions } from "@/components/player/hooks/useCaptions";
 import { Menu } from "@/components/player/internals/ContextMenu";
+import { useChromecastAvailable } from "@/hooks/useChromecastAvailable";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { usePlayerStore } from "@/stores/player/store";
 import { qualityToString } from "@/stores/player/utils/qualities";
 import { useQualityStore } from "@/stores/quality";
 import { useSubtitleStore } from "@/stores/subtitles";
+import { isSafari } from "@/utils/detectFeatures";
 import { getPrettyLanguageNameFromLocale } from "@/utils/language";
 
 export function SettingsMenu({ id }: { id: string }) {
@@ -73,8 +75,24 @@ export function SettingsMenu({ id }: { id: string }) {
     : undefined;
 
   const source = usePlayerStore((s) => s.source);
-
   const downloadable = source?.type === "file" || source?.type === "hls";
+
+  const display = usePlayerStore((s) => s.display);
+  const canAirplay = usePlayerStore((s) => s.interface.canAirplay);
+  const chromecastAvailable = useChromecastAvailable();
+  const isArtemis = currentSourceId === "artemis";
+  const castPlatformAvailable = !!chromecastAvailable || canAirplay || isSafari;
+
+  const requestCast = () => {
+    if (!isArtemis) return;
+    const ctx = (window as any).cast?.framework?.CastContext?.getInstance?.();
+    if (ctx?.requestSession) {
+      ctx.requestSession().catch(() => {});
+      return;
+    }
+
+    display?.startAirplay();
+  };
 
   return (
     <Menu.Card>
@@ -155,6 +173,23 @@ export function SettingsMenu({ id }: { id: string }) {
         >
           {t("player.menus.watchparty.watchpartyItem")}
         </Menu.Link>
+        {castPlatformAvailable ? (
+          <Menu.Link
+            clickable={isArtemis}
+            disabled={!isArtemis}
+            onClick={requestCast}
+            rightSide={<Icon className="text-xl" icon={Icons.CASTING} />}
+          >
+            <span className="flex flex-col">
+              {t("player.menus.settings.castItem", "Cast to Device")}
+              {!isArtemis && (
+                <span className="text-type-secondary text-xs">
+                  {t("player.menus.settings.castArtemisOnly", "Artemis only")}
+                </span>
+              )}
+            </span>
+          </Menu.Link>
+        ) : null}
       </Menu.Section>
       <Menu.SectionTitle />
       <Menu.Section>

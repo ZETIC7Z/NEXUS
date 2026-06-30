@@ -39,7 +39,7 @@ export function LanguageSubtitlesView({
       captions.filter((v) => {
         const name = getPrettyLanguageNameFromLocale(v.language) ?? v.language;
         const targetName =
-          (language ? getPrettyLanguageNameFromLocale(language) : "Unknown") ??
+          (language ? getPrettyLanguageNameFromLocale(language) : "English") ??
           language;
         return name === targetName;
       }),
@@ -57,7 +57,7 @@ export function LanguageSubtitlesView({
   );
 
   const prettyLanguageName = useMemo(
-    () => (language ? getPrettyLanguageNameFromLocale(language) : "Unknown"),
+    () => (language ? getPrettyLanguageNameFromLocale(language) : "English"),
     [language],
   );
 

@@ -11,6 +11,7 @@ import { Dropdown } from "@/components/form/Dropdown";
 import { SortableListWithToggles } from "@/components/form/SortableListWithToggles";
 import { Heading1 } from "@/components/utils/Text";
 import { appLanguageOptions } from "@/setup/i18n";
+import { useOverlayStack } from "@/stores/interface/overlayStack";
 import { usePreferencesStore } from "@/stores/preferences";
 import { isAutoplayAllowed } from "@/utils/autoplay";
 import { getLocaleInfo, sortLangCodes } from "@/utils/language";
@@ -72,6 +73,22 @@ export function PreferencesPart(props: {
   const enablePauseOverlay = usePreferencesStore((s) => s.enablePauseOverlay);
   const setEnablePauseOverlay = usePreferencesStore(
     (s) => s.setEnablePauseOverlay,
+  );
+
+  const { showModal } = useOverlayStack();
+
+  const enableGamepadControls = usePreferencesStore(
+    (s) => s.enableGamepadControls,
+  );
+  const setEnableGamepadControls = usePreferencesStore(
+    (s) => s.setEnableGamepadControls,
+  );
+
+  const enableAutoSubtitleSync = usePreferencesStore(
+    (s) => s.enableAutoSubtitleSync,
+  );
+  const setEnableAutoSubtitleSync = usePreferencesStore(
+    (s) => s.setEnableAutoSubtitleSync,
   );
 
   const allSources = useMemo(() => {
@@ -380,6 +397,82 @@ export function PreferencesPart(props: {
               <Toggle enabled={enablePauseOverlay} />
               <p className="flex-1 text-white font-bold">
                 {t("settings.preferences.pauseOverlayLabel", "Pause overlay")}
+              </p>
+            </div>
+          </div>
+
+          {/* Gamepad Controls Preference */}
+          <div>
+            <p className="text-white font-bold mb-3">
+              {t("settings.preferences.enableGamepadControls", "Controller Support")}
+            </p>
+            <p className="max-w-[25rem] font-medium">
+              {t("settings.preferences.enableGamepadControlsDescription", "Control the player using any connected game controller.")}
+            </p>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setEnableGamepadControls(!enableGamepadControls)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setEnableGamepadControls(!enableGamepadControls);
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
+            >
+              <Toggle enabled={enableGamepadControls} />
+              <p className="flex-1 text-white font-bold">
+                {t("settings.preferences.enableGamepadControlsLabel", "Enable controller support")}
+              </p>
+            </div>
+          </div>
+
+          {/* Customize Controls buttons */}
+          <div>
+            <p className="text-white font-bold mb-3">
+              {t("settings.preferences.keyboardShortcuts", "Customize Keybinds")}
+            </p>
+            <p className="max-w-[25rem] font-medium">
+              {t("settings.preferences.keyboardShortcutsDescription", "Customize keyboard shortcuts and game controller actions.")}
+            </p>
+            <div className="flex flex-wrap gap-2 my-4">
+              <Button
+                theme="secondary"
+                onClick={() => showModal("keyboard-commands-edit")}
+              >
+                {t("settings.preferences.keyboardShortcutsLabel", "Keyboard Shortcuts")}
+              </Button>
+              <Button
+                theme="secondary"
+                onClick={() => showModal("gamepad-controls-edit")}
+              >
+                {t("settings.preferences.gamepadControlsLabel", "Customize Controller Keybinds")}
+              </Button>
+            </div>
+          </div>
+
+          {/* Experimental Section */}
+          <div>
+            <p className="text-white font-bold mb-3">
+              {t("settings.preferences.experimentalSection", "Experimental")}
+            </p>
+            <p className="max-w-[25rem] font-medium">
+              {t("settings.preferences.autoSubtitleSyncDescription", "Automatically adjust subtitle delay to align with voice acting.")}
+            </p>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setEnableAutoSubtitleSync(!enableAutoSubtitleSync)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setEnableAutoSubtitleSync(!enableAutoSubtitleSync);
+                }
+              }}
+              className="bg-dropdown-background hover:bg-dropdown-hoverBackground select-none my-4 cursor-pointer space-x-3 flex items-center max-w-[25rem] py-3 px-4 rounded-lg outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))]"
+            >
+              <Toggle enabled={enableAutoSubtitleSync} />
+              <p className="flex-1 text-white font-bold">
+                {t("settings.preferences.autoSubtitleSyncLabel", "Auto subtitle sync")}
               </p>
             </div>
           </div>

@@ -35,6 +35,13 @@ interface Config {
   BANNER_MESSAGE: string;
   BANNER_ID: string;
   USE_TRAKT: boolean;
+  TRAKT_CLIENT_ID: string;
+  TRAKT_CLIENT_SECRET: string;
+  TRAKT_REDIRECT_URI: string;
+  USE_SIMKL: boolean;
+  SIMKL_CLIENT_ID: string;
+  SIMKL_CLIENT_SECRET: string;
+  SIMKL_REDIRECT_URI: string;
   HIDE_PROXY_ONBOARDING: boolean;
   SHOW_SUPPORT_BAR: boolean;
   SUPPORT_BAR_VALUE: string;
@@ -53,6 +60,7 @@ export interface RuntimeConfig {
   NORMAL_ROUTER: boolean;
   PROXY_URLS: string[];
   M3U8_PROXY_URLS: string[];
+  BACKEND_URLS: string[];
   BACKEND_URL: string | null;
   DISALLOWED_IDS: string[];
   TURNSTILE_KEY: string | null;
@@ -70,6 +78,13 @@ export interface RuntimeConfig {
   BANNER_MESSAGE: string | null;
   BANNER_ID: string | null;
   USE_TRAKT: boolean;
+  TRAKT_CLIENT_ID: string | null;
+  TRAKT_CLIENT_SECRET: string | null;
+  TRAKT_REDIRECT_URI: string | null;
+  USE_SIMKL: boolean;
+  SIMKL_CLIENT_ID: string | null;
+  SIMKL_CLIENT_SECRET: string | null;
+  SIMKL_REDIRECT_URI: string | null;
   HIDE_PROXY_ONBOARDING: boolean;
   SHOW_SUPPORT_BAR: boolean;
   SUPPORT_BAR_VALUE: string;
@@ -107,6 +122,13 @@ const env: Record<keyof Config, undefined | string> = {
   BANNER_MESSAGE: import.meta.env.VITE_BANNER_MESSAGE,
   BANNER_ID: import.meta.env.VITE_BANNER_ID,
   USE_TRAKT: import.meta.env.VITE_USE_TRAKT,
+  TRAKT_CLIENT_ID: import.meta.env.VITE_TRAKT_CLIENT_ID,
+  TRAKT_CLIENT_SECRET: import.meta.env.VITE_TRAKT_CLIENT_SECRET,
+  TRAKT_REDIRECT_URI: import.meta.env.VITE_TRAKT_REDIRECT_URI,
+  USE_SIMKL: import.meta.env.VITE_USE_SIMKL,
+  SIMKL_CLIENT_ID: import.meta.env.VITE_SIMKL_CLIENT_ID,
+  SIMKL_CLIENT_SECRET: import.meta.env.VITE_SIMKL_CLIENT_SECRET,
+  SIMKL_REDIRECT_URI: import.meta.env.VITE_SIMKL_REDIRECT_URI,
   HIDE_PROXY_ONBOARDING: import.meta.env.VITE_HIDE_PROXY_ONBOARDING,
   SHOW_SUPPORT_BAR: import.meta.env.VITE_SHOW_SUPPORT_BAR,
   SUPPORT_BAR_VALUE: import.meta.env.VITE_SUPPORT_BAR_VALUE,
@@ -149,7 +171,24 @@ export function conf(): RuntimeConfig {
       "https://docs.pstream.mov/extension",
     ),
     ONBOARDING_PROXY_INSTALL_LINK: getKey("ONBOARDING_PROXY_INSTALL_LINK"),
-    BACKEND_URL: getKey("BACKEND_URL", BACKEND_URL),
+    BACKEND_URLS: getKey("BACKEND_URL", BACKEND_URL)
+      ? getKey("BACKEND_URL", BACKEND_URL)
+          .split(",")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0)
+      : [],
+    BACKEND_URL: (() => {
+      const backendUrlValue = getKey("BACKEND_URL", BACKEND_URL);
+      if (!backendUrlValue) return backendUrlValue;
+      if (backendUrlValue.includes(",")) {
+        const urls = backendUrlValue
+          .split(",")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+        return urls.length > 0 ? urls[0] : backendUrlValue;
+      }
+      return backendUrlValue;
+    })(),
     TMDB_READ_API_KEY: getKey("TMDB_READ_API_KEY"),
     PROXY_URLS: getKey("CORS_PROXY_URL", "")
       .split(",")
@@ -188,6 +227,13 @@ export function conf(): RuntimeConfig {
     BANNER_MESSAGE: getKey("BANNER_MESSAGE"),
     BANNER_ID: getKey("BANNER_ID"),
     USE_TRAKT: getKey("USE_TRAKT", "false") === "true",
+    TRAKT_CLIENT_ID: getKey("TRAKT_CLIENT_ID"),
+    TRAKT_CLIENT_SECRET: getKey("TRAKT_CLIENT_SECRET"),
+    TRAKT_REDIRECT_URI: getKey("TRAKT_REDIRECT_URI"),
+    USE_SIMKL: getKey("USE_SIMKL", "false") === "true",
+    SIMKL_CLIENT_ID: getKey("SIMKL_CLIENT_ID"),
+    SIMKL_CLIENT_SECRET: getKey("SIMKL_CLIENT_SECRET"),
+    SIMKL_REDIRECT_URI: getKey("SIMKL_REDIRECT_URI"),
     HIDE_PROXY_ONBOARDING: getKey("HIDE_PROXY_ONBOARDING", "false") === "true",
     SHOW_SUPPORT_BAR: getKey("SHOW_SUPPORT_BAR", "false") === "true",
     SUPPORT_BAR_VALUE: getKey("SUPPORT_BAR_VALUE") ?? "",

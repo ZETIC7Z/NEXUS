@@ -158,6 +158,7 @@ export declare const flags: {
     readonly IP_LOCKED: "ip-locked";
     readonly CF_BLOCKED: "cf-blocked";
     readonly PROXY_BLOCKED: "proxy-blocked";
+    readonly MKV_REQUIRED: "mkv-required";
 };
 
 export declare type FullScraperEvents = {

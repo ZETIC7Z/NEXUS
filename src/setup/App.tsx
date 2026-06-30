@@ -15,6 +15,8 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AutoPWAInstallPrompt } from "@/components/AutoPWAInstallPrompt";
 import { DetailsModal } from "@/components/overlays/detailsModal";
 import { DisclaimerModal } from "@/components/overlays/DisclaimerModal";
+import { GamepadControlsModal } from "@/components/overlays/GamepadControlsModal";
+import { KeyboardCommandsEditModal } from "@/components/overlays/KeyboardCommandsEditModal";
 import { KeyboardCommandsModal } from "@/components/overlays/KeyboardCommandsModal";
 import { NotificationModal } from "@/components/overlays/notificationsModal";
 import { PartnersModal } from "@/components/overlays/PartnersModal";
@@ -148,6 +150,8 @@ function App() {
       <DetailsModal id="details" />
       <DetailsModal id="discover-details" />
       <DetailsModal id="player-details" />
+      <GamepadControlsModal id="gamepad-controls-edit" />
+      <KeyboardCommandsEditModal id="keyboard-commands-edit" />
       {!showDowntime && (
         <Routes>
           {/* Public routes - no auth required */}

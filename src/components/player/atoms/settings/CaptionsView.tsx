@@ -249,7 +249,8 @@ export function useSubtitleList(subs: CaptionListItem[], searchQuery: string) {
 
       return {
         ...t,
-        languageName: languageName ?? unknownChoice,
+        source: t.source || "opensubs",
+        languageName: languageName ?? "English",
       };
     });
 

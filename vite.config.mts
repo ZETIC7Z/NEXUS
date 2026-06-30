@@ -30,6 +30,12 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "localhost",
       port: 5173,
+      proxy: {
+        '/api': {
+          target: 'https://mirurotvapi.vercel.app',
+          changeOrigin: true,
+        }
+      }
     },
 
     plugins: [

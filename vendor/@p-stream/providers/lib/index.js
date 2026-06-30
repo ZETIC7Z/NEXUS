@@ -1,10 +1,10 @@
 import * as cheerio from "cheerio";
 import { load } from "cheerio";
+import ISO6391 from "iso-639-1";
 import { customAlphabet } from "nanoid";
 import * as unpacker from "unpacker";
 import { unpack as unpack$2 } from "unpacker";
-import crypto$1 from "crypto-js";
-import ISO6391 from "iso-639-1";
+import CryptoJS from "crypto-js";
 import Fuse from "fuse.js";
 import { parse, stringify } from "hls-parser";
 import FormData from "form-data";
@@ -94,7 +94,10 @@ const flags = {
   CF_BLOCKED: "cf-blocked",
   // Streams and sources with this flag wont be proxied
   // And will be exclusive to the extension
-  PROXY_BLOCKED: "proxy-blocked"
+  PROXY_BLOCKED: "proxy-blocked",
+  // The stream is MKV format and requires a player that supports it.
+  // Most browsers cannot play MKV; native/desktop/mobile apps with proper players can.
+  MKV_REQUIRED: "mkv-required"
 };
 const targets = {
   // browser with CORS restrictions
@@ -109,11 +112,11 @@ const targets = {
 const targetToFeatures = {
   browser: {
     requires: [flags.CORS_ALLOWED],
-    disallowed: []
+    disallowed: [flags.MKV_REQUIRED]
   },
   "browser-extension": {
     requires: [],
-    disallowed: []
+    disallowed: [flags.MKV_REQUIRED]
   },
   native: {
     requires: [],
@@ -121,7 +124,7 @@ const targetToFeatures = {
   },
   any: {
     requires: [],
-    disallowed: []
+    disallowed: [flags.MKV_REQUIRED]
   }
 };
 function getTargetFeatures(target, consistentIpForRequests, proxyStreams) {
@@ -137,8 +140,8 @@ function flagsAllowedInFeatures(features, inputFlags) {
   if (hasDisallowedFlag) return false;
   return true;
 }
-const DEFAULT_PROXY_URL = "https://proxy.nsbx.ru/proxy";
-let CONFIGURED_M3U8_PROXY_URL = "https://proxy.pstream.mov";
+const DEFAULT_PROXY_URL = "https://proxy.example.com";
+let CONFIGURED_M3U8_PROXY_URL = "https://proxy.example.com";
 function setM3U8ProxyUrl(proxyUrl) {
   CONFIGURED_M3U8_PROXY_URL = proxyUrl;
 }
@@ -209,7 +212,7 @@ function makeEmbed(state) {
     mediaTypes: void 0
   };
 }
-async function comboScraper$t(ctx) {
+async function comboScraper$z(ctx) {
   const embedPage = await ctx.proxiedFetcher(
     `https://bombthe.irish/embed/${ctx.media.type === "movie" ? `movie/${ctx.media.tmdbId}` : `tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`}`
   );
@@ -228,8 +231,8 @@ const bombtheirishScraper = makeSourcerer({
   rank: 100,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$t,
-  scrapeShow: comboScraper$t
+  scrapeMovie: comboScraper$z,
+  scrapeShow: comboScraper$z
 });
 const providers$5 = [
   {
@@ -429,7 +432,8 @@ async function validatePlayableStream(stream, ops, sourcererId) {
           headers: {
             ...stream.preferredHeaders,
             ...stream.headers
-          }
+          },
+          signal: AbortSignal.timeout(2e4)
         });
         result = {
           statusCode: response.status,
@@ -440,13 +444,22 @@ async function validatePlayableStream(stream, ops, sourcererId) {
         return null;
       }
     } else {
-      result = await ops.proxiedFetcher.full(stream.playlist, {
-        method: "GET",
-        headers: {
-          ...stream.preferredHeaders,
-          ...stream.headers
-        }
-      });
+      try {
+        result = await Promise.race([
+          ops.proxiedFetcher.full(stream.playlist, {
+            method: "GET",
+            headers: {
+              ...stream.preferredHeaders,
+              ...stream.headers
+            }
+          }),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Timeout")), 2e4);
+          })
+        ]);
+      } catch {
+        return null;
+      }
     }
     if (result.statusCode < 200 || result.statusCode >= 400 || isErrorResponse(result)) return null;
     return stream;
@@ -463,7 +476,8 @@ async function validatePlayableStream(stream, ops, sourcererId) {
                 ...stream.preferredHeaders,
                 ...stream.headers,
                 Range: "bytes=0-1"
-              }
+              },
+              signal: AbortSignal.timeout(2e4)
             });
             return {
               statusCode: response.status,
@@ -474,14 +488,23 @@ async function validatePlayableStream(stream, ops, sourcererId) {
             return { statusCode: 500, body: "", finalUrl: quality.url };
           }
         }
-        return ops.proxiedFetcher.full(quality.url, {
-          method: "GET",
-          headers: {
-            ...stream.preferredHeaders,
-            ...stream.headers,
-            Range: "bytes=0-1"
-          }
-        });
+        try {
+          return await Promise.race([
+            ops.proxiedFetcher.full(quality.url, {
+              method: "GET",
+              headers: {
+                ...stream.preferredHeaders,
+                ...stream.headers,
+                Range: "bytes=0-1"
+              }
+            }),
+            new Promise((_, reject) => {
+              setTimeout(() => reject(new Error("Timeout")), 2e4);
+            })
+          ]);
+        } catch {
+          return { statusCode: 500, body: "", finalUrl: quality.url };
+        }
       })
     );
     const validQualities = stream.qualities;
@@ -592,7 +615,7 @@ function reorderOnIdList(order, list) {
   return copy;
 }
 async function runAllProviders(list, ops) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
   const sources = reorderOnIdList(ops.sourceOrder ?? [], list.sources).filter((source) => {
     if (ops.media.type === "movie") return !!source.scrapeMovie;
     if (ops.media.type === "show") return !!source.scrapeShow;
@@ -654,19 +677,30 @@ async function runAllProviders(list, ops) {
     }
     if (!output) throw new Error("Invalid media type");
     if ((_h = output.stream) == null ? void 0 : _h[0]) {
-      const playableStream = await validatePlayableStream(output.stream[0], ops, source.id);
-      if (!playableStream) throw new NotFoundError("No streams found");
-      return {
-        sourceId: source.id,
-        stream: playableStream
-      };
+      try {
+        const playableStream = await validatePlayableStream(output.stream[0], ops, source.id);
+        if (!playableStream) throw new NotFoundError("No streams found");
+        return {
+          sourceId: source.id,
+          stream: playableStream
+        };
+      } catch (error) {
+        const updateParams = {
+          id: source.id,
+          percentage: 100,
+          status: error instanceof NotFoundError ? "notfound" : "failure",
+          reason: error instanceof NotFoundError ? error.message : "Stream validation failed",
+          error: error instanceof NotFoundError ? void 0 : error
+        };
+        (_j = (_i = ops.events) == null ? void 0 : _i.update) == null ? void 0 : _j.call(_i, updateParams);
+      }
     }
     const sortedEmbeds = output.embeds.filter((embed2) => {
       const e = list.embeds.find((v) => v.id === embed2.embedId);
       return e && !e.disabled;
     }).sort((a, b) => embedIds.indexOf(a.embedId) - embedIds.indexOf(b.embedId));
     if (sortedEmbeds.length > 0) {
-      (_j = (_i = ops.events) == null ? void 0 : _i.discoverEmbeds) == null ? void 0 : _j.call(_i, {
+      (_l = (_k = ops.events) == null ? void 0 : _k.discoverEmbeds) == null ? void 0 : _l.call(_k, {
         embeds: sortedEmbeds.map((embed2, i) => ({
           id: [source.id, i].join("-"),
           embedScraperId: embed2.embedId
@@ -678,7 +712,7 @@ async function runAllProviders(list, ops) {
       const scraper = embeds.find((v) => v.id === embed2.embedId);
       if (!scraper) throw new Error("Invalid embed returned");
       const id = [source.id, ind].join("-");
-      (_l = (_k = ops.events) == null ? void 0 : _k.start) == null ? void 0 : _l.call(_k, id);
+      (_n = (_m = ops.events) == null ? void 0 : _m.start) == null ? void 0 : _n.call(_m, id);
       lastId = id;
       let embedOutput;
       try {
@@ -704,7 +738,7 @@ async function runAllProviders(list, ops) {
           reason: error instanceof NotFoundError ? error.message : void 0,
           error: error instanceof NotFoundError ? void 0 : error
         };
-        (_n = (_m = ops.events) == null ? void 0 : _m.update) == null ? void 0 : _n.call(_m, updateParams);
+        (_p = (_o = ops.events) == null ? void 0 : _o.update) == null ? void 0 : _p.call(_o, updateParams);
         continue;
       }
       return {
@@ -757,6 +791,575 @@ function makeControls(ops) {
     }
   };
 }
+const captionTypes = {
+  srt: "srt",
+  vtt: "vtt"
+};
+function getCaptionTypeFromUrl(url) {
+  const extensions = Object.keys(captionTypes);
+  const type = extensions.find((v) => url.endsWith(`.${v}`));
+  if (!type) return null;
+  return type;
+}
+function labelToLanguageCode(label) {
+  const languageMap = {
+    "chinese - hong kong": "zh",
+    "chinese - traditional": "zh",
+    czech: "cs",
+    danish: "da",
+    dutch: "nl",
+    english: "en",
+    "english - sdh": "en",
+    finnish: "fi",
+    french: "fr",
+    german: "de",
+    greek: "el",
+    hungarian: "hu",
+    italian: "it",
+    korean: "ko",
+    norwegian: "no",
+    polish: "pl",
+    portuguese: "pt",
+    "portuguese - brazilian": "pt",
+    romanian: "ro",
+    "spanish - european": "es",
+    "spanish - latin american": "es",
+    spanish: "es",
+    swedish: "sv",
+    turkish: "tr",
+    اَلْعَرَبِيَّةُ: "ar",
+    বাংলা: "bn",
+    filipino: "tl",
+    indonesia: "id",
+    اردو: "ur",
+    English: "en",
+    Arabic: "ar",
+    Bosnian: "bs",
+    Bulgarian: "bg",
+    Croatian: "hr",
+    Czech: "cs",
+    Danish: "da",
+    Dutch: "nl",
+    Estonian: "et",
+    Finnish: "fi",
+    French: "fr",
+    German: "de",
+    Greek: "el",
+    Hebrew: "he",
+    Hungarian: "hu",
+    Indonesian: "id",
+    Italian: "it",
+    Norwegian: "no",
+    Persian: "fa",
+    "farsi/persian": "fa",
+    Polish: "pl",
+    Portuguese: "pt",
+    "Protuguese (BR)": "pt-br",
+    Romanian: "ro",
+    Russian: "ru",
+    russian: "ru",
+    Serbian: "sr",
+    Slovenian: "sl",
+    Spanish: "es",
+    Swedish: "sv",
+    Thai: "th",
+    Turkish: "tr",
+    // Simple language codes
+    ng: "en",
+    re: "fr",
+    pa: "es"
+  };
+  const mappedCode = languageMap[label.toLowerCase()];
+  if (mappedCode) return mappedCode;
+  const code = ISO6391.getCode(label);
+  if (code.length === 0) return null;
+  return code;
+}
+function removeDuplicatedLanguages(list) {
+  const beenSeen = {};
+  return list.filter((sub) => {
+    if (beenSeen[sub.language]) return false;
+    beenSeen[sub.language] = true;
+    return true;
+  });
+}
+const AnimekaiScraper = makeEmbed({
+  id: "animekai-embed",
+  name: "AnimeKai",
+  rank: 415,
+  flags: [],
+  async scrape(ctx) {
+    var _a;
+    const { episodeId } = JSON.parse(ctx.url);
+    const data = await ctx.fetcher(
+      `https://api.1anime.app/anime/animekai/watch/${encodeURIComponent(episodeId)}`
+    );
+    if (!((_a = data == null ? void 0 : data.sources) == null ? void 0 : _a.length)) throw new NotFoundError("No stream found");
+    ctx.progress(50);
+    const captions = (data.subtitles ?? []).filter((sub) => sub.lang && sub.kind !== "thumbnails").map((sub) => ({
+      type: "vtt",
+      id: sub.url,
+      url: sub.url,
+      language: labelToLanguageCode(sub.lang.replace(/_\[.*?\]$/, "").trim()) || "unknown",
+      hasCorsRestrictions: true
+    }));
+    const hlsSource = data.sources.find((s) => s.isM3U8);
+    if (!hlsSource) throw new NotFoundError("No HLS stream found");
+    ctx.progress(90);
+    const headers2 = {};
+    if (data.headers.Referer) {
+      headers2.Referer = data.headers.Referer;
+      try {
+        headers2.Origin = new URL(data.headers.Referer).origin;
+      } catch {
+      }
+    }
+    if (data.headers.Origin) headers2.Origin = data.headers.Origin;
+    return {
+      stream: [
+        {
+          id: "primary",
+          captions,
+          playlist: hlsSource.url,
+          headers: headers2,
+          type: "hls",
+          flags: []
+        }
+      ]
+    };
+  }
+});
+const consumetBase = "https://api.1anime.app/anime/animekai";
+function normalizeTitle$6(s) {
+  return s.normalize("NFD").replace(new RegExp("\\p{Diacritic}", "gu"), "").toLowerCase();
+}
+async function searchAnime(ctx, title) {
+  var _a;
+  const data = await ctx.fetcher(`${consumetBase}/${encodeURIComponent(title)}`);
+  if (!((_a = data == null ? void 0 : data.results) == null ? void 0 : _a.length)) throw new NotFoundError("Anime not found on AnimeKai");
+  const normalizedTitle = normalizeTitle$6(title);
+  const exact = data.results.find((r) => normalizeTitle$6(r.title) === normalizedTitle);
+  return (exact ?? data.results[0]).id;
+}
+async function scrapeAnimekai(ctx) {
+  var _a;
+  const title = ctx.media.title;
+  const episodeNumber = ctx.media.episode.number;
+  const animeId = await searchAnime(ctx, title);
+  const info = await ctx.fetcher(`${consumetBase}/info?id=${animeId}`);
+  if (!((_a = info == null ? void 0 : info.episodes) == null ? void 0 : _a.length)) throw new NotFoundError("No episodes found on AnimeKai");
+  const ep = info.episodes.find((e) => e.number === episodeNumber);
+  if (!ep) throw new NotFoundError("Episode not found on AnimeKai");
+  return {
+    embeds: [{ embedId: "animekai-embed", url: JSON.stringify({ episodeId: ep.id }) }]
+  };
+}
+const animekaiScraper = makeSourcerer({
+  id: "animekai",
+  name: "AnimeKai 🔥",
+  rank: 180,
+  flags: [],
+  scrapeShow: scrapeAnimekai
+});
+function loadTurnstileScript() {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) {
+      resolve();
+      return;
+    }
+    if (document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) {
+      const checkLoaded = () => {
+        if (window.turnstile) {
+          resolve();
+        } else {
+          setTimeout(checkLoaded, 100);
+        }
+      };
+      checkLoaded();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Turnstile script"));
+    document.head.appendChild(script);
+  });
+}
+async function getTurnstileToken(sitekey, timeout = 3e4) {
+  if (typeof window === "undefined") {
+    throw new Error("Turnstile verification requires browser environment");
+  }
+  try {
+    await loadTurnstileScript();
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    container.style.width = "1px";
+    container.style.height = "1px";
+    container.style.overflow = "hidden";
+    container.style.opacity = "0";
+    container.style.pointerEvents = "none";
+    document.body.appendChild(container);
+    return new Promise((resolve, reject) => {
+      let widgetId;
+      let timeoutId;
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (widgetId && window.turnstile) {
+          try {
+            window.turnstile.remove(widgetId);
+          } catch (e) {
+          }
+        }
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+      };
+      timeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error("Turnstile verification timed out"));
+      }, timeout);
+      try {
+        widgetId = window.turnstile.render(container, {
+          sitekey,
+          callback: (token) => {
+            cleanup();
+            resolve(token);
+          },
+          "error-callback": (error) => {
+            cleanup();
+            reject(new Error(`Turnstile error: ${error}`));
+          },
+          "expired-callback": () => {
+            cleanup();
+            reject(new Error("Turnstile token expired"));
+          },
+          "timeout-callback": () => {
+            cleanup();
+            reject(new Error("Turnstile verification timed out"));
+          }
+        });
+      } catch (error) {
+        cleanup();
+        reject(new Error(`Failed to render Turnstile widget: ${error}`));
+      }
+    });
+  } catch (error) {
+    throw new Error(`Turnstile verification failed: ${error}`);
+  }
+}
+const getUserToken$2 = () => {
+  var _a;
+  try {
+    if (typeof window === "undefined") return null;
+    const prefData = window.localStorage.getItem("__MW::preferences");
+    if (!prefData) return null;
+    const parsedAuth = JSON.parse(prefData);
+    return ((_a = parsedAuth == null ? void 0 : parsedAuth.state) == null ? void 0 : _a.febboxKey) || null;
+  } catch (e) {
+    console.warn("Unable to access localStorage or parse auth data:", e);
+    return null;
+  }
+};
+const BASE_URL$3 = "https://mznxiwqjdiq00239q.space";
+async function comboScraper$y(ctx) {
+  var _a;
+  const userToken = getUserToken$2();
+  if (!userToken) throw new NotFoundError("Requires a user token!");
+  let turnstileToken;
+  try {
+    turnstileToken = await getTurnstileToken("0x4AAAAAABgPwhrOT6x6sTjI");
+  } catch (error) {
+    alert("FED API Turnstile verification failed. Please refresh the page and try again.");
+    throw new NotFoundError(`Turnstile verification failed: ${error}`);
+  }
+  ctx.progress(50);
+  const name = ctx.media.title;
+  let apiUrl2 = `${BASE_URL$3}/fedapi?name=${encodeURIComponent(name)}&year=${ctx.media.releaseYear}&ui=${encodeURIComponent(userToken)}`;
+  if (ctx.media.type === "show") {
+    apiUrl2 += `&season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
+  }
+  const res = await fetch(apiUrl2, { credentials: "omit" });
+  if (!res.ok) throw new NotFoundError("API request failed");
+  const data = await res.json();
+  if ((data == null ? void 0 : data.error) && data.error.endsWith("not found in database")) {
+    throw new NotFoundError("No stream found");
+  }
+  if (!data) throw new NotFoundError("No response from API");
+  ctx.progress(90);
+  const streams = Object.entries(data.streams).reduce((acc, [quality, entry]) => {
+    const url = typeof entry === "string" ? entry : entry.url;
+    const type = typeof entry === "string" ? "mp4" : entry.type;
+    let qualityKey;
+    if (quality === "ORG") {
+      const urlPath = url.split("?")[0];
+      if (urlPath.toLowerCase().includes(".mp4") || type === "hls") {
+        acc.unknown = { url, type };
+      }
+      return acc;
+    }
+    if (quality === "4K") {
+      qualityKey = 2160;
+    } else {
+      qualityKey = parseInt(quality.replace("P", ""), 10);
+    }
+    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
+    acc[qualityKey] = { url, type };
+    return acc;
+  }, {});
+  const captions = [];
+  if (data.subtitles) {
+    for (const [langKey, subtitleData] of Object.entries(data.subtitles)) {
+      const languageKeyPart = langKey.split("_")[0];
+      const languageName = languageKeyPart.charAt(0).toUpperCase() + languageKeyPart.slice(1);
+      const languageCode = ((_a = labelToLanguageCode(languageName)) == null ? void 0 : _a.toLowerCase()) ?? "unknown";
+      if (subtitleData.subtitle_link) {
+        const url = subtitleData.subtitle_link;
+        const isVtt = url.toLowerCase().endsWith(".vtt");
+        captions.push({
+          type: isVtt ? "vtt" : "srt",
+          id: url,
+          url,
+          language: languageCode,
+          hasCorsRestrictions: false
+        });
+      }
+    }
+  }
+  ctx.progress(90);
+  const hlsStream = streams[2160] ?? streams[1080] ?? streams[720] ?? streams[480] ?? streams[360] ?? streams.unknown;
+  if ((hlsStream == null ? void 0 : hlsStream.type) === "hls") {
+    return {
+      embeds: [],
+      stream: [
+        {
+          id: "primary",
+          captions,
+          playlist: hlsStream.url,
+          type: "hls",
+          flags: [flags.CORS_ALLOWED]
+        }
+      ]
+    };
+  }
+  return {
+    embeds: [],
+    stream: [
+      {
+        id: "primary",
+        captions,
+        qualities: {
+          ...streams[2160] && { "4k": { type: "mp4", url: streams[2160].url } },
+          ...streams[1080] && { 1080: { type: "mp4", url: streams[1080].url } },
+          ...streams[720] && { 720: { type: "mp4", url: streams[720].url } },
+          ...streams[480] && { 480: { type: "mp4", url: streams[480].url } },
+          ...streams[360] && { 360: { type: "mp4", url: streams[360].url } },
+          ...streams.unknown && { unknown: { type: "mp4", url: streams.unknown.url } }
+        },
+        type: "file",
+        flags: [flags.CORS_ALLOWED]
+      }
+    ]
+  };
+}
+const FedAPIScraper = makeSourcerer({
+  id: "fedapi",
+  name: "FED API (4K) 🔥",
+  rank: 300,
+  flags: [flags.CORS_ALLOWED],
+  scrapeMovie: comboScraper$y,
+  scrapeShow: comboScraper$y
+});
+const getUserToken$1 = () => {
+  var _a;
+  try {
+    if (typeof window === "undefined") return null;
+    const prefData = window.localStorage.getItem("__MW::preferences");
+    if (!prefData) return null;
+    const parsedAuth = JSON.parse(prefData);
+    return ((_a = parsedAuth == null ? void 0 : parsedAuth.state) == null ? void 0 : _a.febboxKey) || null;
+  } catch (e) {
+    console.warn("Unable to access localStorage or parse auth data:", e);
+    return null;
+  }
+};
+const getRegion = () => {
+  var _a;
+  try {
+    if (typeof window === "undefined") return null;
+    const regionData = window.localStorage.getItem("__MW::region");
+    if (!regionData) return null;
+    const parsed = JSON.parse(regionData);
+    return ((_a = parsed == null ? void 0 : parsed.state) == null ? void 0 : _a.region) ?? null;
+  } catch (e) {
+    console.warn("Unable to access localStorage or parse auth data:", e);
+    return null;
+  }
+};
+const BASE_URL$2 = "https://fed-api-db.pstream.mov";
+function selectSubdomainByRegion(input) {
+  const region = (input || "").toLowerCase();
+  if (/(^|\b)(usa5|usa6|usa7|uk1|de2|hk1|ca1|au1|sg1|in1)(\b|$)/.test(region)) {
+    const match = region.match(/(usa5|usa6|usa7|uk1|de2|hk1|ca1|au1|sg1|in1)/);
+    if (match) return match[1];
+  }
+  if (region.includes("dallas")) return "usa5";
+  if (region.includes("portland")) return "usa6";
+  if (region.includes("new-york")) return "usa7";
+  if (region.includes("paris")) return Math.random() < 0.5 ? "uk1" : "de2";
+  if (region.includes("hong-kong")) return "hk1";
+  if (region.includes("kansas")) return Math.random() < 0.5 ? "usa7" : "usa6";
+  if (region.includes("sydney")) return "au1";
+  if (region.includes("singapore")) return "sg1";
+  if (region.includes("mumbai")) return "in1";
+  if (region === "east") return "usa7";
+  if (region === "west") return "usa6";
+  if (region === "south") return "usa5";
+  if (region === "europe") return Math.random() < 0.5 ? "uk1" : "de2";
+  if (region === "asia") return "sg1";
+  return null;
+}
+function rewriteSheguSubdomain(originalUrl, subdomain) {
+  try {
+    const parsed = new URL(originalUrl);
+    if (parsed.hostname.endsWith(".shegu.net")) {
+      parsed.hostname = `${subdomain}.shegu.net`;
+      return parsed.toString();
+    }
+    return originalUrl;
+  } catch {
+    return originalUrl;
+  }
+}
+async function comboScraper$x(ctx) {
+  var _a;
+  const userToken = getUserToken$1();
+  if (!userToken) throw new NotFoundError("Requires a user token!");
+  const region = getRegion();
+  let turnstileToken;
+  try {
+    turnstileToken = await getTurnstileToken("0x4AAAAAABgPwhrOT6x6sTjI");
+  } catch (error) {
+    alert("FED DB Turnstile verification failed. Please refresh the page and try again.");
+    throw new NotFoundError(`Turnstile verification failed: ${error}`);
+  }
+  ctx.progress(50);
+  const apiUrl2 = ctx.media.type === "movie" ? `${BASE_URL$2}/movie/${ctx.media.tmdbId}` : `${BASE_URL$2}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+  const data = await ctx.fetcher(apiUrl2);
+  if ((data == null ? void 0 : data.error) && data.error.endsWith("not found in database")) {
+    throw new NotFoundError("No stream found");
+  }
+  if (!data) throw new NotFoundError("No response from API");
+  ctx.progress(90);
+  const streams = Object.entries(data.streams).reduce((acc, [quality, url]) => {
+    let qualityKey;
+    if (quality === "ORG") {
+      const urlPath = url.split("?")[0];
+      if (urlPath.toLowerCase().includes(".mp4")) {
+        acc.unknown = url;
+      }
+      return acc;
+    }
+    if (quality === "4K") {
+      qualityKey = 2160;
+    } else {
+      qualityKey = parseInt(quality.replace("P", ""), 10);
+    }
+    if (Number.isNaN(qualityKey) || acc[qualityKey]) return acc;
+    acc[qualityKey] = url;
+    return acc;
+  }, {});
+  const filteredStreams = Object.entries(streams).reduce((acc, [quality, url]) => {
+    acc[quality] = url;
+    return acc;
+  }, {});
+  const selectedSubdomain = selectSubdomainByRegion(region);
+  if (selectedSubdomain) {
+    Object.keys(filteredStreams).forEach((q) => {
+      filteredStreams[q] = rewriteSheguSubdomain(filteredStreams[q], selectedSubdomain);
+    });
+  }
+  const captions = [];
+  if (data.subtitles) {
+    for (const [langKey, subtitleData] of Object.entries(data.subtitles)) {
+      const languageKeyPart = langKey.split("_")[0];
+      const languageName = languageKeyPart.charAt(0).toUpperCase() + languageKeyPart.slice(1);
+      const languageCode = ((_a = labelToLanguageCode(languageName)) == null ? void 0 : _a.toLowerCase()) ?? "unknown";
+      if (subtitleData.subtitle_link) {
+        const url = subtitleData.subtitle_link;
+        const isVtt = url.toLowerCase().endsWith(".vtt");
+        captions.push({
+          type: isVtt ? "vtt" : "srt",
+          id: url,
+          url,
+          language: languageCode,
+          hasCorsRestrictions: false
+        });
+      }
+    }
+  }
+  ctx.progress(90);
+  return {
+    embeds: [],
+    stream: [
+      {
+        id: "primary",
+        captions,
+        qualities: {
+          ...filteredStreams[2160] && {
+            "4k": {
+              type: "mp4",
+              url: filteredStreams[2160]
+            }
+          },
+          ...filteredStreams[1080] && {
+            1080: {
+              type: "mp4",
+              url: filteredStreams[1080]
+            }
+          },
+          ...filteredStreams[720] && {
+            720: {
+              type: "mp4",
+              url: filteredStreams[720]
+            }
+          },
+          ...filteredStreams[480] && {
+            480: {
+              type: "mp4",
+              url: filteredStreams[480]
+            }
+          },
+          ...filteredStreams[360] && {
+            360: {
+              type: "mp4",
+              url: filteredStreams[360]
+            }
+          },
+          ...filteredStreams.unknown && {
+            unknown: {
+              type: "mp4",
+              url: filteredStreams.unknown
+            }
+          }
+        },
+        type: "file",
+        flags: [flags.CORS_ALLOWED]
+      }
+    ]
+  };
+}
+const FedAPIDBScraper = makeSourcerer({
+  id: "fedapidb",
+  name: "FED DB 🔥",
+  rank: 299,
+  flags: [flags.CORS_ALLOWED],
+  scrapeMovie: comboScraper$x,
+  scrapeShow: comboScraper$x
+});
 const nanoid = customAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 10);
 const PASS_MD5_PATTERNS = [
   /\$\.get\(['"](\/pass_md5\/[^'"]+)['"]/,
@@ -876,7 +1479,7 @@ const doodScraper = makeEmbed({
     };
   }
 });
-const userAgent$1 = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36";
+const userAgent$2 = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36";
 const filemoonScraper = makeEmbed({
   id: "filemoon",
   name: "Filemoon",
@@ -895,7 +1498,7 @@ const filemoonScraper = makeEmbed({
       "Sec-Fetch-Site": "cross-site",
       "Sec-Fetch-User": "?1",
       "Upgrade-Insecure-Requests": "1",
-      "User-Agent": userAgent$1
+      "User-Agent": userAgent$2
     };
     const response = await ctx.proxiedFetcher(ctx.url, { headers: headers2 });
     const soup = load(response);
@@ -923,7 +1526,7 @@ const filemoonScraper = makeEmbed({
           playlist: videoUrl,
           headers: {
             Referer: `${new URL(ctx.url).origin}/`,
-            "User-Agent": userAgent$1
+            "User-Agent": userAgent$2
           },
           flags: [],
           captions: []
@@ -1020,10 +1623,10 @@ const serverMirrorEmbed = makeEmbed({
 function hexToChar(hex) {
   return String.fromCharCode(parseInt(hex, 16));
 }
-function decrypt(data, key) {
+function decrypt(data, key2) {
   var _a;
   const formatedData = ((_a = data.match(/../g)) == null ? void 0 : _a.map(hexToChar).join("")) || "";
-  return formatedData.split("").map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join("");
+  return formatedData.split("").map((char, i) => String.fromCharCode(char.charCodeAt(0) ^ key2.charCodeAt(i % key2.length))).join("");
 }
 const turbovidScraper = makeEmbed({
   id: "turbovid",
@@ -1099,101 +1702,9 @@ const turbovidScraper = makeEmbed({
     };
   }
 });
-const captionTypes = {
-  srt: "srt",
-  vtt: "vtt"
-};
-function getCaptionTypeFromUrl(url) {
-  const extensions = Object.keys(captionTypes);
-  const type = extensions.find((v) => url.endsWith(`.${v}`));
-  if (!type) return null;
-  return type;
-}
-function labelToLanguageCode(label) {
-  const languageMap = {
-    "chinese - hong kong": "zh",
-    "chinese - traditional": "zh",
-    czech: "cs",
-    danish: "da",
-    dutch: "nl",
-    english: "en",
-    "english - sdh": "en",
-    finnish: "fi",
-    french: "fr",
-    german: "de",
-    greek: "el",
-    hungarian: "hu",
-    italian: "it",
-    korean: "ko",
-    norwegian: "no",
-    polish: "pl",
-    portuguese: "pt",
-    "portuguese - brazilian": "pt",
-    romanian: "ro",
-    "spanish - european": "es",
-    "spanish - latin american": "es",
-    spanish: "es",
-    swedish: "sv",
-    turkish: "tr",
-    اَلْعَرَبِيَّةُ: "ar",
-    বাংলা: "bn",
-    filipino: "tl",
-    indonesia: "id",
-    اردو: "ur",
-    English: "en",
-    Arabic: "ar",
-    Bosnian: "bs",
-    Bulgarian: "bg",
-    Croatian: "hr",
-    Czech: "cs",
-    Danish: "da",
-    Dutch: "nl",
-    Estonian: "et",
-    Finnish: "fi",
-    French: "fr",
-    German: "de",
-    Greek: "el",
-    Hebrew: "he",
-    Hungarian: "hu",
-    Indonesian: "id",
-    Italian: "it",
-    Norwegian: "no",
-    Persian: "fa",
-    "farsi/persian": "fa",
-    Polish: "pl",
-    Portuguese: "pt",
-    "Protuguese (BR)": "pt-br",
-    Romanian: "ro",
-    Russian: "ru",
-    russian: "ru",
-    Serbian: "sr",
-    Slovenian: "sl",
-    Spanish: "es",
-    Swedish: "sv",
-    Thai: "th",
-    Turkish: "tr",
-    // Simple language codes
-    ng: "en",
-    re: "fr",
-    pa: "es"
-  };
-  const mappedCode = languageMap[label.toLowerCase()];
-  if (mappedCode) return mappedCode;
-  const code = ISO6391.getCode(label);
-  if (code.length === 0) return null;
-  return code;
-}
-function removeDuplicatedLanguages(list) {
-  const beenSeen = {};
-  return list.filter((sub) => {
-    if (beenSeen[sub.language]) return false;
-    beenSeen[sub.language] = true;
-    return true;
-  });
-}
 const origin = "https://rabbitstream.net";
 const referer$2 = "https://rabbitstream.net/";
-const { AES, enc } = crypto$1;
+const { AES, enc } = CryptoJS;
 function isJSON(json) {
   try {
     JSON.parse(json);
@@ -1297,7 +1808,7 @@ const upcloudScraper = makeEmbed({
   }
 });
 const apiUrl = "https://tom.autoembed.cc";
-async function comboScraper$s(ctx) {
+async function comboScraper$w(ctx) {
   const mediaType = ctx.media.type === "show" ? "tv" : "movie";
   let id = ctx.media.tmdbId;
   if (ctx.media.type === "show") {
@@ -1334,8 +1845,8 @@ const autoembedScraper = makeSourcerer({
   rank: 110,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$s,
-  scrapeShow: comboScraper$s
+  scrapeMovie: comboScraper$w,
+  scrapeShow: comboScraper$w
 });
 const TMDB_API_KEY = "a500049f3e06109fe3e8289b06cf5685";
 async function fetchTMDBName(ctx, lang = "en-US") {
@@ -1512,46 +2023,46 @@ async function getClientKey(ctx, embedURL) {
     }
   });
   const $ = cheerio.load(response.body);
-  let key = "";
+  let key2 = "";
   $("script").each((_, script) => {
-    if (key) {
+    if (key2) {
       return false;
     }
     const text = $(script).text().trim();
     let match = CLIENT_KEY_PATTERN_2.exec(text);
     if (match) {
-      key = match.slice(1).join("").trim();
+      key2 = match.slice(1).join("").trim();
       return;
     }
     match = CLIENT_KEY_PATTERN_1.exec(text);
     if (!match) {
       return;
     }
-    key = match[1].trim();
+    key2 = match[1].trim();
   });
   $("script").each((_, script) => {
-    if (key) {
+    if (key2) {
       return false;
     }
     const attr = $(script).attr("nonce");
     if (!attr) {
       return;
     }
-    key = attr.trim();
+    key2 = attr.trim();
   });
   $("div").each((_, div) => {
-    if (key) {
+    if (key2) {
       return false;
     }
     const attr = $(div).attr("data-dpi");
     if (!attr) {
       return;
     }
-    key = attr.trim();
+    key2 = attr.trim();
   });
   $("meta").each((_, meta) => {
     var _a, _b;
-    if (key) {
+    if (key2) {
       return false;
     }
     const name = (_a = $(meta).attr("name")) == null ? void 0 : _a.trim();
@@ -1559,10 +2070,10 @@ async function getClientKey(ctx, embedURL) {
     if (!name || !content || name !== "_gg_fb") {
       return;
     }
-    key = content.trim();
+    key2 = content.trim();
   });
   $("*").contents().each((_, node) => {
-    if (key) {
+    if (key2) {
       return false;
     }
     if (node.nodeType === 8) {
@@ -1570,10 +2081,10 @@ async function getClientKey(ctx, embedURL) {
       if (!match) {
         return;
       }
-      key = match[1].trim();
+      key2 = match[1].trim();
     }
   });
-  return key;
+  return key2;
 }
 async function scrapeUpCloudEmbed(ctx) {
   const embedURL = URL.parse(await getEmbedLink(ctx, ctx.url));
@@ -1661,7 +2172,7 @@ function addEmbedFromPlayer(name, players, embeds) {
     url: player.url
   });
 }
-async function comboScraper$r(ctx) {
+async function comboScraper$v(ctx) {
   const players = await handleContext(ctx);
   if (!players) {
     return {
@@ -1684,8 +2195,8 @@ const dopeboxScraper = makeSourcerer({
   rank: 197,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$r,
-  scrapeShow: comboScraper$r
+  scrapeMovie: comboScraper$v,
+  scrapeShow: comboScraper$v
 });
 const dopeboxEmbeds = [
   makeEmbed({
@@ -1698,7 +2209,7 @@ const dopeboxEmbeds = [
   })
 ];
 const apiBaseUrl = "https://borg.rips.cc";
-const username = "_sf_";
+const username = "_ps_";
 const password = "defonotscraping";
 async function fetchMovie(ctx, ee3Auth) {
   const authResp = await ctx.proxiedFetcher.full(
@@ -1759,7 +2270,7 @@ async function fetchMovie(ctx, ee3Auth) {
   ctx.progress(60);
   return `${movieId}?k=${keyJsonResponse.key}`;
 }
-async function comboScraper$q(ctx) {
+async function comboScraper$u(ctx) {
   const movData = await fetchMovie(ctx, password);
   if (!movData) {
     throw new NotFoundError("No watchable item found");
@@ -1793,9 +2304,9 @@ const ee3Scraper = makeSourcerer({
   rank: 188,
   disabled: false,
   flags: [],
-  scrapeMovie: comboScraper$q
+  scrapeMovie: comboScraper$u
 });
-function normalizeTitle$3(title) {
+function normalizeTitle$5(title) {
   let titleTrimmed = title.trim().toLowerCase();
   if (titleTrimmed !== "the movie" && titleTrimmed.endsWith("the movie")) {
     titleTrimmed = titleTrimmed.replace("the movie", "");
@@ -1806,7 +2317,7 @@ function normalizeTitle$3(title) {
   return titleTrimmed.replace(/['":]/g, "").replace(/[^a-zA-Z0-9]+/g, "_");
 }
 function compareTitle(a, b) {
-  return normalizeTitle$3(a) === normalizeTitle$3(b);
+  return normalizeTitle$5(a) === normalizeTitle$5(b);
 }
 function compareMedia(media, title, releaseYear) {
   const isSameYear = releaseYear === void 0 ? true : media.releaseYear === releaseYear;
@@ -1830,11 +2341,11 @@ function getValidQualityFromString(quality) {
       return "unknown";
   }
 }
-const baseUrl$l = "https://fsharetv.co";
-async function comboScraper$p(ctx) {
+const baseUrl$o = "https://fsharetv.co";
+async function comboScraper$t(ctx) {
   var _a, _b;
   const searchPage = await ctx.proxiedFetcher("/search", {
-    baseUrl: baseUrl$l,
+    baseUrl: baseUrl$o,
     query: {
       q: ctx.media.title
     }
@@ -1851,20 +2362,20 @@ async function comboScraper$p(ctx) {
   const watchPageUrl = (_a = searchResults.find((x) => x && compareMedia(ctx.media, x.title, x.year))) == null ? void 0 : _a.url;
   if (!watchPageUrl) throw new NotFoundError("No watchable item found");
   ctx.progress(50);
-  const watchPage = await ctx.proxiedFetcher(watchPageUrl.replace("/movie", "/w"), { baseUrl: baseUrl$l });
+  const watchPage = await ctx.proxiedFetcher(watchPageUrl.replace("/movie", "/w"), { baseUrl: baseUrl$o });
   const fileId = (_b = watchPage.match(/Movie\.setSource\('([^']*)'/)) == null ? void 0 : _b[1];
   if (!fileId) throw new Error("File ID not found");
   const apiRes = await ctx.proxiedFetcher(
     `/api/file/${fileId}/source`,
     {
-      baseUrl: baseUrl$l,
+      baseUrl: baseUrl$o,
       query: {
         type: "watch"
       }
     }
   );
   if (!apiRes.data.file.sources.length) throw new Error("No sources found");
-  const mediaBase = new URL((await ctx.proxiedFetcher.full(apiRes.data.file.sources[0].src, { baseUrl: baseUrl$l })).finalUrl).origin;
+  const mediaBase = new URL((await ctx.proxiedFetcher.full(apiRes.data.file.sources[0].src, { baseUrl: baseUrl$o })).finalUrl).origin;
   const qualities = apiRes.data.file.sources.reduce(
     (acc, source) => {
       const quality = typeof source.quality === "number" ? source.quality.toString() : source.quality;
@@ -1899,7 +2410,7 @@ const fsharetvScraper = makeSourcerer({
   name: "FshareTV",
   rank: 201,
   flags: [],
-  scrapeMovie: comboScraper$p
+  scrapeMovie: comboScraper$t
 });
 const ORIGIN_HOST = "https://www3.fsonline.app";
 const MOVIE_PAGE_URL = "https://www3.fsonline.app/film/";
@@ -2098,7 +2609,7 @@ function addEmbedFromSources(name, sources, embeds) {
     url
   });
 }
-async function comboScraper$o(ctx) {
+async function comboScraper$s(ctx) {
   const movieName = await fetchTMDBName(ctx);
   const moviePageURL = getMoviePageURL(
     ctx.media.type === "movie" ? `${movieName} ${ctx.media.releaseYear}` : movieName,
@@ -2128,8 +2639,8 @@ const fsOnlineScraper = makeSourcerer({
   name: "FSOnline",
   rank: 140,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$o,
-  scrapeShow: comboScraper$o
+  scrapeMovie: comboScraper$s,
+  scrapeShow: comboScraper$s
 });
 const fsOnlineEmbeds = [
   makeEmbed({
@@ -2148,7 +2659,7 @@ const fsOnlineEmbeds = [
   // }),
 ];
 const BASE_URL = "https://isut.streamflix.one";
-async function comboScraper$n(ctx) {
+async function comboScraper$r(ctx) {
   const embedPage = await ctx.fetcher(
     `${BASE_URL}/api/source/${ctx.media.type === "movie" ? `${ctx.media.tmdbId}` : `${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`}`
   );
@@ -2176,14 +2687,14 @@ const insertunitScraper = makeSourcerer({
   rank: 12,
   disabled: true,
   flags: [flags.CORS_ALLOWED, flags.IP_LOCKED],
-  scrapeMovie: comboScraper$n,
-  scrapeShow: comboScraper$n
+  scrapeMovie: comboScraper$r,
+  scrapeShow: comboScraper$r
 });
-const baseUrl$k = "https://mp4hydra.org/";
-async function comboScraper$m(ctx) {
+const baseUrl$n = "https://mp4hydra.org/";
+async function comboScraper$q(ctx) {
   var _a;
   const searchPage = await ctx.proxiedFetcher("/search", {
-    baseUrl: baseUrl$k,
+    baseUrl: baseUrl$n,
     query: {
       q: ctx.media.title
     }
@@ -2204,7 +2715,7 @@ async function comboScraper$m(ctx) {
   const data = await ctx.proxiedFetcher("/info2?v=8", {
     method: "POST",
     body: new URLSearchParams({ z: JSON.stringify([{ s, t: "movie" }]) }),
-    baseUrl: baseUrl$k
+    baseUrl: baseUrl$n
   });
   if (!data.playlist[0].src || !data.servers) throw new NotFoundError("No watchable item found");
   ctx.progress(80);
@@ -2226,10 +2737,10 @@ const mp4hydraScraper = makeSourcerer({
   rank: 4,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$m,
-  scrapeShow: comboScraper$m
+  scrapeMovie: comboScraper$q,
+  scrapeShow: comboScraper$q
 });
-const baseUrl$j = "https://mbp.pirxcy.dev";
+const baseUrl$m = "https://mbp.pirxcy.dev";
 function buildQualitiesFromStreams(data) {
   const streams = data.list.reduce((acc, stream) => {
     const { path, quality, format } = stream;
@@ -2290,13 +2801,13 @@ function buildQualitiesFromStreams(data) {
   };
 }
 async function findMediaByTMDBId(ctx, tmdbId, title, type, year) {
-  const searchUrl = `${baseUrl$j}/search?q=${encodeURIComponent(title)}&type=${type}${year ? `&year=${year}` : ""}`;
+  const searchUrl = `${baseUrl$m}/search?q=${encodeURIComponent(title)}&type=${type}${year ? `&year=${year}` : ""}`;
   const searchRes = await ctx.proxiedFetcher(searchUrl);
   if (!searchRes.data || searchRes.data.length === 0) {
     throw new NotFoundError("No results found in search");
   }
   for (const result of searchRes.data) {
-    const detailUrl = `${baseUrl$j}/details/${type}/${result.id}`;
+    const detailUrl = `${baseUrl$m}/details/${type}/${result.id}`;
     const detailRes = await ctx.proxiedFetcher(detailUrl);
     if (detailRes.data && detailRes.data.tmdb_id.toString() === tmdbId) {
       return result.id;
@@ -2313,7 +2824,7 @@ async function scrapeMovie$1(ctx) {
     throw new NotFoundError("Missing required media information");
   }
   const mediaId = await findMediaByTMDBId(ctx, tmdbId, title, "movie", year);
-  const streamUrl = `${baseUrl$j}/movie/${mediaId}`;
+  const streamUrl = `${baseUrl$m}/movie/${mediaId}`;
   const streamData = await ctx.proxiedFetcher(streamUrl);
   if (!streamData.data || !streamData.data.list) {
     throw new NotFoundError("No streams found for this movie");
@@ -2343,7 +2854,7 @@ async function scrapeShow(ctx) {
     throw new NotFoundError("Missing required media information");
   }
   const mediaId = await findMediaByTMDBId(ctx, tmdbId, title, "tv", year);
-  const streamUrl = `${baseUrl$j}/tv/${mediaId}/${season}/${episode}`;
+  const streamUrl = `${baseUrl$m}/tv/${mediaId}/${season}/${episode}`;
   const streamData = await ctx.proxiedFetcher(streamUrl);
   if (!streamData.data || !streamData.data.list) {
     throw new NotFoundError("No streams found for this episode");
@@ -2371,7 +2882,7 @@ const pirxcyScraper = makeSourcerer({
   scrapeMovie: scrapeMovie$1,
   scrapeShow
 });
-const baseUrl$i = "https://tugaflix.love/";
+const baseUrl$l = "https://tugaflix.love/";
 function parseSearch(page) {
   const results = [];
   const $ = load(page);
@@ -2395,7 +2906,7 @@ const tugaflixScraper = makeSourcerer({
     var _a;
     const searchResults = parseSearch(
       await ctx.proxiedFetcher("/filmes/", {
-        baseUrl: baseUrl$i,
+        baseUrl: baseUrl$l,
         query: {
           s: ctx.media.title
         }
@@ -2440,7 +2951,7 @@ const tugaflixScraper = makeSourcerer({
     var _a;
     const searchResults = parseSearch(
       await ctx.proxiedFetcher("/series/", {
-        baseUrl: baseUrl$i,
+        baseUrl: baseUrl$l,
         query: {
           s: ctx.media.title
         }
@@ -2481,7 +2992,7 @@ const tugaflixScraper = makeSourcerer({
     };
   }
 });
-const baseUrl$h = "https://api2.vidsrc.vip";
+const baseUrl$k = "https://api2.vidsrc.vip";
 function digitToLetterMap(digit) {
   const map = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
   return map[parseInt(digit, 10)];
@@ -2496,7 +3007,7 @@ function encodeTmdbId(tmdb, type, season, episode) {
   const reversed = raw.split("").reverse().join("");
   return btoa(btoa(reversed));
 }
-async function comboScraper$l(ctx) {
+async function comboScraper$p(ctx) {
   const apiType = ctx.media.type === "show" ? "tv" : "movie";
   const encodedId = encodeTmdbId(
     ctx.media.tmdbId,
@@ -2504,7 +3015,7 @@ async function comboScraper$l(ctx) {
     ctx.media.type === "show" ? ctx.media.season.number : void 0,
     ctx.media.type === "show" ? ctx.media.episode.number : void 0
   );
-  const url = `${baseUrl$h}/${apiType}/${encodedId}`;
+  const url = `${baseUrl$k}/${apiType}/${encodedId}`;
   const data = await ctx.proxiedFetcher(url);
   if (!data || !data.source1) throw new NotFoundError("No sources found");
   const embeds = [];
@@ -2531,8 +3042,8 @@ const vidsrcvipScraper = makeSourcerer({
   rank: 150,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$l,
-  scrapeShow: comboScraper$l
+  scrapeMovie: comboScraper$p,
+  scrapeShow: comboScraper$p
 });
 const zoeBase = "https://zoechip.org";
 function createSlug(title) {
@@ -2574,7 +3085,7 @@ async function extractFileFromFilemoon(ctx, filemoonUrl) {
   const fileUrl = fileMatch[1];
   return fileUrl;
 }
-async function comboScraper$k(ctx) {
+async function comboScraper$o(ctx) {
   const headers2 = {
     Referer: zoeBase,
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
@@ -2654,14 +3165,14 @@ const zoechipScraper = makeSourcerer({
   rank: 170,
   disabled: true,
   flags: [],
-  scrapeMovie: comboScraper$k,
-  scrapeShow: comboScraper$k
+  scrapeMovie: comboScraper$o,
+  scrapeShow: comboScraper$o
 });
 const ANIMETSU_SERVERS = ["pahe", "zoro", "zaza", "meg", "bato"];
-const baseUrl$g = "https://backend.animetsu.to";
-const headers$4 = {
-  referer: "https://animetsu.to/",
-  origin: "https://backend.animetsu.to",
+const baseUrl$j = "https://backend.animetsu.net";
+const headers$6 = {
+  referer: "https://animetsu.net/",
+  origin: "https://backend.animetsu.net",
   accept: "application/json, text/plain, */*",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 };
@@ -2680,8 +3191,8 @@ function makeAnimetsuEmbed(id, rank = 100) {
         throw new NotFoundError("Unsupported media type");
       }
       const res = await ctx.proxiedFetcher(`/api/anime/tiddies`, {
-        baseUrl: baseUrl$g,
-        headers: headers$4,
+        baseUrl: baseUrl$j,
+        headers: headers$6,
         query: {
           server: serverName,
           id: String(anilistId),
@@ -2695,15 +3206,6 @@ function makeAnimetsuEmbed(id, rank = 100) {
       const streamUrl = source.url;
       const sourceType = source.type;
       const sourceQuality = source.quality;
-      let streamHeaders = { ...headers$4 };
-      if (streamUrl.includes("animetsu.cc")) {
-        const { referer: referer2, origin: origin2, ...restHeaders } = streamHeaders;
-        streamHeaders = {
-          ...restHeaders,
-          origin: "https://backend.animetsu.cc",
-          referer: "https://backend.animetsu.cc/"
-        };
-      }
       ctx.progress(100);
       if (sourceType === "mp4") {
         let qualityKey = "unknown";
@@ -2725,7 +3227,7 @@ function makeAnimetsuEmbed(id, rank = 100) {
                 }
               },
               type: "file",
-              headers: streamHeaders,
+              headers: headers$6,
               flags: []
             }
           ]
@@ -2737,7 +3239,7 @@ function makeAnimetsuEmbed(id, rank = 100) {
             id: "primary",
             type: "hls",
             playlist: streamUrl,
-            headers: streamHeaders,
+            headers: headers$6,
             flags: [],
             captions: []
           }
@@ -3167,9 +3669,9 @@ const filelionsScraper = makeEmbed({
     const linksMatch = unpacked.match(/var links=(\{.*?\})/);
     if (!linksMatch) throw new NotFoundError("Links object not found");
     const links = JSON.parse(linksMatch[1]);
-    Object.keys(links).forEach((key) => {
-      if (links[key].startsWith("/stream/")) {
-        links[key] = `https://dinisglows.com${links[key]}`;
+    Object.keys(links).forEach((key2) => {
+      if (links[key2].startsWith("/stream/")) {
+        links[key2] = `https://dinisglows.com${links[key2]}`;
       }
     });
     const streamUrl = links.hls4 || Object.values(links)[0];
@@ -3836,7 +4338,7 @@ function makeVidhideScraper(provider) {
 }
 const [vidhideLatinoScraper, vidhideSpanishScraper, vidhideEnglishScraper] = providers$1.map(makeVidhideScraper);
 const VIDIFY_SERVERS$1 = ["alfa", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliett"];
-const baseUrl$f = "api.vidify.top";
+const baseUrl$i = "api.vidify.top";
 const playerUrl = "https://player.vidify.top/";
 let cachedAuthHeader = null;
 let lastFetched = 0;
@@ -3881,7 +4383,7 @@ function makeVidifyEmbed(id, rank = 100) {
     async scrape(ctx) {
       const query = JSON.parse(ctx.url);
       const { type, tmdbId, season, episode } = query;
-      let url = `https://${baseUrl$f}/`;
+      let url = `https://${baseUrl$i}/`;
       if (type === "movie") {
         url += `/movie/${tmdbId}?sr=${serverIndex}`;
       } else if (type === "show") {
@@ -3958,86 +4460,91 @@ function makeVidifyEmbed(id, rank = 100) {
   });
 }
 const vidifyEmbeds = VIDIFY_SERVERS$1.map((server, i) => makeVidifyEmbed(server, 230 - i));
-const PASSPHRASE = "T8c8PQlSQVU4mBuW4CbE/g57VBbM5009QHd+ym93aZZ5pEeVpToY6OdpYPvRMVYp";
+const VIDNEST_SERVERS = ["hollymoviehd", "allmovies"];
+const baseUrl$h = "https://second.vidnest.fun";
+const PASSPHRASE = "A7kP9mQeXU2BWcD4fRZV+Sg8yN0/M5tLbC1HJQwYe6pOKFaE3vTnPZsRuYdVmLq2";
+const serverConfigs = {
+  hollymoviehd: {
+    streamDomains: ["pkaystream.cc", "flashstream.cc"],
+    origin: "https://flashstream.cc",
+    referer: "https://flashstream.cc/"
+  },
+  allmovies: {
+    streamDomains: null,
+    origin: "",
+    referer: ""
+  }
+};
+function base64ToUint8Array(base64) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 async function decryptVidnestData(encryptedBase64) {
-  const encryptedBytes = Uint8Array.from(atob(encryptedBase64), (c) => c.charCodeAt(0));
-  const iv = encryptedBytes.slice(0, 12);
+  const encryptedBytes = base64ToUint8Array(encryptedBase64);
+  const iv2 = encryptedBytes.slice(0, 12);
   const ciphertext = encryptedBytes.slice(12, -16);
   const tag = encryptedBytes.slice(-16);
-  const keyData = Uint8Array.from(atob(PASSPHRASE), (c) => c.charCodeAt(0)).slice(0, 32);
-  const key = await crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["decrypt"]);
-  const encrypted = new Uint8Array([...ciphertext, ...tag]);
-  try {
-    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
-    const decryptedText = new TextDecoder().decode(decrypted);
-    return JSON.parse(decryptedText);
-  } catch (error) {
-    throw new NotFoundError("Failed to decrypt data");
-  }
+  const keyData = base64ToUint8Array(PASSPHRASE).slice(0, 32);
+  const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["decrypt"]);
+  const combined = new Uint8Array(ciphertext.length + tag.length);
+  combined.set(ciphertext, 0);
+  combined.set(tag, ciphertext.length);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv2 }, cryptoKey, combined);
+  return JSON.parse(new TextDecoder("utf-8").decode(decrypted));
 }
-const vidnestHollymoviehdEmbed = makeEmbed({
-  id: "vidnest-hollymoviehd",
-  name: "Vidnest HollyMovie",
-  rank: 104,
-  flags: [],
-  disabled: false,
-  async scrape(ctx) {
-    const response = await ctx.proxiedFetcher(ctx.url);
-    if (!response.data) throw new NotFoundError("No encrypted data found");
-    const decryptedData = await decryptVidnestData(response.data);
-    if (!decryptedData.success && !decryptedData.sources) throw new NotFoundError("No streams found");
-    const sources = decryptedData.sources || decryptedData.streams;
-    const streams = [];
-    const streamHeaders = {
-      Origin: "https://flashstream.cc",
-      Referer: "https://flashstream.cc/",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    };
-    for (const source of sources) {
-      if (source.file && (source.file.includes("pkaystream.cc") || source.file.includes("flashstream.cc"))) {
-        streams.push({
-          id: `hollymoviehd-${source.label || "default"}`,
-          type: "hls",
-          playlist: source.file,
-          flags: [],
-          captions: [],
-          headers: streamHeaders
-        });
-      }
-    }
-    return {
-      stream: streams
-    };
-  }
-});
-const vidnestAllmoviesEmbed = makeEmbed({
-  id: "vidnest-allmovies",
-  name: "Vidnest AllMovies (Hindi)",
-  rank: 103,
-  flags: [flags.CORS_ALLOWED],
-  disabled: false,
-  async scrape(ctx) {
-    const response = await ctx.proxiedFetcher(ctx.url);
-    if (!response.data) throw new NotFoundError("No encrypted data found");
-    const decryptedData = await decryptVidnestData(response.data);
-    if (!decryptedData.success && !decryptedData.streams) throw new NotFoundError("No streams found");
-    const sources = decryptedData.sources || decryptedData.streams;
-    const streams = [];
-    for (const stream of sources) {
-      streams.push({
-        id: `allmovies-${stream.language || "default"}`,
-        type: "hls",
-        playlist: stream.url || stream.file,
-        flags: [flags.CORS_ALLOWED],
-        captions: [],
-        preferredHeaders: stream.headers || {}
+function makeVidnestEmbed(id, rank = 100) {
+  const config = serverConfigs[id];
+  return makeEmbed({
+    id: `vidnest-${id}`,
+    name: `Vidnest ${id}`,
+    rank,
+    disabled: false,
+    flags: [],
+    async scrape(ctx) {
+      const query = JSON.parse(ctx.url);
+      const { type, tmdbId, season, episode } = query;
+      const endpoint = type === "movie" ? `/${id}/movie/${tmdbId}` : `/${id}/tv/${tmdbId}/${season}/${episode}`;
+      const res = await ctx.proxiedFetcher(endpoint, {
+        baseUrl: baseUrl$h,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
       });
+      if (!(res == null ? void 0 : res.data)) throw new NotFoundError("No data");
+      const decrypted = await decryptVidnestData(res.data);
+      const sources = decrypted.sources || decrypted.streams || [];
+      const streams = [];
+      for (const source of sources) {
+        const url = source.file || source.url;
+        if (!url) continue;
+        if ((config == null ? void 0 : config.streamDomains) && !config.streamDomains.some((d) => url.includes(d))) continue;
+        streams.push(url);
+      }
+      if (!streams.length) throw new NotFoundError("No streams");
+      ctx.progress(100);
+      return {
+        stream: [
+          {
+            id,
+            type: "hls",
+            playlist: streams[0],
+            headers: {
+              Origin: config == null ? void 0 : config.origin,
+              Referer: config == null ? void 0 : config.referer
+            },
+            flags: [],
+            captions: []
+          }
+        ]
+      };
     }
-    return {
-      stream: streams
-    };
-  }
-});
+  });
+}
+const VidnestEmbeds = VIDNEST_SERVERS.map((server, i) => makeVidnestEmbed(server, 104 - i));
 const providers = [
   {
     id: "server-13",
@@ -4196,7 +4703,7 @@ const viperScraper = makeEmbed({
     };
   }
 });
-const userAgent = "Mozilla/5.0 (Linux; Android 11; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+const userAgent$1 = "Mozilla/5.0 (Linux; Android 11; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
 function cleanSymbols(s) {
   let result = s;
   for (const p of ["@$", "^^", "~@", "%?", "*~", "!!", "#&"]) {
@@ -4232,7 +4739,7 @@ const voeScraper = makeEmbed({
       }
     })();
     const headers2 = {
-      "User-Agent": userAgent
+      "User-Agent": userAgent$1
     };
     if (defaultDomain) {
       headers2.Referer = defaultDomain;
@@ -4271,7 +4778,7 @@ const voeScraper = makeEmbed({
           headers: {
             Referer: defaultDomain || url,
             Origin: (defaultDomain == null ? void 0 : defaultDomain.replace(/\/$/, "")) || new URL(url).origin,
-            "User-Agent": userAgent
+            "User-Agent": userAgent$1
           }
         }
       ]
@@ -4356,8 +4863,8 @@ const warezPlayerScraper = makeEmbed({
   }
 });
 const ZUNIME_SERVERS = ["hd-2", "miko", "shiro", "zaza"];
-const baseUrl$e = "https://backend.xaiby.sbs";
-const headers$3 = {
+const baseUrl$g = "https://backend.xaiby.sbs";
+const headers$5 = {
   referer: "https://vidnest.fun/",
   origin: "https://vidnest.fun",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -4374,8 +4881,8 @@ function makeZunimeEmbed(id, rank = 100) {
       const query = JSON.parse(ctx.url);
       const { anilistId, episode } = query;
       const res = await ctx.proxiedFetcher(`${"/sources"}`, {
-        baseUrl: baseUrl$e,
-        headers: headers$3,
+        baseUrl: baseUrl$g,
+        headers: headers$5,
         query: {
           id: String(anilistId),
           ep: String(episode ?? 1),
@@ -4389,7 +4896,7 @@ function makeZunimeEmbed(id, rank = 100) {
         throw new NotFoundError("No stream URL found in response");
       }
       const streamUrl = resAny.sources.url;
-      const upstreamHeaders = ((_b = resAny == null ? void 0 : resAny.sources) == null ? void 0 : _b.headers) && Object.keys(resAny.sources.headers).length > 0 ? resAny.sources.headers : headers$3;
+      const upstreamHeaders = ((_b = resAny == null ? void 0 : resAny.sources) == null ? void 0 : _b.headers) && Object.keys(resAny.sources.headers).length > 0 ? resAny.sources.headers : headers$5;
       ctx.progress(100);
       return {
         stream: [
@@ -4440,12 +4947,12 @@ async function getStream$2(ctx, id) {
     if (file.startsWith("/")) {
       file = baseUrl2 + file;
     }
-    const key = data.key;
+    const key2 = data.key;
     const headers22 = {
       Origin: "https://friness-cherlormur-i-275.site",
       Referer: "https://google.com/",
       Dnt: "1",
-      "X-Csrf-Token": key
+      "X-Csrf-Token": key2
     };
     const PlayListRes = await ctx.proxiedFetcher(file, {
       headers: {
@@ -4458,7 +4965,7 @@ async function getStream$2(ctx, id) {
       success: true,
       data: {
         playlist,
-        key
+        key: key2
       }
     };
   } catch (error) {
@@ -4466,7 +4973,7 @@ async function getStream$2(ctx, id) {
     throw new NotFoundError("Failed to fetch media info");
   }
 }
-async function getStream$1(ctx, file, key) {
+async function getStream$1(ctx, file, key2) {
   const f = file;
   const path = `${f.slice(1)}.txt`;
   try {
@@ -4475,7 +4982,7 @@ async function getStream$1(ctx, file, key) {
       Origin: "https://friness-cherlormur-i-275.site",
       Referer: "https://google.com/",
       Dnt: "1",
-      "X-Csrf-Token": key
+      "X-Csrf-Token": key2
     };
     const url = `${baseUrl2}/playlist/${path}`;
     const result = await ctx.proxiedFetcher(url, {
@@ -4511,9 +5018,9 @@ async function getMovie(ctx, id, lang = "English") {
         throw new NotFoundError("No file found");
       }
       const availableLang = playlist.map((item) => item == null ? void 0 : item.title);
-      const key = (_b = mediaInfo == null ? void 0 : mediaInfo.data) == null ? void 0 : _b.key;
+      const key2 = (_b = mediaInfo == null ? void 0 : mediaInfo.data) == null ? void 0 : _b.key;
       ctx.progress(70);
-      const streamUrl = await getStream$1(ctx, file == null ? void 0 : file.file, key);
+      const streamUrl = await getStream$1(ctx, file == null ? void 0 : file.file, key2);
       if (streamUrl == null ? void 0 : streamUrl.success) {
         return { success: true, data: streamUrl == null ? void 0 : streamUrl.data, availableLang };
       }
@@ -4552,9 +5059,9 @@ async function getTV(ctx, id, season, episode, lang) {
       return item == null ? void 0 : item.title;
     });
     const filterLang = availableLang.filter((item) => (item == null ? void 0 : item.length) > 0);
-    const key = (_c = mediaInfo == null ? void 0 : mediaInfo.data) == null ? void 0 : _c.key;
+    const key2 = (_c = mediaInfo == null ? void 0 : mediaInfo.data) == null ? void 0 : _c.key;
     ctx.progress(70);
-    const streamUrl = await getStream$1(ctx, file == null ? void 0 : file.file, key);
+    const streamUrl = await getStream$1(ctx, file == null ? void 0 : file.file, key2);
     if (streamUrl == null ? void 0 : streamUrl.success) {
       return {
         success: true,
@@ -4568,7 +5075,7 @@ async function getTV(ctx, id, season, episode, lang) {
     throw new NotFoundError("Failed to fetch TV data");
   }
 }
-async function comboScraper$j(ctx) {
+async function comboScraper$n(ctx) {
   ({
     title: ctx.media.title,
     releaseYear: ctx.media.releaseYear,
@@ -4629,12 +5136,12 @@ const EightStreamScraper = makeSourcerer({
   rank: 111,
   flags: [],
   disabled: true,
-  scrapeMovie: comboScraper$j,
-  scrapeShow: comboScraper$j
+  scrapeMovie: comboScraper$n,
+  scrapeShow: comboScraper$n
 });
-const baseUrl$d = "https://www3.animeflv.net";
+const baseUrl$f = "https://www3.animeflv.net";
 async function searchAnimeFlv(ctx, title) {
-  const searchUrl = `${baseUrl$d}/browse?q=${encodeURIComponent(title)}`;
+  const searchUrl = `${baseUrl$f}/browse?q=${encodeURIComponent(title)}`;
   const html = await ctx.proxiedFetcher(searchUrl, {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -4655,7 +5162,7 @@ async function searchAnimeFlv(ctx, title) {
     animeUrl = results.first().find("div.Description a.Button").attr("href") || "";
   }
   if (!animeUrl) throw new NotFoundError("No se encontró el anime en AnimeFLV");
-  const fullUrl = animeUrl.startsWith("http") ? animeUrl : `${baseUrl$d}${animeUrl}`;
+  const fullUrl = animeUrl.startsWith("http") ? animeUrl : `${baseUrl$f}${animeUrl}`;
   return fullUrl;
 }
 async function getEpisodes(ctx, animeUrl) {
@@ -4679,7 +5186,7 @@ async function getEpisodes(ctx, animeUrl) {
           const noEpisode = arrEp.replace("[", "").replace("]", "").split(",")[0];
           return {
             number: parseInt(noEpisode, 10),
-            url: `${baseUrl$d}/ver/${animeUri}-${noEpisode}`
+            url: `${baseUrl$f}/ver/${animeUri}-${noEpisode}`
           };
         });
       } else {
@@ -4742,7 +5249,7 @@ async function getEmbeds$1(ctx, episodeUrl) {
     "streamtape-latino": streamtapeLatino
   };
 }
-async function comboScraper$i(ctx) {
+async function comboScraper$m(ctx) {
   var _a;
   const title = ctx.media.title;
   if (!title) throw new NotFoundError("Falta el título");
@@ -4773,7 +5280,7 @@ async function comboScraper$i(ctx) {
       }
     });
     if (!animeUri) throw new NotFoundError("No se pudo obtener el animeUri para la película");
-    episodeUrl = `${baseUrl$d}/ver/${animeUri}-1`;
+    episodeUrl = `${baseUrl$f}/ver/${animeUri}-1`;
   }
   const embedsObj = await getEmbeds$1(ctx, episodeUrl);
   const filteredEmbeds = Object.entries(embedsObj).filter(([, url]) => typeof url === "string" && !!url).map(([embedId, url]) => ({ embedId, url }));
@@ -4788,11 +5295,11 @@ const animeflvScraper = makeSourcerer({
   rank: 90,
   disabled: false,
   flags: [flags.CORS_ALLOWED],
-  scrapeShow: comboScraper$i,
-  scrapeMovie: comboScraper$i
+  scrapeShow: comboScraper$m,
+  scrapeMovie: comboScraper$m
 });
 const cache = /* @__PURE__ */ new Map();
-function normalizeTitle$2(t) {
+function normalizeTitle$4(t) {
   return t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 function matchesType(mediaType, anilist) {
@@ -4820,8 +5327,8 @@ query ($search: String, $type: MediaType) {
 `;
 async function getAnilistIdFromMedia(ctx, media) {
   var _a, _b, _c;
-  const key = `${media.type}:${media.title}:${media.releaseYear}`;
-  const cached = cache.get(key);
+  const key2 = `${media.type}:${media.title}:${media.releaseYear}`;
+  const cached = cache.get(key2);
   if (cached) return cached;
   const res = await ctx.proxiedFetcher("", {
     baseUrl: "https://graphql.anilist.co",
@@ -4842,12 +5349,12 @@ async function getAnilistIdFromMedia(ctx, media) {
   if (!items.length) {
     throw new Error("AniList id not found");
   }
-  const targetTitle = normalizeTitle$2(media.title);
+  const targetTitle = normalizeTitle$4(media.title);
   const scored = items.filter((it) => matchesType(media.type, it)).map((it) => {
     const titles = [it.title.romaji];
     if (it.title.english) titles.push(it.title.english);
     if (it.title.native) titles.push(it.title.native);
-    const normTitles = titles.map(normalizeTitle$2).filter(Boolean);
+    const normTitles = titles.map(normalizeTitle$4).filter(Boolean);
     const exact = normTitles.includes(targetTitle);
     const partial = normTitles.some((t) => t.includes(targetTitle) || targetTitle.includes(t));
     const yearDelta = it.seasonYear ? Math.abs(it.seasonYear - media.releaseYear) : 5;
@@ -4860,7 +5367,7 @@ async function getAnilistIdFromMedia(ctx, media) {
   const winner = ((_c = scored[0]) == null ? void 0 : _c.it) ?? items[0];
   const anilistId = winner == null ? void 0 : winner.id;
   if (!anilistId) throw new Error("AniList id not found");
-  cache.set(key, anilistId);
+  cache.set(key2, anilistId);
   return anilistId;
 }
 const anilistTitlesQuery = `
@@ -4894,7 +5401,7 @@ async function getAnilistEnglishTitle(ctx, media) {
   const englishTitle = res.data.Media.title.english;
   return englishTitle ? englishTitle.toLowerCase() : null;
 }
-async function comboScraper$h(ctx) {
+async function comboScraper$l(ctx) {
   const anilistId = await getAnilistIdFromMedia(ctx, ctx.media);
   const query = {
     type: ctx.media.type,
@@ -4939,15 +5446,15 @@ const animetsuScraper = makeSourcerer({
   name: "Animetsu",
   rank: 112,
   flags: [],
-  scrapeShow: comboScraper$h
+  scrapeShow: comboScraper$l
 });
-const baseUrl$c = "https://cinehdplus.gratis";
-async function comboScraper$g(ctx) {
-  const searchUrl = `${baseUrl$c}/series/?story=${ctx.media.tmdbId}&do=search&subaction=search`;
+const baseUrl$e = "https://cinehdplus.gratis";
+async function comboScraper$k(ctx) {
+  const searchUrl = `${baseUrl$e}/series/?story=${ctx.media.tmdbId}&do=search&subaction=search`;
   const searchPage = await ctx.proxiedFetcher(searchUrl, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-      Referer: baseUrl$c
+      Referer: baseUrl$e
     }
   });
   const $search = load(searchPage);
@@ -4956,11 +5463,11 @@ async function comboScraper$g(ctx) {
     throw new NotFoundError("Series not found in search results");
   }
   ctx.progress(30);
-  const seriesPageUrl = new URL(seriesUrl, baseUrl$c);
+  const seriesPageUrl = new URL(seriesUrl, baseUrl$e);
   const seriesPage = await ctx.proxiedFetcher(seriesPageUrl.href, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-      Referer: baseUrl$c
+      Referer: baseUrl$e
     }
   });
   const $ = load(seriesPage);
@@ -5002,11 +5509,11 @@ const cinehdplusScraper = makeSourcerer({
   rank: 4,
   disabled: false,
   flags: [],
-  scrapeShow: comboScraper$g
+  scrapeShow: comboScraper$k
 });
-const baseUrl$b = "https://api.coitus.ca";
-async function comboScraper$f(ctx) {
-  const apiUrl2 = ctx.media.type === "movie" ? `${baseUrl$b}/movie/${ctx.media.tmdbId}` : `${baseUrl$b}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+const baseUrl$d = "https://api.coitus.ca";
+async function comboScraper$j(ctx) {
+  const apiUrl2 = ctx.media.type === "movie" ? `${baseUrl$d}/movie/${ctx.media.tmdbId}` : `${baseUrl$d}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   const apiRes = await ctx.proxiedFetcher(apiUrl2);
   if (!apiRes.videoSource) throw new NotFoundError("No watchable item found");
   let processedUrl = apiRes.videoSource;
@@ -5053,11 +5560,11 @@ const coitusScraper = makeSourcerer({
   rank: 91,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$f,
-  scrapeShow: comboScraper$f
+  scrapeMovie: comboScraper$j,
+  scrapeShow: comboScraper$j
 });
-const baseUrl$a = "https://www.cuevana3.eu";
-function normalizeTitle$1(title) {
+const baseUrl$c = "https://www.cuevana3.eu";
+function normalizeTitle$3(title) {
   return title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s-]/gi, "").replace(/\s+/g, "-").replace(/-+/g, "-");
 }
 async function getStreamUrl(ctx, embedUrl) {
@@ -5100,16 +5607,7 @@ async function extractVideos(ctx, videos) {
   }
   return videoList;
 }
-async function fetchTitleSubstitutes() {
-  try {
-    const response = await fetch("https://raw.githubusercontent.com/moonpic/fixed-titles/refs/heads/main/main.json");
-    if (!response.ok) throw new Error("Failed to fetch fallback titles");
-    return await response.json();
-  } catch {
-    return {};
-  }
-}
-async function comboScraper$e(ctx) {
+async function comboScraper$i(ctx) {
   var _a, _b, _c, _d;
   const mediaType = ctx.media.type;
   const tmdbId = ctx.media.tmdbId;
@@ -5117,8 +5615,8 @@ async function comboScraper$e(ctx) {
     throw new NotFoundError("TMDB ID is required to fetch the title in Spanish");
   }
   const translatedTitle = await fetchTMDBName(ctx, "es-ES");
-  let normalizedTitle = normalizeTitle$1(translatedTitle);
-  let pageUrl = mediaType === "movie" ? `${baseUrl$a}/ver-pelicula/${normalizedTitle}` : `${baseUrl$a}/episodio/${normalizedTitle}-temporada-${(_a = ctx.media.season) == null ? void 0 : _a.number}-episodio-${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
+  let normalizedTitle = normalizeTitle$3(translatedTitle);
+  let pageUrl = mediaType === "movie" ? `${baseUrl$c}/ver-pelicula/${normalizedTitle}` : `${baseUrl$c}/episodio/${normalizedTitle}-temporada-${(_a = ctx.media.season) == null ? void 0 : _a.number}-episodio-${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
   ctx.progress(60);
   let pageContent = await ctx.proxiedFetcher(pageUrl);
   let $ = load(pageContent);
@@ -5152,13 +5650,8 @@ async function comboScraper$e(ctx) {
     }
   }
   if (embeds.length === 0) {
-    const fallbacks = await fetchTitleSubstitutes();
-    const fallbackTitle = fallbacks[tmdbId.toString()];
-    if (!fallbackTitle) {
-      throw new NotFoundError("No embed data found and no fallback title available");
-    }
-    normalizedTitle = normalizeTitle$1(fallbackTitle);
-    pageUrl = mediaType === "movie" ? `${baseUrl$a}/ver-pelicula/${normalizedTitle}` : `${baseUrl$a}/episodio/${normalizedTitle}-temporada-${(_c = ctx.media.season) == null ? void 0 : _c.number}-episodio-${(_d = ctx.media.episode) == null ? void 0 : _d.number}`;
+    normalizedTitle = normalizeTitle$3(ctx.media.title);
+    pageUrl = mediaType === "movie" ? `${baseUrl$c}/ver-pelicula/${normalizedTitle}` : `${baseUrl$c}/episodio/${normalizedTitle}-temporada-${(_c = ctx.media.season) == null ? void 0 : _c.number}-episodio-${(_d = ctx.media.episode) == null ? void 0 : _d.number}`;
     pageContent = await ctx.proxiedFetcher(pageUrl);
     $ = load(pageContent);
     script = $("script").toArray().find((scriptEl) => {
@@ -5201,8 +5694,8 @@ const cuevana3Scraper = makeSourcerer({
   rank: 80,
   disabled: false,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$e,
-  scrapeShow: comboScraper$e
+  scrapeMovie: comboScraper$i,
+  scrapeShow: comboScraper$i
 });
 async function getAddonStreams(addonUrl, ctx) {
   if (!ctx.media.imdbId) {
@@ -5316,7 +5809,7 @@ function scoreStream(stream) {
   if (stream.complete) score += 1;
   return score;
 }
-async function comboScraper$d(ctx) {
+async function comboScraper$h(ctx) {
   const apiKey = getDebridToken();
   if (!apiKey) {
     throw new NotFoundError("Debrid API token is required");
@@ -5399,8 +5892,8 @@ const debridScraper = makeSourcerer({
   rank: 450,
   disabled: !getDebridToken(),
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$d,
-  scrapeShow: comboScraper$d
+  scrapeMovie: comboScraper$h,
+  scrapeShow: comboScraper$h
 });
 async function stringAtob(input) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
@@ -5420,7 +5913,7 @@ async function stringAtob(input) {
   }
   return output;
 }
-async function comboScraper$c(ctx) {
+async function comboScraper$g(ctx) {
   const embedUrl = `https://embed.su/embed/${ctx.media.type === "movie" ? `movie/${ctx.media.tmdbId}` : `tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`}`;
   const embedPage = await ctx.proxiedFetcher(embedUrl, {
     headers: {
@@ -5450,8 +5943,8 @@ const embedsuScraper = makeSourcerer({
   rank: 165,
   disabled: true,
   flags: [],
-  scrapeMovie: comboScraper$c,
-  scrapeShow: comboScraper$c
+  scrapeMovie: comboScraper$g,
+  scrapeShow: comboScraper$g
 });
 function rtt(str) {
   return str.replace(/[a-z]/gi, (c) => {
@@ -5497,9 +5990,9 @@ function decodeDeanEdwards(params) {
   };
   let i = count;
   while (i--) {
-    const key = encodeBase(i);
-    const value = keywords[i] || key;
-    dict[key] = value;
+    const key2 = encodeBase(i);
+    const value = keywords[i] || key2;
+    dict[key2] = value;
   }
   return payload.replace(/\b\w+\b/g, (word) => {
     if (word in dict) {
@@ -5516,9 +6009,9 @@ function decodeHex(str) {
 function unescapeString(str) {
   return str.replace(/\\(.)/g, (match, char) => char);
 }
-const baseUrl$9 = "https://www.fullhdfilmizlesene.tv";
-const headers$2 = {
-  Referer: baseUrl$9,
+const baseUrl$b = "https://www.fullhdfilmizlesene.tv";
+const headers$4 = {
+  Referer: baseUrl$b,
   Accept: "application/json, text/plain, */*",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 };
@@ -5554,8 +6047,8 @@ async function scrapeMovie(ctx) {
   const searchJson = await ctx.proxiedFetcher(
     `/autocomplete/q.php?q=${ctx.media.imdbId}`,
     {
-      baseUrl: baseUrl$9,
-      headers: headers$2
+      baseUrl: baseUrl$b,
+      headers: headers$4
     }
   );
   ctx.progress(30);
@@ -5563,8 +6056,8 @@ async function scrapeMovie(ctx) {
   const searchResult = searchJson[0];
   const mediaUrl = `/${searchResult.prefix}/${searchResult.dizilink}`;
   const mediaPage = await ctx.proxiedFetcher(mediaUrl, {
-    baseUrl: baseUrl$9,
-    headers: headers$2
+    baseUrl: baseUrl$b,
+    headers: headers$4
   });
   const playerMatch = mediaPage.match(/var scx = {.+"t":\["(.+)"\]},/);
   if (!playerMatch) throw new NotFoundError("No source found");
@@ -5574,7 +6067,7 @@ async function scrapeMovie(ctx) {
   const playerResponse = await ctx.proxiedFetcher(playerUrl2 + (isVidmoxy ? "?vst=1" : ""), {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      Referer: baseUrl$9,
+      Referer: baseUrl$b,
       "Sec-Fetch-Dest": "iframe",
       "Sec-Fetch-Mode": "navigate",
       "Sec-Fetch-Site": "cross-site",
@@ -5593,8 +6086,8 @@ async function scrapeMovie(ctx) {
       {
         id: "primary",
         type: "hls",
-        playlist: createM3U8ProxyUrl(playlistUrl, ctx.features, headers$2),
-        headers: headers$2,
+        playlist: createM3U8ProxyUrl(playlistUrl, ctx.features, headers$4),
+        headers: headers$4,
         flags: [flags.CORS_ALLOWED],
         captions: []
       }
@@ -5792,7 +6285,7 @@ async function getVideoSources(ctx, id, media) {
     path = `/v1/movies/view`;
   }
   const data = await ctx.proxiedFetcher(path, {
-    baseUrl: baseUrl$8,
+    baseUrl: baseUrl$a,
     query: { expand: "streams,subtitles", id }
   });
   return data;
@@ -5814,7 +6307,7 @@ async function getVideo(ctx, id, media) {
     captions.push({
       id: sub.url,
       type: "vtt",
-      url: `${baseUrl$8}${sub.url}`,
+      url: `${baseUrl$a}${sub.url}`,
       hasCorsRestrictions: false,
       language
     });
@@ -5825,11 +6318,11 @@ async function getVideo(ctx, id, media) {
     captions
   };
 }
-const baseUrl$8 = "https://lmscript.xyz";
+const baseUrl$a = "https://lmscript.xyz";
 async function searchAndFindMedia(ctx, media) {
   if (media.type === "show") {
     const searchRes = await ctx.proxiedFetcher(`/v1/shows`, {
-      baseUrl: baseUrl$8,
+      baseUrl: baseUrl$a,
       query: { "filters[q]": media.title }
     });
     const results = searchRes.items;
@@ -5838,7 +6331,7 @@ async function searchAndFindMedia(ctx, media) {
   }
   if (media.type === "movie") {
     const searchRes = await ctx.proxiedFetcher(`/v1/movies`, {
-      baseUrl: baseUrl$8,
+      baseUrl: baseUrl$a,
       query: { "filters[q]": media.title }
     });
     const results = searchRes.items;
@@ -5846,14 +6339,14 @@ async function searchAndFindMedia(ctx, media) {
     return result;
   }
 }
-async function scrape$1(ctx, media, result) {
+async function scrape(ctx, media, result) {
   var _a;
   let id = null;
   if (media.type === "movie") {
     id = result.id_movie;
   } else if (media.type === "show") {
     const data = await ctx.proxiedFetcher(`/v1/shows`, {
-      baseUrl: baseUrl$8,
+      baseUrl: baseUrl$a,
       query: { expand: "episodes", id: result.id_show }
     });
     const episode = (_a = data.episodes) == null ? void 0 : _a.find((v) => {
@@ -5869,7 +6362,7 @@ async function universalScraper$3(ctx) {
   const lookmovieData = await searchAndFindMedia(ctx, ctx.media);
   if (!lookmovieData) throw new NotFoundError("Media not found");
   ctx.progress(30);
-  const video = await scrape$1(ctx, ctx.media, lookmovieData);
+  const video = await scrape(ctx, ctx.media, lookmovieData);
   if (!video.playlist) throw new NotFoundError("No video found");
   ctx.progress(60);
   return {
@@ -5889,20 +6382,20 @@ const lookmovieScraper = makeSourcerer({
   id: "lookmovie",
   name: "LookMovie",
   disabled: false,
-  rank: 170,
+  rank: 171,
   flags: [flags.IP_LOCKED],
   scrapeShow: universalScraper$3,
   scrapeMovie: universalScraper$3
 });
-const baseUrl$7 = "https://movies4f.com";
-const headers$1 = {
+const baseUrl$9 = "https://movies4f.com";
+const headers$3 = {
   Referer: "https://movies4f.com/",
   Origin: "https://movies4f.com",
   "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 };
-async function comboScraper$b(ctx) {
+async function comboScraper$f(ctx) {
   let searchQuery = encodeURIComponent(ctx.media.title);
-  let searchUrl = `${baseUrl$7}/search?q=${searchQuery}`;
+  let searchUrl = `${baseUrl$9}/search?q=${searchQuery}`;
   let searchPage = await ctx.proxiedFetcher(searchUrl, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -5910,7 +6403,7 @@ async function comboScraper$b(ctx) {
   });
   if (!searchPage.includes("/film/")) {
     searchQuery = encodeURIComponent(`${ctx.media.title} ${ctx.media.releaseYear}`);
-    searchUrl = `${baseUrl$7}/search?q=${searchQuery}`;
+    searchUrl = `${baseUrl$9}/search?q=${searchQuery}`;
     searchPage = await ctx.proxiedFetcher(searchUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -5931,13 +6424,13 @@ async function comboScraper$b(ctx) {
     if (normalizedTitle.includes(normalizedSearchTitle)) {
       if (ctx.media.type === "show") {
         const episode = ctx.media.episode.number;
-        const episodeUrl = `${baseUrl$7}${link}/episode-${episode}`;
+        const episodeUrl = `${baseUrl$9}${link}/episode-${episode}`;
         if (title.toLowerCase().includes("season") || link.includes("/film/")) {
           filmUrl = episodeUrl;
           break;
         }
       } else {
-        filmUrl = `${baseUrl$7}${link}`;
+        filmUrl = `${baseUrl$9}${link}`;
         break;
       }
     }
@@ -5985,7 +6478,7 @@ ${videoId}
 ------geckoformboundaryc5f480bcac13a77346dab33881da6bfb
 Content-Disposition: form-data; name="domain"
 
-${baseUrl$7}/
+${baseUrl$9}/
 ------geckoformboundaryc5f480bcac13a77346dab33881da6bfb--`
   });
   ctx.progress(80);
@@ -6022,7 +6515,7 @@ ${baseUrl$7}/
         id: "primary",
         type: "hls",
         playlist: streamUrl,
-        headers: headers$1,
+        headers: headers$3,
         flags: [flags.CORS_ALLOWED],
         captions: []
       }
@@ -6035,8 +6528,8 @@ const movies4fScraper = makeSourcerer({
   rank: 166,
   disabled: false,
   flags: [],
-  scrapeMovie: comboScraper$b,
-  scrapeShow: comboScraper$b
+  scrapeMovie: comboScraper$f,
+  scrapeShow: comboScraper$f
 });
 const GEMINI_BASE_URL = "https://gemini.aether.mom/v1beta/models/gemini-2.5-flash-lite:generateContent";
 function buildPrompt(media, searchResults) {
@@ -6215,7 +6708,7 @@ const getUserToken = () => {
     return null;
   }
 };
-async function comboScraper$a(ctx) {
+async function comboScraper$e(ctx) {
   const userToken = getUserToken();
   const apiUrl2 = ctx.media.type === "movie" ? `${mamaApiBase}/movie/${ctx.media.tmdbId}?token=${userToken}` : `${mamaApiBase}/tv/${ctx.media.tmdbId}?season=${ctx.media.season.number}&episode=${ctx.media.episode.number}&token=${userToken}`;
   const apiRes = await ctx.proxiedFetcher(apiUrl2);
@@ -6301,11 +6794,11 @@ const nunflixScraper = makeSourcerer({
   disabled: !getUserToken(),
   // disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$a,
-  scrapeShow: comboScraper$a
+  scrapeMovie: comboScraper$e,
+  scrapeShow: comboScraper$e
 });
-const baseUrl$6 = "https://ww3.pelisplus.to";
-function normalizeTitle(title) {
+const baseUrl$8 = "https://ww3.pelisplus.to";
+function normalizeTitle$2(title) {
   return title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s-]/gi, "").replace(/\s+/g, "-").replace(/-+/g, "-");
 }
 function decodeBase64(str) {
@@ -6339,7 +6832,7 @@ async function extractVidhideEmbed(ctx, $) {
     const langBtn = (_b = (_a = li.parent()) == null ? void 0 : _a.parent()) == null ? void 0 : _b.find("button").first().text().trim().toLowerCase();
     const dataServer = li.attr("data-server") || "";
     const decoded = decodeBase64(dataServer);
-    const url = regIsUrl.test(decoded) ? decoded : `${baseUrl$6}/player/${btoa(dataServer)}`;
+    const url = regIsUrl.test(decoded) ? decoded : `${baseUrl$8}/player/${btoa(dataServer)}`;
     playerLinks.push({ idx, langBtn, url });
   });
   const results = [];
@@ -6384,8 +6877,8 @@ async function fallbackSearchByGithub(ctx) {
   }
   const fallbackTitle = fallbacks[tmdbId.toString()];
   if (!fallbackTitle) return [];
-  const normalizedTitle = normalizeTitle(fallbackTitle);
-  const pageUrl = mediaType === "movie" ? `${baseUrl$6}/pelicula/${normalizedTitle}` : `${baseUrl$6}/serie/${normalizedTitle}/season/${(_a = ctx.media.season) == null ? void 0 : _a.number}/episode/${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
+  const normalizedTitle = normalizeTitle$2(fallbackTitle);
+  const pageUrl = mediaType === "movie" ? `${baseUrl$8}/pelicula/${normalizedTitle}` : `${baseUrl$8}/serie/${normalizedTitle}/season/${(_a = ctx.media.season) == null ? void 0 : _a.number}/episode/${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
   let html = "";
   try {
     html = await ctx.proxiedFetcher(pageUrl);
@@ -6395,7 +6888,7 @@ async function fallbackSearchByGithub(ctx) {
   const $ = load(html);
   return extractVidhideEmbed(ctx, $);
 }
-async function comboScraper$9(ctx) {
+async function comboScraper$d(ctx) {
   var _a, _b;
   const mediaType = ctx.media.type;
   const tmdbId = ctx.media.tmdbId;
@@ -6407,8 +6900,8 @@ async function comboScraper$9(ctx) {
   } catch {
     throw new NotFoundError("Could not get the title from TMDB");
   }
-  const normalizedTitle = normalizeTitle(translatedTitle);
-  const pageUrl = mediaType === "movie" ? `${baseUrl$6}/pelicula/${normalizedTitle}` : `${baseUrl$6}/serie/${normalizedTitle}/season/${(_a = ctx.media.season) == null ? void 0 : _a.number}/episode/${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
+  const normalizedTitle = normalizeTitle$2(translatedTitle);
+  const pageUrl = mediaType === "movie" ? `${baseUrl$8}/pelicula/${normalizedTitle}` : `${baseUrl$8}/serie/${normalizedTitle}/season/${(_a = ctx.media.season) == null ? void 0 : _a.number}/episode/${(_b = ctx.media.episode) == null ? void 0 : _b.number}`;
   ctx.progress(60);
   let html = "";
   try {
@@ -6439,10 +6932,10 @@ const pelisplushdScraper = makeSourcerer({
   rank: 75,
   flags: [flags.IP_LOCKED],
   // Vidhide embeds are IP locked
-  scrapeMovie: comboScraper$9,
-  scrapeShow: comboScraper$9
+  scrapeMovie: comboScraper$d,
+  scrapeShow: comboScraper$d
 });
-async function comboScraper$8(ctx) {
+async function comboScraper$c(ctx) {
   let apiUrl2;
   if (ctx.media.type === "movie") {
     if (!ctx.media.imdbId) throw new NotFoundError("IMDB ID required for movies");
@@ -6519,25 +7012,25 @@ const primewireScraper = makeSourcerer({
   rank: 206,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$8,
-  scrapeShow: comboScraper$8
+  scrapeMovie: comboScraper$c,
+  scrapeShow: comboScraper$c
 });
-const baseUrl$5 = "api.rgshows.ru";
-const headers = {
+const baseUrl$7 = "api.rgshows.ru";
+const headers$2 = {
   referer: "https://rgshows.ru/",
   origin: "https://rgshows.ru",
-  host: baseUrl$5,
+  host: baseUrl$7,
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 };
-async function comboScraper$7(ctx) {
+async function comboScraper$b(ctx) {
   var _a;
-  let url = `https://${baseUrl$5}/main`;
+  let url = `https://${baseUrl$7}/main`;
   if (ctx.media.type === "movie") {
     url += `/movie/${ctx.media.tmdbId}`;
   } else if (ctx.media.type === "show") {
     url += `/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   }
-  const res = await ctx.proxiedFetcher(url, { headers });
+  const res = await ctx.proxiedFetcher(url, { headers: headers$2 });
   if (!((_a = res == null ? void 0 : res.stream) == null ? void 0 : _a.url)) {
     throw new NotFoundError("No streams found");
   }
@@ -6547,7 +7040,7 @@ async function comboScraper$7(ctx) {
   const streamUrl = res.stream.url;
   const streamHost = new URL(streamUrl).host;
   const m3u8Headers = {
-    ...headers,
+    ...headers$2,
     host: streamHost,
     origin: "https://www.rgshows.ru",
     referer: "https://www.rgshows.ru/"
@@ -6572,26 +7065,43 @@ const rgshowsScraper = makeSourcerer({
   name: "RGShows",
   rank: 176,
   flags: [],
-  scrapeMovie: comboScraper$7,
-  scrapeShow: comboScraper$7
+  scrapeMovie: comboScraper$b,
+  scrapeShow: comboScraper$b
 });
 const ridoMoviesBase = `https://ridomovies.tv`;
 const ridoMoviesApiBase = `${ridoMoviesBase}/core/api`;
+const normalizeTitle$1 = (title) => {
+  return title.toLowerCase().trim().replace(/[^\w\s]/g, "").replace(/\s+/g, " ");
+};
 const universalScraper$1 = async (ctx) => {
+  var _a;
   const searchResult = await ctx.proxiedFetcher("/search", {
     baseUrl: ridoMoviesApiBase,
     query: {
       q: ctx.media.title
     }
   });
+  if (!((_a = searchResult.data) == null ? void 0 : _a.items) || searchResult.data.items.length === 0) {
+    throw new NotFoundError("No search results found");
+  }
   const mediaData = searchResult.data.items.map((movieEl) => {
     const name = movieEl.title;
     const year = movieEl.contentable.releaseYear;
     const fullSlug = movieEl.fullSlug;
     return { name, year, fullSlug };
   });
-  const targetMedia = mediaData.find((m) => m.name === ctx.media.title && m.year === ctx.media.releaseYear.toString());
-  if (!(targetMedia == null ? void 0 : targetMedia.fullSlug)) throw new NotFoundError("No watchable item found");
+  const normalizedSearchTitle = normalizeTitle$1(ctx.media.title);
+  const searchYear = ctx.media.releaseYear.toString();
+  let targetMedia = mediaData.find((m) => normalizeTitle$1(m.name) === normalizedSearchTitle && m.year === searchYear);
+  if (!targetMedia) {
+    targetMedia = mediaData.find((m) => {
+      const normalizedName = normalizeTitle$1(m.name);
+      return m.year === searchYear && (normalizedName.includes(normalizedSearchTitle) || normalizedSearchTitle.includes(normalizedName));
+    });
+  }
+  if (!(targetMedia == null ? void 0 : targetMedia.fullSlug)) {
+    throw new NotFoundError("No matching media found");
+  }
   ctx.progress(40);
   let iframeSourceUrl = `/${targetMedia.fullSlug}/videos`;
   if (ctx.media.type === "show") {
@@ -6600,34 +7110,41 @@ const universalScraper$1 = async (ctx) => {
     });
     const fullEpisodeSlug = `season-${ctx.media.season.number}/episode-${ctx.media.episode.number}`;
     const regexPattern = new RegExp(
-      `\\\\"id\\\\":\\\\"(\\d+)\\\\"(?=.*?\\\\\\"fullSlug\\\\\\":\\\\\\"[^"]*${fullEpisodeSlug}[^"]*\\\\\\")`,
+      `\\\\"id\\\\":\\\\"(\\d+)\\\\"(?=.*?\\\\"fullSlug\\\\":\\\\"[^"]*${fullEpisodeSlug}[^"]*\\\\")`,
       "g"
     );
     const matches = [...showPageResult.matchAll(regexPattern)];
     const episodeIds = matches.map((match) => match[1]);
-    if (episodeIds.length === 0) throw new NotFoundError("No watchable item found");
+    if (episodeIds.length === 0) {
+      throw new NotFoundError("Episode not found");
+    }
     const episodeId = episodeIds[episodeIds.length - 1];
     iframeSourceUrl = `/episodes/${episodeId}/videos`;
   }
   const iframeSource = await ctx.proxiedFetcher(iframeSourceUrl, {
     baseUrl: ridoMoviesApiBase
   });
+  if (!iframeSource.data || iframeSource.data.length === 0) {
+    throw new NotFoundError("No video sources found");
+  }
   const iframeSource$ = load(iframeSource.data[0].url);
   const iframeUrl = iframeSource$("iframe").attr("data-src");
-  if (!iframeUrl) throw new NotFoundError("No watchable item found");
+  if (!iframeUrl) {
+    throw new NotFoundError("No iframe URL found");
+  }
   ctx.progress(60);
   const embeds = [];
-  if (iframeUrl.includes("closeload")) {
-    embeds.push({
-      embedId: closeLoadScraper.id,
-      url: iframeUrl
-    });
-  }
+  let embedId = "closeload";
   if (iframeUrl.includes("ridoo")) {
-    embeds.push({
-      embedId: ridooScraper.id,
-      url: iframeUrl
-    });
+    embedId = "ridoo";
+  }
+  embeds.push({
+    embedId,
+    url: iframeUrl
+  });
+  ctx.progress(80);
+  if (embeds.length === 0) {
+    throw new NotFoundError("No supported embeds found");
   }
   ctx.progress(90);
   return {
@@ -6637,15 +7154,15 @@ const universalScraper$1 = async (ctx) => {
 const ridooMoviesScraper = makeSourcerer({
   id: "ridomovies",
   name: "RidoMovies",
-  rank: 210,
+  rank: 203,
   flags: [],
-  disabled: true,
+  disabled: false,
   scrapeMovie: universalScraper$1,
   scrapeShow: universalScraper$1
 });
-const baseUrl$4 = "https://pupp.slidemovies-dev.workers.dev";
-async function comboScraper$6(ctx) {
-  const watchPageUrl = ctx.media.type === "movie" ? `${baseUrl$4}/movie/${ctx.media.tmdbId}` : `${baseUrl$4}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/-${ctx.media.episode.number}`;
+const baseUrl$6 = "https://pupp.slidemovies-dev.workers.dev";
+async function comboScraper$a(ctx) {
+  const watchPageUrl = ctx.media.type === "movie" ? `${baseUrl$6}/movie/${ctx.media.tmdbId}` : `${baseUrl$6}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/-${ctx.media.episode.number}`;
   const watchPage = await ctx.proxiedFetcher(watchPageUrl);
   const $ = load(watchPage);
   ctx.progress(50);
@@ -6689,8 +7206,8 @@ const slidemoviesScraper = makeSourcerer({
   rank: 135,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$6,
-  scrapeShow: comboScraper$6
+  scrapeMovie: comboScraper$a,
+  scrapeShow: comboScraper$a
 });
 async function convertPlaylistsToDataUrls(fetcher, playlistUrl, headers2) {
   const playlistData = await fetcher(playlistUrl, { headers: headers2 });
@@ -6714,11 +7231,11 @@ async function convertPlaylistsToDataUrls(fetcher, playlistUrl, headers2) {
   }
   return `data:application/vnd.apple.mpegurl;base64,${btoa(stringify(playlist))}`;
 }
-const baseUrl$3 = "https://soaper.cc";
+const baseUrl$5 = "https://soaper.cc";
 const universalScraper = async (ctx) => {
   var _a;
   const searchResult = await ctx.proxiedFetcher("/search.html", {
-    baseUrl: baseUrl$3,
+    baseUrl: baseUrl$5,
     query: {
       keyword: ctx.media.title
     }
@@ -6737,7 +7254,7 @@ const universalScraper = async (ctx) => {
   if (ctx.media.type === "show") {
     const seasonNumber = ctx.media.season.number;
     const episodeNumber = ctx.media.episode.number;
-    const showPage = await ctx.proxiedFetcher(showLink, { baseUrl: baseUrl$3 });
+    const showPage = await ctx.proxiedFetcher(showLink, { baseUrl: baseUrl$5 });
     const showPage$ = load(showPage);
     const seasonBlock = showPage$("h4").filter((_, el) => showPage$(el).text().trim().split(":")[0].trim() === `Season${seasonNumber}`).parent();
     const episodes = seasonBlock.find("a").toArray();
@@ -6746,7 +7263,7 @@ const universalScraper = async (ctx) => {
     ).attr("href");
   }
   if (!showLink) throw new NotFoundError("Content not found");
-  const contentPage = await ctx.proxiedFetcher(showLink, { baseUrl: baseUrl$3 });
+  const contentPage = await ctx.proxiedFetcher(showLink, { baseUrl: baseUrl$5 });
   const contentPage$ = load(contentPage);
   const pass = contentPage$("#hId").attr("value");
   if (!pass) throw new NotFoundError("Content not found");
@@ -6757,11 +7274,11 @@ const universalScraper = async (ctx) => {
   formData.append("server", "0");
   const infoEndpoint = ctx.media.type === "show" ? "/home/index/getEInfoAjax" : "/home/index/getMInfoAjax";
   const streamRes = await ctx.proxiedFetcher(infoEndpoint, {
-    baseUrl: baseUrl$3,
+    baseUrl: baseUrl$5,
     method: "POST",
     body: formData,
     headers: {
-      referer: `${baseUrl$3}${showLink}`,
+      referer: `${baseUrl$5}${showLink}`,
       "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
       "Viewport-Width": "375"
     }
@@ -6784,7 +7301,7 @@ const universalScraper = async (ctx) => {
       if (!language) continue;
       captions.push({
         id: sub.path,
-        url: `${baseUrl$3}${sub.path}`,
+        url: `${baseUrl$5}${sub.path}`,
         type: "srt",
         hasCorsRestrictions: false,
         language
@@ -6793,17 +7310,17 @@ const universalScraper = async (ctx) => {
   }
   ctx.progress(90);
   const headers2 = {
-    referer: `${baseUrl$3}${showLink}`,
+    referer: `${baseUrl$5}${showLink}`,
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
     "Viewport-Width": "375",
-    Origin: baseUrl$3
+    Origin: baseUrl$5
   };
   return {
     embeds: [],
     stream: [
       {
         id: "primary",
-        playlist: await convertPlaylistsToDataUrls(ctx.proxiedFetcher, `${baseUrl$3}/${streamResJson.val}`, headers2),
+        playlist: await convertPlaylistsToDataUrls(ctx.proxiedFetcher, `${baseUrl$5}/${streamResJson.val}`, headers2),
         type: "hls",
         proxyDepth: 2,
         flags: [flags.CORS_ALLOWED],
@@ -6814,7 +7331,7 @@ const universalScraper = async (ctx) => {
           id: "backup",
           playlist: await convertPlaylistsToDataUrls(
             ctx.proxiedFetcher,
-            `${baseUrl$3}/${streamResJson.val_bak}`,
+            `${baseUrl$5}/${streamResJson.val_bak}`,
             headers2
           ),
           type: "hls",
@@ -6836,7 +7353,7 @@ const soaperTvScraper = makeSourcerer({
   scrapeShow: universalScraper
 });
 const streamboxBase = "https://vidjoy.pro/embed/api/fastfetch";
-async function comboScraper$5(ctx) {
+async function comboScraper$9(ctx) {
   var _a, _b;
   const apiRes = await ctx.proxiedFetcher(
     ctx.media.type === "movie" ? `${streamboxBase}/${ctx.media.tmdbId}?sr=0` : `${streamboxBase}/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}?sr=0`
@@ -6921,12 +7438,12 @@ const streamboxScraper = makeSourcerer({
   rank: 119,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$5,
-  scrapeShow: comboScraper$5
+  scrapeMovie: comboScraper$9,
+  scrapeShow: comboScraper$9
 });
-const baseUrl$2 = "https://turbovid.eu";
-async function comboScraper$4(ctx) {
-  const embedUrl = ctx.media.type === "movie" ? `${baseUrl$2}/api/req/movie/${ctx.media.tmdbId}` : `${baseUrl$2}/api/req/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+const baseUrl$4 = "https://turbovid.eu";
+async function comboScraper$8(ctx) {
+  const embedUrl = ctx.media.type === "movie" ? `${baseUrl$4}/api/req/movie/${ctx.media.tmdbId}` : `${baseUrl$4}/api/req/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   return {
     embeds: [
       {
@@ -6942,12 +7459,12 @@ const turbovidSourceScraper = makeSourcerer({
   rank: 120,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$4,
-  scrapeShow: comboScraper$4
+  scrapeMovie: comboScraper$8,
+  scrapeShow: comboScraper$8
 });
-const baseUrl$1 = "https://vidapi.click";
-async function comboScraper$3(ctx) {
-  const apiUrl2 = ctx.media.type === "show" ? `${baseUrl$1}/api/video/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}` : `${baseUrl$1}/api/video/movie/${ctx.media.tmdbId}`;
+const baseUrl$3 = "https://vidapi.click";
+async function comboScraper$7(ctx) {
+  const apiUrl2 = ctx.media.type === "show" ? `${baseUrl$3}/api/video/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}` : `${baseUrl$3}/api/video/movie/${ctx.media.tmdbId}`;
   const apiRes = await ctx.proxiedFetcher(apiUrl2, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -6976,8 +7493,8 @@ const vidapiClickScraper = makeSourcerer({
   rank: 89,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$3,
-  scrapeShow: comboScraper$3
+  scrapeMovie: comboScraper$7,
+  scrapeShow: comboScraper$7
 });
 const VIDIFY_SERVERS = [
   { name: "Mbox", sr: 17 },
@@ -6997,7 +7514,7 @@ const VIDIFY_SERVERS = [
   { name: "Vplus", sr: 18 },
   { name: "Cobra", sr: 12 }
 ];
-async function comboScraper$2(ctx) {
+async function comboScraper$6(ctx) {
   const query = {
     type: ctx.media.type,
     tmdbId: ctx.media.tmdbId,
@@ -7019,42 +7536,247 @@ const vidifyScraper = makeSourcerer({
   rank: 204,
   disabled: true,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: comboScraper$2,
-  scrapeShow: comboScraper$2
+  scrapeMovie: comboScraper$6,
+  scrapeShow: comboScraper$6
 });
-const backendUrl = "https://second.vidnest.fun";
-const servers = ["hollymoviehd", "allmovies"];
-async function scrape(ctx, type) {
-  const embeds = [];
-  for (const server of servers) {
-    let url = "";
-    if (type === "movie") {
-      url = `${backendUrl}/${server}/movie/${ctx.media.tmdbId}`;
-    } else if (ctx.media.type === "show") {
-      url = `${backendUrl}/${server}/tv/${ctx.media.tmdbId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+const API_BASE = "https://enc-dec.app/api";
+const VIDLINK_BASE = "https://vidlink.pro/api/b";
+const headers$1 = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+  Connection: "keep-alive",
+  Referer: "https://vidlink.pro/",
+  Origin: "https://vidlink.pro"
+};
+async function encryptTmdbId(ctx, tmdbId) {
+  const response = await ctx.proxiedFetcher(`${API_BASE}/enc-vidlink`, {
+    method: "GET",
+    query: { text: tmdbId }
+  });
+  if (!(response == null ? void 0 : response.result)) {
+    throw new NotFoundError("Failed to encrypt TMDB ID");
+  }
+  return response.result;
+}
+async function comboScraper$5(ctx) {
+  const { tmdbId } = ctx.media;
+  ctx.progress(10);
+  const encryptedId = await encryptTmdbId(ctx, tmdbId.toString());
+  ctx.progress(30);
+  const apiUrl2 = ctx.media.type === "movie" ? `${VIDLINK_BASE}/movie/${encryptedId}` : `${VIDLINK_BASE}/tv/${encryptedId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+  const vidlinkRaw = await ctx.proxiedFetcher(apiUrl2, {
+    headers: headers$1
+  });
+  if (!vidlinkRaw) {
+    throw new NotFoundError("No response from vidlink API");
+  }
+  ctx.progress(60);
+  let vidlinkData;
+  try {
+    vidlinkData = typeof vidlinkRaw === "string" ? JSON.parse(vidlinkRaw) : vidlinkRaw;
+  } catch {
+    throw new NotFoundError("Invalid JSON from vidlink API");
+  }
+  ctx.progress(80);
+  if (!vidlinkData.stream) {
+    throw new NotFoundError("No stream data found in vidlink response");
+  }
+  const { stream } = vidlinkData;
+  const captions = [];
+  if (stream.captions && Array.isArray(stream.captions)) {
+    for (const caption of stream.captions) {
+      const captionType = caption.type === "srt" ? "srt" : "vtt";
+      captions.push({
+        id: caption.id || caption.url,
+        url: caption.url,
+        language: caption.language || "Unknown",
+        type: captionType,
+        hasCorsRestrictions: caption.hasCorsRestrictions || false
+      });
     }
-    embeds.push({
-      embedId: `vidnest-${server}`,
-      url
-    });
+  }
+  ctx.progress(90);
+  return {
+    embeds: [],
+    stream: [
+      {
+        id: stream.id || "primary",
+        type: stream.type || "file",
+        qualities: stream.qualities || {},
+        playlist: stream.playlist,
+        captions,
+        flags: [],
+        headers: stream.headers || headers$1
+      }
+    ]
+  };
+}
+const vidlinkScraper = makeSourcerer({
+  id: "vidlink",
+  name: "VidLink 🔥",
+  rank: 310,
+  disabled: false,
+  flags: [],
+  scrapeMovie: comboScraper$5,
+  scrapeShow: comboScraper$5
+});
+async function comboScraper$4(ctx) {
+  const query = {
+    type: ctx.media.type,
+    tmdbId: ctx.media.tmdbId
+  };
+  if (ctx.media.type === "show") {
+    query.season = ctx.media.season.number;
+    query.episode = ctx.media.episode.number;
   }
   return {
-    embeds
+    embeds: [
+      { embedId: "vidnest-hollymoviehd", url: JSON.stringify(query) },
+      { embedId: "vidnest-allmovies", url: JSON.stringify(query) }
+    ]
   };
 }
 const vidnestScraper = makeSourcerer({
   id: "vidnest",
   name: "Vidnest",
   rank: 115,
+  flags: [],
+  disabled: true,
+  // The streams cause the site to crash
+  scrapeMovie: comboScraper$4,
+  scrapeShow: comboScraper$4
+});
+const headers = {
+  Origin: "https://vidrock.net",
+  Referer: "https://vidrock.net/"
+};
+const passphrase = "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9";
+const key = CryptoJS.enc.Utf8.parse(passphrase);
+const iv = CryptoJS.enc.Utf8.parse(passphrase.substring(0, 16));
+const baseUrl$2 = "https://vidrock.net/api";
+const userAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36";
+async function comboScraper$3(ctx) {
+  const itemType = ctx.media.type;
+  let itemId;
+  if (itemType === "movie") {
+    itemId = ctx.media.tmdbId;
+  } else {
+    itemId = `${ctx.media.tmdbId}_${ctx.media.season.number}_${ctx.media.episode.number}`;
+  }
+  const encrypted = CryptoJS.AES.encrypt(itemId, key, {
+    iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7
+  });
+  let encryptedBase64 = encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+  encryptedBase64 = encryptedBase64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const encoded = encodeURIComponent(encryptedBase64);
+  const url = `${baseUrl$2}/${itemType}/${encoded}`;
+  const res = await ctx.proxiedFetcher(url, {
+    headers: {
+      ...headers,
+      "User-Agent": userAgent
+    }
+  });
+  let parsedRes = res;
+  if (typeof res === "string") {
+    try {
+      parsedRes = JSON.parse(res);
+    } catch (e) {
+      throw new NotFoundError("No sources found from Vidrock API: Invalid JSON response");
+    }
+  }
+  if (!parsedRes || typeof parsedRes !== "object" || Array.isArray(parsedRes)) {
+    throw new NotFoundError("No sources found from Vidrock API: Invalid response");
+  }
+  const embeds = [];
+  const createMirrorEmbed = (serverName, serverData) => {
+    if (!(serverData == null ? void 0 : serverData.url)) return null;
+    if (serverName.includes("Astra") || serverData.url.includes(".workers.dev")) return null;
+    const context = {
+      type: "hls",
+      stream: serverData.url,
+      headers,
+      flags: [flags.CORS_ALLOWED],
+      captions: []
+    };
+    return {
+      embedId: "mirror",
+      url: JSON.stringify(context)
+    };
+  };
+  for (const sourceKey of Object.keys(parsedRes)) {
+    const sourceData = parsedRes[sourceKey];
+    if ((sourceData == null ? void 0 : sourceData.url) && sourceData.url !== null) {
+      if (sourceKey === "Atlas" || sourceData.url.includes("cdn.vidrock.store/playlist/")) {
+        try {
+          const playlistRes = await ctx.proxiedFetcher(sourceData.url, {
+            headers: {
+              ...headers,
+              "User-Agent": userAgent
+            }
+          });
+          let playlistData = playlistRes;
+          if (typeof playlistRes === "string") {
+            try {
+              playlistData = JSON.parse(playlistRes);
+            } catch (e) {
+              continue;
+            }
+          }
+          if (Array.isArray(playlistData) && playlistData.length > 0) {
+            const qualities = {};
+            for (const stream of playlistData) {
+              if ((stream == null ? void 0 : stream.url) && (stream == null ? void 0 : stream.resolution)) {
+                const resolution = stream.resolution.toString();
+                qualities[resolution] = {
+                  type: "mp4",
+                  url: stream.url
+                };
+              }
+            }
+            if (Object.keys(qualities).length > 0) {
+              const context = {
+                type: "file",
+                qualities,
+                headers,
+                flags: [flags.CORS_ALLOWED],
+                captions: []
+              };
+              embeds.push({
+                embedId: "mirror",
+                url: JSON.stringify(context)
+              });
+            }
+          }
+        } catch (e) {
+          continue;
+        }
+      } else {
+        const embed2 = createMirrorEmbed(sourceKey, sourceData);
+        if (embed2) embeds.push(embed2);
+      }
+    }
+  }
+  if (embeds.length === 0) {
+    throw new NotFoundError("No valid sources found from Vidrock API");
+  }
+  return {
+    embeds
+  };
+}
+const vidrockScraper = makeSourcerer({
+  id: "vidrock",
+  name: "Granite",
+  rank: 170,
   disabled: false,
   flags: [],
-  scrapeMovie: (ctx) => scrape(ctx, "movie"),
-  scrapeShow: (ctx) => scrape(ctx, "tv")
+  scrapeMovie: comboScraper$3,
+  scrapeShow: comboScraper$3
 });
-async function getEmbeds(id, servers2, ctx) {
+async function getEmbeds(id, servers, ctx) {
   var _a;
   const embeds = [];
-  for (const server of servers2.split(",")) {
+  for (const server of servers.split(",")) {
     await ctx.proxiedFetcher(`/getEmbed.php`, {
       baseUrl: warezcdnBase,
       headers: {
@@ -7092,10 +7814,10 @@ const warezcdnScraper = makeSourcerer({
     const serversPage = await ctx.proxiedFetcher(`/filme/${ctx.media.imdbId}`, {
       baseUrl: warezcdnBase
     });
-    const [, id, servers2] = serversPage.match(/let\s+data\s*=\s*'\[\s*\{\s*"id":"([^"]+)".*?"servers":"([^"]+)"/);
-    if (!id || !servers2) throw new NotFoundError("Failed to find episode id");
+    const [, id, servers] = serversPage.match(/let\s+data\s*=\s*'\[\s*\{\s*"id":"([^"]+)".*?"servers":"([^"]+)"/);
+    if (!id || !servers) throw new NotFoundError("Failed to find episode id");
     ctx.progress(40);
-    return getEmbeds(id, servers2, ctx);
+    return getEmbeds(id, servers, ctx);
   }
   // scrapeShow: async (ctx) => {
   //   if (!ctx.media.imdbId) throw new NotFoundError('This source requires IMDB id.');
@@ -7127,6 +7849,102 @@ const warezcdnScraper = makeSourcerer({
   //   if (!id || !servers) throw new NotFoundError('Failed to find episode id');
   //   return getEmbeds(id, servers, ctx);
   // },
+});
+const baseUrl$1 = "https://watchanimeworld.in";
+const zephyrBaseUrl = "https://play.zephyrflick.top";
+const tmdbApiKey = "5b9790d9305dca8713b9a0afad42ea8d";
+async function fetchTMDBData(tmdbId, mediaType) {
+  const endpoint = mediaType === "movie" ? "movie" : "tv";
+  const response = await fetch(`https://api.themoviedb.org/3/${endpoint}/${tmdbId}?api_key=${tmdbApiKey}`);
+  if (!response.ok) {
+    throw new NotFoundError("Failed to fetch TMDB data");
+  }
+  const data = await response.json();
+  if (mediaType === "movie") {
+    const movieData = data;
+    return movieData.title || movieData.original_title;
+  }
+  const showData = data;
+  return showData.name || showData.original_name;
+}
+function normalizeTitle(title) {
+  return title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").trim();
+}
+async function comboScraper$2(ctx) {
+  const isTVShow = "season" in ctx.media;
+  const endpoint = isTVShow ? "tv" : "movie";
+  const title = await fetchTMDBData(ctx.media.tmdbId, endpoint);
+  const normalizedTitle = normalizeTitle(title);
+  let watchUrl;
+  if (ctx.media.type === "movie") {
+    watchUrl = `${baseUrl$1}/movies/${normalizedTitle}/`;
+  } else {
+    const season = ctx.media.season.number;
+    const episode = ctx.media.episode.number;
+    watchUrl = `${baseUrl$1}/episode/${normalizedTitle}-${season}x${episode}/`;
+  }
+  ctx.progress(30);
+  const watchPage = await ctx.proxiedFetcher(watchUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+  });
+  const $ = load(watchPage);
+  const iframeSrc = $("iframe[data-src]").attr("data-src") || $("iframe[src]").attr("src");
+  if (!iframeSrc) {
+    throw new NotFoundError("No iframe found on watch page");
+  }
+  const hashMatch = iframeSrc.match(/\/video\/([a-f0-9]+)/);
+  if (!hashMatch) {
+    throw new NotFoundError("Could not extract video hash from iframe");
+  }
+  const videoHash = hashMatch[1];
+  ctx.progress(60);
+  const apiUrl2 = `${zephyrBaseUrl}/player/index.php?data=${videoHash}&do=getVideo`;
+  const streamResponse = await ctx.proxiedFetcher(apiUrl2, {
+    method: "POST",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      Referer: `${zephyrBaseUrl}/`,
+      Origin: zephyrBaseUrl,
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: `data=${videoHash}&do=getVideo`
+  });
+  const streamData = JSON.parse(streamResponse);
+  if (!streamData.hls || !streamData.videoSource) {
+    throw new NotFoundError("No HLS stream found");
+  }
+  ctx.progress(90);
+  const streamHeaders = {
+    Referer: `${zephyrBaseUrl}/`,
+    Origin: zephyrBaseUrl,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+  };
+  return {
+    embeds: [],
+    stream: [
+      {
+        id: "primary",
+        type: "hls",
+        playlist: streamData.videoSource,
+        headers: streamHeaders,
+        flags: [flags.CORS_ALLOWED],
+        captions: []
+      }
+    ]
+  };
+}
+const watchanimeworldScraper = makeSourcerer({
+  id: "watchanimeworld",
+  name: "WatchAnimeWorld",
+  rank: 116,
+  disabled: false,
+  flags: [],
+  scrapeMovie: comboScraper$2,
+  scrapeShow: comboScraper$2
 });
 const baseUrl = "https://wecima.tube";
 async function comboScraper$1(ctx) {
@@ -7277,6 +8095,9 @@ function gatherAllSources() {
     EightStreamScraper,
     wecimaScraper,
     animeflvScraper,
+    animekaiScraper,
+    FedAPIScraper,
+    FedAPIDBScraper,
     pirxcyScraper,
     vidsrcvipScraper,
     rgshowsScraper,
@@ -7291,7 +8112,10 @@ function gatherAllSources() {
     movies4fScraper,
     debridScraper,
     cinehdplusScraper,
-    fullhdfilmizleScraper
+    fullhdfilmizleScraper,
+    vidlinkScraper,
+    vidrockScraper,
+    watchanimeworldScraper
   ];
 }
 function gatherAllEmbeds() {
@@ -7345,8 +8169,7 @@ function gatherAllEmbeds() {
     ...vidifyEmbeds,
     ...zunimeEmbeds,
     ...AnimetsuEmbeds,
-    vidnestHollymoviehdEmbed,
-    vidnestAllmoviesEmbed,
+    ...VidnestEmbeds,
     myanimesubScraper,
     myanimedubScraper,
     filemoonScraper,
@@ -7356,7 +8179,8 @@ function gatherAllEmbeds() {
     filelionsScraper,
     droploadScraper,
     supervideoScraper,
-    voeScraper
+    voeScraper,
+    AnimekaiScraper
   ];
 }
 function getBuiltinSources() {
@@ -7371,18 +8195,18 @@ function getBuiltinEmbeds() {
 function findDuplicates(items, keyFn) {
   const groups = /* @__PURE__ */ new Map();
   for (const item of items) {
-    const key = keyFn(item);
-    if (!groups.has(key)) {
-      groups.set(key, []);
+    const key2 = keyFn(item);
+    if (!groups.has(key2)) {
+      groups.set(key2, []);
     }
-    groups.get(key).push(item);
+    groups.get(key2).push(item);
   }
-  return Array.from(groups.entries()).filter(([_, groupItems]) => groupItems.length > 1).map(([key, groupItems]) => ({ key, items: groupItems }));
+  return Array.from(groups.entries()).filter(([_, groupItems]) => groupItems.length > 1).map(([key2, groupItems]) => ({ key: key2, items: groupItems }));
 }
 function formatDuplicateError(type, duplicates, keyName) {
-  const duplicateList = duplicates.map(({ key, items }) => {
+  const duplicateList = duplicates.map(({ key: key2, items }) => {
     const itemNames = items.map((item) => item.name || item.id).join(", ");
-    return `  ${keyName} ${key}: ${itemNames}`;
+    return `  ${keyName} ${key2}: ${itemNames}`;
   }).join("\n");
   return `${type} have duplicate ${keyName}s:
 ${duplicateList}`;
@@ -7643,8 +8467,8 @@ function makeSimpleProxyFetcher(proxyUrl, f) {
     });
     const fullUrl = makeFullUrl(url, ops);
     const headerEntries = Object.entries(ops.headers).map((entry) => {
-      const key = entry[0].toLowerCase();
-      if (headerMap[key]) return [headerMap[key], entry[1]];
+      const key2 = entry[0].toLowerCase();
+      if (headerMap[key2]) return [headerMap[key2], entry[1]];
       return entry;
     });
     return fetcher(proxyUrl, {

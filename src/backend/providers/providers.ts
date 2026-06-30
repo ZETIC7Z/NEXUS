@@ -15,6 +15,7 @@ import {
 } from "@/backend/providers/fetchers";
 import {
   febboxScraper,
+  miruroApiScraper,
   tugaflixScraper,
   vidlinkScraper,
   zeticuzApiScraper,
@@ -49,6 +50,10 @@ function patchProviderNames<T extends { id: string; name: string }[]>(
 function buildBase() {
   const builder = buildProviders().setFetcher(makeStandardFetcher(fetch));
 
+  // Add MiruroAPI 🌸 rank: 950
+  const miruroapi = { ...miruroApiScraper, rank: 950 };
+  builder.addSource(miruroapi as any);
+
   // Add our specific 5 custom sources with patched ranks:
 
   // 1. FebBox 4K ⭐  rank: 900 (tried first)
@@ -59,20 +64,22 @@ function buildBase() {
   const vidlink = { ...vidlinkScraper, rank: 890 };
   builder.addSource(vidlink as any);
 
-  // 3. LookMovies  rank: 880 (from built-in sources)
-  const builtinSources = getBuiltinSources();
-  const lookmovie = builtinSources.find((s) => s.id === "lookmovie");
-  if (lookmovie) {
-    builder.addSource({ ...lookmovie, rank: 880 } as any);
-  }
-
-  // 4. ZeticuzApi 🔥  rank: 870
+  // 3. ZeticuzApi 🔥  rank: 870
   const zeticuzapi = { ...zeticuzApiScraper, rank: 870 };
   builder.addSource(zeticuzapi as any);
 
-  // 5. Tugaflix 🔥  rank: 860
+  // 4. Tugaflix 🔥  rank: 860
   const tugaflix = { ...tugaflixScraper, rank: 860 };
   builder.addSource(tugaflix as any);
+
+  // Add all built-in sources from p-stream providers package (avoiding duplicates)
+  const builtinSources = getBuiltinSources();
+  const customIds = ["febbox", "vidlink-custom", "zeticuzapi-custom", "tugaflix-custom", "miruroapi-custom"];
+  builtinSources.forEach((source) => {
+    if (!customIds.includes(source.id)) {
+      builder.addSource(source);
+    }
+  });
 
   // Add all built-in embeds so any embed results resolve correctly
   const builtinEmbeds = getBuiltinEmbeds();

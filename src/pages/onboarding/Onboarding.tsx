@@ -500,7 +500,7 @@ export function OnboardingPage() {
             setFebboxKey={(val) => {
               const setter = usePreferencesStore.getState().setFebboxKey;
               if (typeof val === "function") {
-                setter(val(usePreferencesStore.getState().febboxKey));
+                setter((val as any)(usePreferencesStore.getState().febboxKey));
               } else {
                 setter(val);
               }

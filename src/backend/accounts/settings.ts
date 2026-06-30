@@ -37,6 +37,9 @@ export interface SettingsInput {
   enableDoubleClickToSeek?: boolean;
   enableAutoResumeOnPlaybackError?: boolean;
   tidbKey?: string | null;
+  keyboardShortcuts?: any | null;
+  enableNumberKeySeeking?: boolean;
+  wyzieKey?: string | null;
 }
 
 export interface SettingsResponse {
@@ -73,6 +76,9 @@ export interface SettingsResponse {
   enableDoubleClickToSeek?: boolean;
   enableAutoResumeOnPlaybackError?: boolean;
   tidbKey?: string | null;
+  keyboardShortcuts?: any | null;
+  enableNumberKeySeeking?: boolean;
+  wyzieKey?: string | null;
 }
 
 export function updateSettings(

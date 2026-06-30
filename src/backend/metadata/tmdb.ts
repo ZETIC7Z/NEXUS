@@ -737,3 +737,41 @@ export async function getUpcomingLongTerm(
     (a, b) => (b.popularity || 0) - (a.popularity || 0),
   );
 }
+
+export async function getPosterForMedia(
+  tmdbId: string,
+  type: "movie" | "show",
+): Promise<string | undefined> {
+  try {
+    const tmdbType =
+      type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
+    const details = await getMediaDetails(tmdbId, tmdbType, false);
+    const posterPath =
+      (details as any).poster_path ?? null;
+    return getMediaPoster(posterPath);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function getEpisodeIds(
+  showTmdbId: string,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<{ seasonId: string; episodeId: string } | null> {
+  try {
+    const data = await get<any>(
+      `/tv/${showTmdbId}/season/${seasonNumber}`,
+    );
+    const episode = data.episodes.find(
+      (e: any) => e.episode_number === episodeNumber,
+    );
+    if (!episode) return null;
+    return {
+      seasonId: data.id.toString(),
+      episodeId: episode.id.toString(),
+    };
+  } catch {
+    return null;
+  }
+}

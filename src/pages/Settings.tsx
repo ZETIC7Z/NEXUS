@@ -844,6 +844,10 @@ export function SettingsPage() {
               setTIDBKey={state.tidbKey.set}
               proxyTmdb={state.proxyTmdb.state}
               setProxyTmdb={state.proxyTmdb.set}
+              debridToken={state.debridToken.state}
+              setdebridToken={state.debridToken.set}
+              debridService={state.debridService.state}
+              setdebridService={state.debridService.set}
             />
           </div>
         )}
