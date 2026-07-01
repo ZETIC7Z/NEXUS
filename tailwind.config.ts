@@ -1,0 +1,114 @@
+import { allThemes, defaultTheme, safeThemeList } from "./themes";
+import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+
+const themer = require("tailwindcss-themer");
+
+const config: Config = {
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  safelist: safeThemeList,
+  theme: {
+    extend: {
+      /* breakpoints */
+      screens: {
+        xs: "350px",
+        ssm: "400px",
+        "2xl": "1921px", // Custom breakpoint for screens at least 1920px wide
+        "3xl": "2650px", // Custom breakpoint for screens at least 2650px wide
+        "4xl": "3840px", // Custom breakpoint for screens at least 4096px wide
+      },
+
+      /* fonts */
+      fontFamily: {
+        main: "'DM Sans'", // "main": "'Open Sans'",
+      },
+
+      /* animations */
+      keyframes: {
+        "loading-pin": {
+          "0%, 40%, 100%": { height: "0.5em", "background-color": "#282336" },
+          "20%": { height: "1em", "background-color": "white" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "seek-left": {
+          "0%": { transform: "translateX(0) scale(1)", opacity: "1" },
+          "100%": { transform: "translateX(-50px) scale(1.2)", opacity: "0" },
+        },
+        "seek-right": {
+          "0%": { transform: "translateX(0) scale(1)", opacity: "1" },
+          "100%": { transform: "translateX(50px) scale(1.2)", opacity: "0" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        slideRight: {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "scan-laser": {
+          "0%": { top: "10%" },
+          "50%": { top: "90%" },
+          "100%": { top: "10%" },
+        },
+        "scroll-slow-left": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-33.333%)" },
+        },
+        "scroll-slow-right": {
+          "0%": { transform: "translateX(-33.333%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
+        },
+        "slide-down": {
+          "0%": { transform: "translateY(-50%)" },
+          "100%": { transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "loading-pin": "loading-pin 1.8s ease-in-out infinite",
+        "fade-in": "fade-in 200ms ease-out forwards",
+        "seek-left": "seek-left 0.5s cubic-bezier(0, 0, 0.2, 1) forwards",
+        "seek-right": "seek-right 0.5s cubic-bezier(0, 0, 0.2, 1) forwards",
+        slideIn: "slideIn 0.3s ease-out forwards",
+        slideRight: "slideRight 0.3s ease-out forwards",
+        fadeIn: "fadeIn 0.3s ease-out forwards",
+        "scan-laser": "scan-laser 2s ease-in-out infinite",
+        "scroll-slow-left": "scroll-slow-left 30s linear infinite",
+        "scroll-slow-right": "scroll-slow-right 30s linear infinite",
+        "slide-up": "slide-up 20s linear infinite",
+        "slide-down": "slide-down 20s linear infinite",
+      },
+    },
+  },
+  plugins: [
+    require("tailwind-scrollbar"),
+    themer({
+      defaultTheme: defaultTheme,
+      themes: [
+        {
+          name: "default",
+          selectors: [".theme-default"],
+          ...defaultTheme,
+        },
+        ...allThemes,
+      ],
+    }),
+    plugin(({ addVariant }) => {
+      addVariant("dir-neutral", "[dir] &");
+    }),
+  ],
+};
+
+export default config;
+// force rebuild

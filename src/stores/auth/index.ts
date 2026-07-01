@@ -1,0 +1,128 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
+
+export interface Account {
+  profile: {
+    colorA: string;
+    colorB: string;
+    icon: string;
+    photoUrl?: string; // custom uploaded profile photo (Vercel Blob URL)
+  };
+  nickname: string;
+  fullName?: string;
+  username?: string;
+  signupDate?: string;
+}
+
+export type AccountWithToken = Account & {
+  sessionId: string;
+  userId: string;
+  token: string;
+  seed: string;
+  deviceName: string;
+  signupDate?: string;
+};
+
+interface AuthStore {
+  account: null | AccountWithToken;
+  backendUrl: null | string;
+  proxySet: null | string[];
+  removeAccount(): void;
+  setAccount(acc: AccountWithToken): void;
+  updateDeviceName(deviceName: string): void;
+  updateAccount(acc: Partial<Account>): void;
+  setAccountProfile(acc: Account["profile"]): void;
+  setAccountPhotoUrl(photoUrl: string | undefined): void;
+  setAccountNickname(nickname: string): void;
+  setAccountFullName(fullName: string): void;
+  setAccountUsername(username: string): void;
+  setBackendUrl(url: null | string): void;
+  setProxySet(urls: null | string[]): void;
+}
+
+export const useAuthStore = create(
+  persist(
+    immer<AuthStore>((set) => ({
+      account: null,
+      backendUrl: null,
+      proxySet: null,
+      setAccount(acc) {
+        set((s) => {
+          s.account = acc;
+        });
+      },
+      removeAccount() {
+        set((s) => {
+          s.account = null;
+        });
+      },
+      setBackendUrl(v) {
+        set((s) => {
+          s.backendUrl = v;
+        });
+      },
+      setProxySet(urls) {
+        set((s) => {
+          s.proxySet = urls;
+        });
+      },
+      setAccountProfile(profile) {
+        set((s) => {
+          if (s.account) {
+            s.account.profile = profile;
+          }
+        });
+      },
+      setAccountPhotoUrl(photoUrl) {
+        set((s) => {
+          if (s.account) {
+            s.account.profile = {
+              ...s.account.profile,
+              photoUrl,
+            };
+          }
+        });
+      },
+      setAccountNickname(nickname) {
+        set((s) => {
+          if (s.account) {
+            s.account.nickname = nickname;
+          }
+        });
+      },
+      setAccountFullName(fullName) {
+        set((s) => {
+          if (s.account) {
+            s.account.fullName = fullName;
+          }
+        });
+      },
+      setAccountUsername(username) {
+        set((s) => {
+          if (s.account) {
+            s.account.username = username;
+          }
+        });
+      },
+      updateAccount(acc) {
+        set((s) => {
+          if (!s.account) return;
+          s.account = {
+            ...s.account,
+            ...acc,
+          };
+        });
+      },
+      updateDeviceName(deviceName) {
+        set((s) => {
+          if (!s.account) return;
+          s.account.deviceName = deviceName;
+        });
+      },
+    })),
+    {
+      name: "__MW::auth",
+    },
+  ),
+);
