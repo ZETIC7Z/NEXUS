@@ -73,31 +73,6 @@ interface CineProSubtitle {
   label: string;
 }
 
-interface ProxyPayload {
-  url: string;
-  headers?: Record<string, string>;
-}
-
-// CinePro Core returns stream URLs wrapped in third-party proxies (e.g.
-// nexus-api-production.up.railway.app/v1/proxy?data=<encoded-json>). We unwrap
-// them so NEXUS can proxy the direct stream URL with the correct headers.
-function unwrapProxiedUrl(url: string): { url: string; headers: Record<string, string> } {
-  try {
-    const parsed = new URL(url);
-    const data = parsed.searchParams.get("data");
-    if (!data) return { url, headers: {} };
-
-    const payload: ProxyPayload = JSON.parse(data);
-    if (!payload?.url) return { url, headers: {} };
-
-    return {
-      url: payload.url,
-      headers: payload.headers ?? {},
-    };
-  } catch {
-    return { url, headers: {} };
-  }
-}
 
 interface CineProResponse {
   sources: CineProSource[];
