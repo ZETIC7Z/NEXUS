@@ -92,19 +92,8 @@ export function PreferencesPart(props: {
   );
 
   const allSources = useMemo(() => {
-    const sources = getAllProviders().listSources();
-
-    if (hasFebboxKey && !sources.some((s) => s.id === "febbox")) {
-      sources.push({
-        id: "febbox",
-        name: "FebBox (4K) ⭐",
-        rank: 999,
-        mediaTypes: ["movie", "show"],
-      } as any);
-    }
-
-    return sources;
-  }, [hasFebboxKey]);
+    return getAllProviders().listSources();
+  }, []);
 
   const sourceItems = useMemo(() => {
     const currentDeviceSources = getProviders().listSources();

@@ -90,10 +90,13 @@ const nameToLanguageCode: Record<string, string> = {
   albanian: "sq",
   amharic: "am",
   arabic: "ar",
+  العربية: "ar",
   bengali: "bn",
+  বাংলা: "bn",
   bulgarian: "bg",
   catalan: "ca",
   chinese: "zh",
+  中文: "zh",
   croatian: "hr",
   czech: "cs",
   danish: "da",
@@ -101,40 +104,83 @@ const nameToLanguageCode: Record<string, string> = {
   estonian: "et",
   finnish: "fi",
   french: "fr",
+  français: "fr",
+  francais: "fr",
   german: "de",
+  deutsch: "de",
   greek: "el",
   hebrew: "he",
+  עברית: "he",
   hindi: "hi",
+  हिन्दी: "hi",
   hungarian: "hu",
+  magyar: "hu",
   indonesian: "id",
+  "bahasa indonesia": "id",
   italian: "it",
+  italiano: "it",
   japanese: "ja",
+  日本語: "ja",
   korean: "ko",
+  한국어: "ko",
   latvian: "lv",
   lithuanian: "lt",
   malay: "ms",
   norwegian: "no",
+  norsk: "no",
   persian: "fa",
   farsi: "fa",
+  فارسی: "fa",
   polish: "pl",
+  polski: "pl",
   portuguese: "pt",
+  português: "pt",
+  portugues: "pt",
   romanian: "ro",
+  română: "ro",
+  romana: "ro",
   russian: "ru",
+  русский: "ru",
+  pyccкий: "ru",
   serbian: "sr",
+  српски: "sr",
   slovak: "sk",
+  slovenčina: "sk",
+  slovenčina: "sk",
   slovenian: "sl",
+  slovenščina: "sl",
   spanish: "es",
+  español: "es",
+  espanol: "es",
   swedish: "sv",
+  svenska: "sv",
   tamil: "ta",
   telugu: "te",
   thai: "th",
+  ภาษาไทย: "th",
   turkish: "tr",
+  türkçe: "tr",
+  turkce: "tr",
   ukrainian: "uk",
+  українська: "uk",
   urdu: "ur",
+  أردو: "ur",
   vietnamese: "vi",
+  "tiếng việt": "vi",
+  "tieng viet": "vi",
   malayalam: "ml",
   burmese: "my",
   tagalog: "tl",
+  filipino: "tl",
+  croatian: "hr",
+  hrvatski: "hr",
+  czech: "cs",
+  čeština: "cs",
+  cestina: "cs",
+  danish: "da",
+  dansk: "da",
+  finnish: "fi",
+  suomi: "fi",
 };
 
 // list of iso639_1 Alpha-2 codes used as default languages
@@ -224,17 +270,67 @@ function populateLanguageCode(language: string): string {
   );
 }
 
+export function normalizeLanguageCode(language: string): string {
+  if (!language) return "en";
+  let clean = language.toLowerCase().trim();
+  
+  // Remove trailing numbers, e.g. "English 2" -> "english"
+  clean = clean.replace(/\s+\d+$/, "").trim();
+
+  // If there's an exact match in nameToLanguageCode, return it
+  if (nameToLanguageCode[clean]) return nameToLanguageCode[clean];
+
+  // Try substring matches on nameToLanguageCode keys (e.g. "Malay (macrolanguage)" contains "malay")
+  for (const [key, code] of Object.entries(nameToLanguageCode)) {
+    if (clean.includes(key)) {
+      return code;
+    }
+  }
+
+  // Remove parenthetical notes
+  clean = clean.replace(/\s*\(.*?\)/g, "").trim();
+  if (nameToLanguageCode[clean]) return nameToLanguageCode[clean];
+
+  // Common mapping overrides
+  if (clean === "en" || clean === "eng" || clean === "english") return "en";
+  if (clean === "tl" || clean === "tagalog" || clean === "filipino" || clean === "fil" || clean === "ph" || clean === "phi") return "tl";
+  if (clean === "ar" || clean === "ara" || clean === "arabic" || clean === "العربية") return "ar";
+  if (clean === "bn" || clean === "ben" || clean === "bengali" || clean === "বাংলা") return "bn";
+  if (clean === "bg" || clean === "bul" || clean === "bulgarian") return "bg";
+  if (clean === "ru" || clean === "rus" || clean === "russian" || clean === "русский") return "ru";
+  if (clean === "ur" || clean === "urd" || clean === "urdu" || clean === "أردو") return "ur";
+  if (clean === "fa" || clean === "fas" || clean === "persian" || clean === "فارسی") return "fa";
+  if (clean === "pa" || clean === "pan" || clean === "punjabi" || clean === "ਪੰਜਾਬੀ") return "pa";
+  if (clean === "th" || clean === "tha" || clean === "thai" || clean === "ภาษาไทย") return "th";
+  if (clean === "zh" || clean === "zho" || clean === "chi" || clean === "chinese" || clean === "中文") return "zh";
+  if (clean === "vi" || clean === "vie" || clean === "vietnamese" || clean === "tiếng việt") return "vi";
+  if (clean === "tr" || clean === "tur" || clean === "turkish" || clean === "türkçe") return "tr";
+  if (clean === "pt" || clean === "por" || clean === "portuguese" || clean === "português") return "pt";
+  if (clean === "es" || clean === "spa" || clean === "spanish" || clean === "español") return "es";
+  if (clean === "fr" || clean === "fra" || clean === "french" || clean === "français") return "fr";
+
+  return clean;
+}
+
 /**
  * @param locale idk what kinda code this takes, anything in ietf format I guess
  * @returns pretty format for language, null if it no info can be found for language
  */
 export function getPrettyLanguageNameFromLocale(locale: string): string | null {
+  if (!locale) return null;
+  const clean = normalizeLanguageCode(locale);
+  if (clean === "tl") return "Filipino";
+  if (clean === "en") return "English";
+
   const tag =
-    locale.length === 3
-      ? getTag(iso6393To1[locale] ?? locale, true)
-      : getTag(locale, true);
+    clean.length === 3
+      ? getTag(iso6393To1[clean] ?? clean, true)
+      : getTag(clean, true);
   const lang = tag?.language?.Description?.[0] ?? null;
-  if (!lang) return null;
+  if (!lang) {
+    // Graceful fallback: capitalize clean locale/language name
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
 
   const region = tag?.region?.Description?.[0] ?? null;
   let regionText = "";
@@ -273,10 +369,35 @@ export function sortLangCodes(langCodes: string[]) {
  */
 export function getCountryCodeForLocale(locale: string): string | null {
   if (!locale) return null;
-  const normalizedLocale =
-    nameToLanguageCode[locale.toLowerCase().trim()] || locale;
+  const clean = normalizeLanguageCode(locale);
+  
+  // Direct flag maps
+  if (clean === "tl") return "ph";
+  if (clean === "en") return "us";
+  if (clean === "ar") return "sa";
+  if (clean === "bn") return "bd";
+  if (clean === "bg") return "bg";
+  if (clean === "ru") return "ru";
+  if (clean === "ur") return "pk";
+  if (clean === "fa") return "ir";
+  if (clean === "pa") return "in";
+  if (clean === "th") return "th";
+  if (clean === "zh") return "cn";
+  if (clean === "vi") return "vn";
+  if (clean === "tr") return "tr";
+  if (clean === "pt") return "br";
+  if (clean === "es") return "es";
+  if (clean === "fr") return "fr";
+  if (clean === "ms") return "my";
+  if (clean === "el") return "gr";
+  if (clean === "id") return "id";
+  if (clean === "it") return "it";
+  if (clean === "ja") return "jp";
+  if (clean === "ko") return "kr";
+  if (clean === "hi") return "in";
+
   let output: LanguageObj | null = null as any as LanguageObj;
-  const tag = getTag(populateLanguageCode(normalizedLocale), true);
+  const tag = getTag(populateLanguageCode(clean), true);
 
   if (!tag?.language?.Subtag) return null;
   // this function isn't async, so its guaranteed to work like this

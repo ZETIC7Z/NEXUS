@@ -12,7 +12,8 @@ import {
   makeProviderUrl,
 } from "@/backend/helpers/providerApi";
 import { getLoadbalancedProviderApiUrl } from "@/backend/providers/fetchers";
-import { getProviders } from "@/backend/providers/providers";
+import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { getProviders, getSourceSortOrder } from "@/backend/providers/providers";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 
@@ -31,17 +32,21 @@ export interface ScrapingSegment {
   percentage: number;
 }
 
+export type ProbeStatus = "probing" | "working" | "failed";
+
 type ScraperEvent<Event extends keyof FullScraperEvents> = Parameters<
   NonNullable<FullScraperEvents[Event]>
 >[0];
 
-// Source name overrides for builtin providers (adds emojis etc.)
+// Source name overrides for builtin providers (display aliases).
+// true source name VidLink 🔥 / Alias use for this site: Abyss
+// true source name LookMovies 🔥 / Alias use for this site: Apex
 const SOURCE_NAME_OVERRIDES: Record<string, string> = {
-  tugaflix: "Tugaflix 🔥",
-  "vidlink-custom": "VidLink 🔥",
-  "zeticuzapi-custom": "ZeticuzApi 🔥",
-  febbox: "FebBox (4K) ⭐",
+  "vidlink-custom": "Abyss 🔥",
+  lookmovie: "Apex 🔥",
 };
+
+const CINEPRO_SOURCE_IDS = cineproCoreScrapers.map((s) => s.id);
 
 function applyNameOverrides(
   metadata: { id: string; name: string }[],
@@ -51,11 +56,52 @@ function applyNameOverrides(
   );
 }
 
+/**
+ * Probe all sourceIds in parallel — each gets a PROBE_TIMEOUT_MS window to return a stream.
+ * Returns a Set of IDs that successfully returned a stream.
+ */
+async function parallelProbe(
+  sourceIds: string[],
+  media: ScrapeMedia,
+  PROBE_TIMEOUT_MS = 12_000,
+): Promise<Set<string>> {
+  const providers = getProviders();
+  const results = await Promise.allSettled(
+    sourceIds.map(async (id) => {
+      return new Promise<string>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timeout:${id}`)), PROBE_TIMEOUT_MS);
+        providers
+          .runSourceScraper({ id, media })
+          .then((out) => {
+            clearTimeout(timer);
+            if (out?.stream && out.stream.length > 0) {
+              resolve(id);
+            } else {
+              reject(new Error(`no-stream:${id}`));
+            }
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    }),
+  );
+
+  const working = new Set<string>();
+  results.forEach((r) => {
+    if (r.status === "fulfilled") working.add(r.value);
+  });
+  return working;
+}
+
 function useBaseScrape() {
   const [sources, setSources] = useState<Record<string, ScrapingSegment>>({});
   const [sourceOrder, setSourceOrder] = useState<ScrapingItems[]>([]);
   const [currentSource, setCurrentSource] = useState<string>();
+  const [probedSources, setProbedSources] = useState<Record<string, ProbeStatus>>({});
   const lastId = useRef<string | null>(null);
+
 
   const initEvent = useCallback((evt: ScraperEvent<"init">) => {
     // Initialize spinner state from the providers engine source list (FebBox is now a real provider)
@@ -184,6 +230,8 @@ function useBaseScrape() {
     sources,
     sourceOrder,
     currentSource,
+    probedSources,
+    setProbedSources,
     setSources,
     setSourceOrder,
     setCurrentSource,
@@ -201,6 +249,8 @@ export function useScrape() {
     getResult,
     startEvent,
     startScrape,
+    probedSources,
+    setProbedSources,
     setSources,
     setSourceOrder,
     setCurrentSource,
@@ -250,17 +300,13 @@ export function useScrape() {
 
       // All sources from the providers engine
       // Filtered by: media type, not disabled, not already failed for this media, and strictly allowed IDs
-      const ALLOWED_IDS = [
-        "febbox",
-        "vidlink-custom",
-        "vidlink",
-        "lookmovie",
-        "zeticuzapi-custom",
-        "zeticuzapi",
-        "tugaflix-custom",
-        "tugaflix",
-      ];
+      // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
+      const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
 
+      // All sources from the providers engine — filter by media type support,
+      // disabled sources list, and already-failed sources for this media.
+      // We do NOT restrict to ALLOWED_IDS here so TV-capable providers are not
+      // accidentally excluded.
       const availableSources = allSources
         .filter((source) => {
           const isMovie = media.type === "movie";
@@ -268,32 +314,17 @@ export function useScrape() {
           const supportsShow = source.mediaTypes?.includes("show");
           if (isMovie && !supportsMovie) return false;
           if (!isMovie && !supportsShow) return false;
-
           return (
             !(disabledSources || []).includes(source.id) &&
-            !failedSources.includes(source.id) &&
-            ALLOWED_IDS.includes(source.id)
+            !failedSources.includes(source.id)
           );
         })
         .map((source) => source.id);
 
       const baseSourceOrder = availableSources;
-
-      // Sort baseSourceOrder to strictly match the requested order:
-      // febbox -> vidlink -> lookmovies -> zeticuz api -> tugaflix
-      const strictSortOrder = [
-        "febbox",
-        "vidlink-custom",
-        "vidlink",
-        "lookmovie",
-        "zeticuzapi-custom",
-        "zeticuzapi",
-        "tugaflix-custom",
-        "tugaflix",
-      ];
       baseSourceOrder.sort((a, b) => {
-        const idxA = strictSortOrder.indexOf(a);
-        const idxB = strictSortOrder.indexOf(b);
+        const idxA = sortOrder.indexOf(a);
+        const idxB = sortOrder.indexOf(b);
         return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
       });
 
@@ -349,10 +380,52 @@ export function useScrape() {
           )
         : undefined;
 
-      // Use filteredSourceOrder for spinner when resuming, baseSourceOrder for fresh start
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PHASE 1: Parallel probe — scan ALL sources simultaneously.
+      // Run runSourceScraper() for every candidate at once. Only sources that
+      // return a valid stream are shown in the spinner and source list.
+      // Failed / timed-out sources are silently hidden from both.
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const probeOrder = [...baseSourceOrder];
+
+      // Mark every candidate as 'probing' immediately
+      const initialProbeState: Record<string, ProbeStatus> = {};
+      probeOrder.forEach((id) => { initialProbeState[id] = "probing"; });
+      setProbedSources(initialProbeState);
+      if (mediaKey) {
+        usePlayerStore.getState().setProbedSources(mediaKey, initialProbeState);
+      }
+
+      // Run all probes in parallel (12 s timeout each)
+      let workingSourceIds: Set<string>;
+      try {
+        workingSourceIds = await parallelProbe(probeOrder, media);
+      } catch {
+        // If probe itself crashes, gracefully fall back to trying all sources
+        workingSourceIds = new Set(probeOrder);
+      }
+
+      // Update probedSources with final results
+      const finalProbeState: Record<string, ProbeStatus> = {};
+      probeOrder.forEach((id) => {
+        finalProbeState[id] = workingSourceIds.has(id) ? "working" : "failed";
+      });
+      setProbedSources(finalProbeState);
+      if (mediaKey) {
+        usePlayerStore.getState().setProbedSources(mediaKey, finalProbeState);
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // PHASE 2: Filter to working sources only, then run sequential scraper
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const workingOrder = baseSourceOrder.filter((id) => workingSourceIds.has(id));
+      // Graceful fallback: if probe found nothing, try everything anyway
+      const effectiveSourceOrder = workingOrder.length > 0 ? workingOrder : baseSourceOrder;
+
+      // Use effectiveSourceOrder (working sources only) for spinner init when not resuming
       const spinnerSourceOrder = startFromSourceId
         ? filteredSourceOrder
-        : baseSourceOrder;
+        : effectiveSourceOrder;
 
       // Initialize sources in spinner â€” only show what we'll actually try
       const allSourcesInit: Record<string, ScrapingSegment> = {};
@@ -385,9 +458,9 @@ export function useScrape() {
       setSources(allSourcesInit);
       setSourceOrder(allSourceOrder);
 
-      // Run all providers in the correct order (FebBox is now a proper provider at rank 880)
-      // The providers engine handles NotFoundError silently — no error modal for missing streams
-      const providerSourceOrder = filteredSourceOrder;
+      // Run all providers in the correct order (only working sources from probe)
+      // The providers engine handles NotFoundError silently
+      const providerSourceOrder = startFromSourceId ? filteredSourceOrder : effectiveSourceOrder;
 
       const providerApiUrl = getLoadbalancedProviderApiUrl();
       const extensionActive = await isExtensionActive();
@@ -450,6 +523,7 @@ export function useScrape() {
       setSources,
       setSourceOrder,
       setCurrentSource,
+      setProbedSources,
     ],
   );
 
@@ -466,6 +540,7 @@ export function useScrape() {
     sourceOrder,
     sources,
     currentSource,
+    probedSources,
   };
 }
 
@@ -508,11 +583,18 @@ export function useListCenter(
     const listNewLeft = containerWidth / 2 - listWidth / 2;
     const listNewTop = containerHeight / 2 - topDifference - currentHeight / 2;
 
+    // On the very first render, snap into position immediately (no animation).
+    // On subsequent updates (source changes), animate smoothly.
+    if (!renderedOnce) {
+      listRef.current.style.transition = "none";
+    } else {
+      listRef.current.style.transition = "transform 0.35s cubic-bezier(0.4,0,0.2,1)";
+    }
     listRef.current.style.transform = `translateY(${listNewTop}px) translateX(${listNewLeft}px)`;
     setTimeout(() => {
       setRenderedOnce(true);
     }, 150);
-  }, [currentSource, containerRef, listRef, setRenderedOnce]);
+  }, [currentSource, containerRef, listRef, setRenderedOnce, renderedOnce]);
 
   const updatePositionRef = useRef(updatePosition);
 

@@ -326,6 +326,15 @@ export const usePreferencesStore = create(
     })),
     {
       name: "__MW::preferences",
+      version: 3,
+      migrate(persistedState: any, fromVersion: number) {
+        // Force-enable auto-resume and last-used-source for all users migrating to version 3
+        if (fromVersion < 3) {
+          persistedState.enableLastSuccessfulSource = true;
+          persistedState.enableAutoResumeOnPlaybackError = true;
+        }
+        return persistedState;
+      },
     },
   ),
 );

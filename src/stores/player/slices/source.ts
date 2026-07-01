@@ -96,6 +96,7 @@ export interface SourceSlice {
   skipSegmentsCacheKey: string | null;
   failedSourcesPerMedia: Record<string, string[]>; // mediaKey -> array of failed sourceIds
   failedEmbedsPerMedia: Record<string, Record<string, string[]>>; // mediaKey -> sourceId -> array of failed embedIds
+  probedSources: Record<string, Record<string, "probing" | "working" | "failed">>; // mediaKey -> sourceId -> status
   resumeFromSourceId: string | null;
   setStatus(status: PlayerStatus): void;
   setSource(
@@ -116,6 +117,7 @@ export interface SourceSlice {
   addFailedEmbed(sourceId: string, embedId: string): void;
   clearFailedSources(mediaKey?: string): void;
   clearFailedEmbeds(mediaKey?: string): void;
+  setProbedSources(mediaKey: string, probed: Record<string, "probing" | "working" | "failed">): void;
   setSkipSegments(cacheKey: string, segments: SegmentData[]): void;
   setResumeFromSourceId(id: string | null): void;
   reset(): void;
@@ -188,6 +190,7 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   skipSegmentsCacheKey: null,
   failedSourcesPerMedia: {},
   failedEmbedsPerMedia: {},
+  probedSources: {},
   resumeFromSourceId: null,
   caption: {
     selected: null,
@@ -381,6 +384,11 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       }
     });
   },
+  setProbedSources(mediaKey: string, probed: Record<string, "probing" | "working" | "failed">) {
+    set((s) => {
+      s.probedSources[mediaKey] = probed;
+    });
+  },
   setSkipSegments(cacheKey: string, segments: SegmentData[]) {
     set((s) => {
       s.skipSegmentsCacheKey = cacheKey;
@@ -409,6 +417,7 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.skipSegmentsCacheKey = null;
       s.failedSourcesPerMedia = {};
       s.failedEmbedsPerMedia = {};
+      s.probedSources = {};
       s.resumeFromSourceId = null;
       s.caption = {
         selected: null,

@@ -5,8 +5,10 @@ import { immer } from "zustand/middleware/immer";
 export interface OnboardingStore {
   completed: boolean;
   useZeticuzPlayer: boolean;
+  useDefaultSetup: boolean;
   setCompleted(v: boolean): void;
   setUseZeticuzPlayer(v: boolean): void;
+  setUseDefaultSetup(v: boolean): void;
 }
 
 export const useOnboardingStore = create(
@@ -14,6 +16,7 @@ export const useOnboardingStore = create(
     immer<OnboardingStore>((set) => ({
       completed: false,
       useZeticuzPlayer: false,
+      useDefaultSetup: false,
       setCompleted(v) {
         set((s) => {
           s.completed = v;
@@ -22,6 +25,11 @@ export const useOnboardingStore = create(
       setUseZeticuzPlayer(v) {
         set((s) => {
           s.useZeticuzPlayer = v;
+        });
+      },
+      setUseDefaultSetup(v) {
+        set((s) => {
+          s.useDefaultSetup = v;
         });
       },
     })),

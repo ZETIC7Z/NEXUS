@@ -36,18 +36,23 @@ export interface ScrapingProps {
 
 export function ScrapingPart(props: ScrapingProps) {
   const { report } = useReportProviders();
-  const { startScraping, resumeScraping, sourceOrder, sources, currentSource } =
+  const { startScraping, resumeScraping, sourceOrder, sources, currentSource, probedSources } =
     useScrape();
+  const acts = useScrape();
   const isMounted = useMountedState();
   const { t } = useTranslation();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [failedStartScrape, setFailedStartScrape] = useState<boolean>(false);
+  
+  // Filter out failed sources from the spinner
+  const visibleSourceOrder = sourceOrder.filter((o) => probedSources[o.id] !== "failed");
+
   const renderedOnce = useListCenter(
     containerRef,
     listRef,
-    sourceOrder,
+    visibleSourceOrder,
     currentSource,
   );
 
@@ -93,10 +98,12 @@ export function ScrapingPart(props: ScrapingProps) {
     })().catch(() => setFailedStartScrape(true));
   }, [startScraping, resumeScraping, props, report, isMounted]);
 
-  let currentProviderIndex = sourceOrder.findIndex(
+  let currentProviderIndex = visibleSourceOrder.findIndex(
     (s) => s.id === currentSource || s.children.includes(currentSource ?? ""),
   );
   if (currentProviderIndex === -1) currentProviderIndex = 0;
+
+  const isProbing = Object.values(probedSources || {}).some((status) => status === "probing");
 
   if (failedStartScrape)
     return <WarningPart>{t("player.turnstile.error")}</WarningPart>;
@@ -106,24 +113,26 @@ export function ScrapingPart(props: ScrapingProps) {
       className="h-full w-full relative dir-neutral:origin-top-left flex"
       ref={containerRef}
     >
-      {!sourceOrder || sourceOrder.length === 0 ? (
+      {isProbing || !visibleSourceOrder || visibleSourceOrder.length === 0 ? (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center flex flex-col justify-center z-0">
-          <Loading className="mb-8" />
-          {/* Verification happens silently in the background */}
+          <Loading className="mb-4" />
+          <p className="text-white/60 text-xs font-semibold tracking-wider uppercase animate-pulse">
+            {isProbing ? "Scanning all sources..." : "Initializing player..."}
+          </p>
         </div>
       ) : null}
       <div
         className={classNames({
-          "absolute transition-[transform,opacity] opacity-0 dir-neutral:left-0": true,
-          "!opacity-100": renderedOnce,
+          "absolute transition-[transform,opacity] duration-300 ease-in-out opacity-0 dir-neutral:left-0": true,
+          "!opacity-100": renderedOnce && !isProbing,
         })}
         ref={listRef}
       >
-        {sourceOrder.map((order) => {
+        {visibleSourceOrder.map((order) => {
           const source = sources[order.id];
           if (!source) return null;
           const distance = Math.abs(
-            sourceOrder.findIndex((o) => o.id === order.id) -
+            visibleSourceOrder.findIndex((o) => o.id === order.id) -
               currentProviderIndex,
           );
           return (

@@ -2,6 +2,8 @@ import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
+import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
   useEmbedScraping,
@@ -174,52 +176,26 @@ export function SourceSelectionView({
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
   const hasFebboxKey = febboxKey && febboxKey.length > 0;
 
+  const CINEPRO_SOURCE_IDS = useMemo(
+    () => cineproCoreScrapers.map((s) => s.id),
+    [],
+  );
+
   const sources = useMemo(() => {
     if (!metaType) return [];
-    const ALLOWED_IDS = [
-      "febbox",
-      "vidlink-custom",
-      "vidlink",
-      "lookmovie",
-      "zeticuzapi-custom",
-      "zeticuzapi",
-      "tugaflix-custom",
-      "tugaflix",
-    ];
+
+    // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
+    const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
 
     let allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id))
-      .filter((v) => ALLOWED_IDS.includes(v.id));
-
-    // Add FebBox manually to the source list if it's not present
-    if (!allSources.some((s) => s.id === "febbox")) {
-      allSources.push({
-        id: "febbox",
-        name: "FebBox (4K) ⭐",
-        type: "source",
-        mediaTypes: ["movie", "show"],
-        rank: 999,
-      } as any);
-    }
-
-    // Sort strictly in the requested order:
-    // febbox -> vidlink -> lookmovies -> zeticuz api -> tugaflix
-    const strictSortOrder = [
-      "febbox",
-      "vidlink-custom",
-      "vidlink",
-      "lookmovie",
-      "zeticuzapi-custom",
-      "zeticuzapi",
-      "tugaflix-custom",
-      "tugaflix",
-    ];
+      .filter((v) => sortOrder.includes(v.id));
 
     allSources.sort((a, b) => {
-      const idxA = strictSortOrder.indexOf(a.id);
-      const idxB = strictSortOrder.indexOf(b.id);
+      const idxA = sortOrder.indexOf(a.id);
+      const idxB = sortOrder.indexOf(b.id);
       return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
     });
 
@@ -227,6 +203,8 @@ export function SourceSelectionView({
   }, [
     metaType,
     disabledSources,
+    preferredSourceOrder,
+    enableSourceOrder,
   ]);
 
   const handleFindNextSource = () => {

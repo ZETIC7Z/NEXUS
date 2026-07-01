@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { Button } from "@/components/buttons/Button";
+import { Toggle } from "@/components/buttons/Toggle";
 import { Icon, Icons } from "@/components/Icon";
 import { Stepper } from "@/components/layout/Stepper";
 import { BiggerCenterContainer } from "@/components/layout/ThinContainer";
@@ -50,7 +51,7 @@ function Item(props: { title: string; children: React.ReactNode }) {
   );
 }
 
-/* ─── Info Modal Shell (reusable for both Extension & Zeticuz modals) ─── */
+/* ─── Info Modal Shell for the Extension modal ─── */
 function OnboardingInfoModal(props: {
   isOpen: boolean;
   onClose: () => void;
@@ -120,10 +121,13 @@ export function OnboardingPage() {
   const { completeAndRedirect } = useRedirectBack();
   const { t } = useTranslation();
   const setUseZeticuzPlayer = useOnboardingStore((s) => s.setUseZeticuzPlayer);
+  const setUseDefaultSetup = useOnboardingStore((s) => s.setUseDefaultSetup);
+  const setCompleted = useOnboardingStore((s) => s.setCompleted);
   const noProxies = getProxyUrls().length === 0;
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isZeticuzModalOpen, setIsZeticuzModalOpen] = useState(false);
+  const [showZeticuz, setShowZeticuz] = useState(false);
 
   return (
     <MinimalPageLayout>
@@ -273,11 +277,6 @@ export function OnboardingPage() {
               If you prefer using a mobile browser, use Firefox, as it supports
               extensions.
             </li>
-            <li>
-              <span className="text-white font-medium">Alternative:</span> If
-              you must watch via a mobile web browser without the app, we
-              recommend using the Zeticuz Player.
-            </li>
           </ul>
         </div>
       </OnboardingInfoModal>
@@ -288,14 +287,15 @@ export function OnboardingPage() {
         onClose={() => setIsZeticuzModalOpen(false)}
         title="ZETICUZ PLAYER"
         subtitle="ALTERNATIVE EMBED MOVIE SOURCE"
-        actionLabel="CONTINUE USING ZETICUZ →"
+        actionLabel="[ Continue Using Zeticuz &rarr; ]"
         onAction={() => {
           setIsZeticuzModalOpen(false);
           setUseZeticuzPlayer(true);
+          setUseDefaultSetup(false);
           completeAndRedirect();
         }}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 text-gray-300">
           <p className="text-white font-medium">
             Instant Play | No Setup Required
           </p>
@@ -307,8 +307,9 @@ export function OnboardingPage() {
           </p>
 
           <p className="mt-4">
-            <span className="text-amber-500 italic">Note:</span> Latest TV
-            series and anime episodes may occasionally experience delays or be
+            <span className="text-amber-500 italic">Note:</span> This player uses
+            embed iframe providers from open-source providers as alternative iframe sources.
+            Latest TV series and anime episodes may occasionally experience delays or be
             unavailable on this specific player.
           </p>
 
@@ -339,7 +340,7 @@ export function OnboardingPage() {
       <div className="min-h-screen w-full flex justify-center px-4 md:px-8 py-16 lg:py-24 items-center">
         <div className="w-full max-w-none px-2 md:px-6 lg:px-8">
           <Stepper steps={2} current={1} className="mb-12" />
-          <div className="grid grid-cols-1 md:grid-cols-[1.2fr,1fr] gap-8 mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[2.2fr,1fr] gap-10 mt-8">
           {/* Left Column: Text & Player Options */}
           <div className="flex flex-col gap-8">
             <div className="max-w-3xl">
@@ -367,33 +368,102 @@ export function OnboardingPage() {
 
             {/* Styles for breathing glow effect */}
             <style>{`
-              @keyframes nexus-breathing-glow {
+              @keyframes card-breathing-glow-amber {
                 0%, 100% {
-                  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2), inset 0 0 10px rgba(245, 158, 11, 0.03);
+                  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15), inset 0 0 10px rgba(245, 158, 11, 0.02);
                   border-color: rgba(245, 158, 11, 0.25);
                 }
                 50% {
-                  box-shadow: 0 0 24px rgba(245, 158, 11, 0.45), inset 0 0 20px rgba(245, 158, 11, 0.1);
+                  box-shadow: 0 0 24px rgba(245, 158, 11, 0.35), inset 0 0 20px rgba(245, 158, 11, 0.08);
                   border-color: rgba(245, 158, 11, 0.65);
                 }
               }
+              @keyframes card-breathing-glow-purple {
+                0%, 100% {
+                  box-shadow: 0 0 12px rgba(168, 85, 247, 0.15), inset 0 0 10px rgba(168, 85, 247, 0.02);
+                  border-color: rgba(168, 85, 247, 0.25);
+                }
+                50% {
+                  box-shadow: 0 0 24px rgba(168, 85, 247, 0.35), inset 0 0 20px rgba(168, 85, 247, 0.08);
+                  border-color: rgba(168, 85, 247, 0.65);
+                }
+              }
+              @keyframes card-breathing-glow-blue {
+                0%, 100% {
+                  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15), inset 0 0 10px rgba(59, 130, 246, 0.02);
+                  border-color: rgba(59, 130, 246, 0.25);
+                }
+                50% {
+                  box-shadow: 0 0 24px rgba(59, 130, 246, 0.35), inset 0 0 20px rgba(59, 130, 246, 0.08);
+                  border-color: rgba(59, 130, 246, 0.65);
+                }
+              }
               .nexus-player-card {
-                animation: nexus-breathing-glow 2.5s ease-in-out infinite;
+                animation: card-breathing-glow-amber 3s ease-in-out infinite;
                 background: rgba(245, 158, 11, 0.02) !important;
                 border-width: 1px;
                 border-style: solid;
                 position: relative;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              .default-player-card {
+                animation: card-breathing-glow-purple 3s ease-in-out infinite;
+                background: rgba(168, 85, 247, 0.02) !important;
+                border-width: 1px;
+                border-style: solid;
+                position: relative;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
               }
               .zeticuz-player-card {
+                animation: card-breathing-glow-blue 3s ease-in-out infinite;
+                background: rgba(59, 130, 246, 0.02) !important;
+                border-width: 1px;
+                border-style: solid;
                 position: relative;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              }
+              .nexus-player-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 10px 30px rgba(245, 158, 11, 0.45) !important;
+                border-color: rgba(245, 158, 11, 0.85) !important;
+              }
+              .default-player-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 10px 30px rgba(168, 85, 247, 0.45) !important;
+                border-color: rgba(168, 85, 247, 0.85) !important;
+              }
+              .zeticuz-player-card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 10px 30px rgba(59, 130, 246, 0.45) !important;
+                border-color: rgba(59, 130, 246, 0.85) !important;
               }
             `}</style>
 
+            {/* Zeticuz Player toggle */}
+            <div className="flex items-center justify-between gap-4 bg-mediaCard-hoverAccent/10 rounded-xl p-4 border border-white/5 mb-4">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-white">Enable Zeticuz Player</span>
+                <span className="text-xs text-white/60">
+                  Turn this on to show the direct-embed Zeticuz player as a backup option.
+                </span>
+              </div>
+              <Toggle
+                enabled={showZeticuz}
+                onClick={() => setShowZeticuz((v) => !v)}
+              />
+            </div>
+
             {/* Player Selection Cards */}
-            <div className="flex flex-col lg:flex-row w-full gap-4">
+            <div className={classNames(
+              "grid gap-6 w-full",
+              showZeticuz 
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
+                : "grid-cols-1 sm:grid-cols-2"
+            )}>
+              {/* Card 1: Nexus Player */}
               <Card
                 onClick={() => setIsExtensionModalOpen(true)}
-                className="flex-1 min-w-0 nexus-player-card"
+                className="nexus-player-card"
               >
                 <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-widest bg-amber-500 text-black px-2.5 py-0.5 rounded-full shadow-lg z-10">
                   Recommended
@@ -410,31 +480,57 @@ export function OnboardingPage() {
                 </CardContent>
               </Card>
 
-              <div className="hidden lg:flex flex-col items-center justify-center pointer-events-none opacity-50">
-                <div className="w-px h-10 bg-white/20" />
-                <span className="text-[10px] uppercase font-bold py-2">OR</span>
-                <div className="w-px h-10 bg-white/20" />
-              </div>
-
+              {/* Card 2: Default Setup */}
               <Card
-                onClick={() => setIsZeticuzModalOpen(true)}
-                className="flex-1 min-w-0 zeticuz-player-card"
+                onClick={() => {
+                  setUseDefaultSetup(true);
+                  setUseZeticuzPlayer(false);
+                  setCompleted(true);
+                  navigate("/discover");
+                }}
+                className="default-player-card"
               >
-                <span className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider bg-white/10 text-white/60 px-2 py-0.5 rounded-full border border-white/5 z-10">
-                  Alternative
+                <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-widest bg-purple-500 text-black px-2.5 py-0.5 rounded-full shadow-lg z-10">
+                  No Extension
                 </span>
                 <CardContent
-                  colorClass="!text-amber-400"
-                  title="ZETICUZ PLAYER"
-                  subtitle="DIRECT EMBED SOURCE"
-                  description="Perfect for mobile/TV or if you can't install extensions."
-                />
+                  colorClass="!text-purple-400"
+                  title="DEFAULT SETUP"
+                  subtitle="BUILT-IN PROVIDERS"
+                  description="This uses built-in providers without using a browser extension. This is the best for users using mobile browsers like Chrome that don't support browser extensions."
+                >
+                  <Link className="!text-purple-400 font-bold ml-0 mt-2 block">
+                    Use default setup &rarr;
+                  </Link>
+                </CardContent>
               </Card>
+
+              {/* Card 3: Zeticuz Player */}
+              {showZeticuz && (
+                <Card
+                  onClick={() => setIsZeticuzModalOpen(true)}
+                  className="zeticuz-player-card"
+                >
+                  <span className="absolute top-3 right-3 text-[9px] font-black uppercase tracking-widest bg-blue-500 text-white px-2.5 py-0.5 rounded-full shadow-lg z-10">
+                    Alternative
+                  </span>
+                  <CardContent
+                    colorClass="!text-blue-400"
+                    title="ZETICUZ PLAYER"
+                    subtitle="DIRECT EMBED SOURCE"
+                    description="This player uses embed iframe providers from open-source providers as alternative iframe sources. No setup or extensions required."
+                  >
+                    <Link className="!text-blue-400 font-bold ml-0 mt-2 block">
+                      Continue with Zeticuz &rarr;
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 
           {/* Right Column: Branding & Installation */}
-          <div className="hidden md:flex flex-col items-center justify-center pt-8 border-l border-white/5 pl-8 w-full max-w-lg">
+          <div className="hidden lg:flex flex-col items-center justify-center pt-8 border-l border-white/5 pl-8 w-full max-w-lg">
 
 
             <button
@@ -471,7 +567,7 @@ export function OnboardingPage() {
         </div>
 
         {/* Mobile Layout */}
-        <div className="md:hidden flex w-full flex-col gap-4 pb-6 mt-12">
+        <div className="lg:hidden flex w-full flex-col gap-4 pb-6 mt-12">
           <div className="flex flex-col items-center mb-10">
             <button
               type="button"

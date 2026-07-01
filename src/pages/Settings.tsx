@@ -11,7 +11,7 @@ import {
 import { getSessions, updateSession } from "@/backend/accounts/sessions";
 import { getSettings, updateSettings } from "@/backend/accounts/settings";
 import { editUser } from "@/backend/accounts/user";
-import { getAllProviders } from "@/backend/providers/providers";
+import { getAllProviders, getSourceSortOrder } from "@/backend/providers/providers";
 import { Button } from "@/components/buttons/Button";
 import { WideContainer } from "@/components/layout/WideContainer";
 import { UserIcons } from "@/components/UserIcon";
@@ -490,19 +490,7 @@ export function SettingsPage() {
   );
 
   const availableSources = useMemo(() => {
-    const sources = getAllProviders().listSources();
-    const sourceIDs = sources.map((s) => s.id);
-    const stateSources = state.sourceOrder.state || [];
-
-    // Filter out sources that are not in `stateSources` and are in `sources`
-    const updatedSources = stateSources.filter((ss) => sourceIDs.includes(ss));
-
-    // Add sources from `sources` that are not in `stateSources`
-    const missingSources = sources
-      .filter((s) => !stateSources.includes(s.id))
-      .map((s) => s.id);
-
-    return [...updatedSources, ...missingSources];
+    return getSourceSortOrder(state.sourceOrder.state, true);
   }, [state.sourceOrder.state]);
 
   useEffect(() => {

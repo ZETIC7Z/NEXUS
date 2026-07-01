@@ -4,6 +4,8 @@ import React, { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
+import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
   useEmbedScraping,
@@ -11,6 +13,8 @@ import {
 } from "@/components/player/hooks/useSourceSelection";
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { SelectableLink } from "@/components/player/internals/ContextMenu/Links";
+import { usePlayerStore } from "@/stores/player/store";
+import { getMediaKey } from "@/stores/player/slices/source";
 import { usePreferencesStore } from "@/stores/preferences";
 
 // Embed option component
@@ -156,42 +160,34 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
   );
   const disabledSources = usePreferencesStore((s) => s.disabledSources);
 
+  const playerMeta = usePlayerStore((s) => s.meta);
+  const probedSources = usePlayerStore((s) => s.probedSources);
+
   const sources = useMemo(() => {
     const metaType = props.media.type;
     if (!metaType) return [];
-    const ALLOWED_IDS = [
-      "febbox",
-      "vidlink-custom",
-      "vidlink",
-      "lookmovie",
-      "zeticuzapi-custom",
-      "zeticuzapi",
-      "tugaflix-custom",
-      "tugaflix",
-    ];
+
+    // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
+    const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
+
+    const mediaKey = getMediaKey(playerMeta);
+    const probedForMedia = mediaKey ? probedSources[mediaKey] : null;
 
     const allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id))
-      .filter((v) => ALLOWED_IDS.includes(v.id));
-
-    // Sort strictly:
-    // febbox -> vidlink -> lookmovies -> zeticuz api -> tugaflix
-    const strictSortOrder = [
-      "febbox",
-      "vidlink-custom",
-      "vidlink",
-      "lookmovie",
-      "zeticuzapi-custom",
-      "zeticuzapi",
-      "tugaflix-custom",
-      "tugaflix",
-    ];
+      .filter((v) => sortOrder.includes(v.id))
+      // Hide failed sources
+      .filter((v) => {
+        if (!probedForMedia) return true;
+        const status = probedForMedia[v.id];
+        return status === "working" || status === "probing";
+      });
 
     allSources.sort((a, b) => {
-      const idxA = strictSortOrder.indexOf(a.id);
-      const idxB = strictSortOrder.indexOf(b.id);
+      const idxA = sortOrder.indexOf(a.id);
+      const idxB = sortOrder.indexOf(b.id);
       return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
     });
 
@@ -199,6 +195,10 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
   }, [
     props.media.type,
     disabledSources,
+    playerMeta,
+    probedSources,
+    preferredSourceOrder,
+    enableSourceOrder,
   ]);
 
   if (selectedSourceId) {

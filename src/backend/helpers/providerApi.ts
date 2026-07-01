@@ -3,6 +3,7 @@
 import { jwtDecode } from "jwt-decode";
 
 import { mwFetch } from "@/backend/helpers/fetch";
+import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
 import { getTurnstileToken, isTurnstileInitialized } from "@/stores/turnstile";
 
 let metaDataCache: MetaOutput[] | null = null;
@@ -12,25 +13,61 @@ export function setCachedMetadata(data: MetaOutput[]) {
   metaDataCache = data;
 }
 
+const CINEPRO_SOURCE_IDS = cineproCoreScrapers.map((s) => s.id);
+
 const ALLOWED_SOURCE_IDS = [
-  "febbox",
   "vidlink",
   "vidlink-custom",
   "lookmovie",
-  "zeticuzapi",
-  "zeticuzapi-custom",
-  "tugaflix",
-  "tugaflix-custom",
+  ...CINEPRO_SOURCE_IDS,
 ];
 
+// Display aliases applied to source metadata so the turnstile spinner,
+// source menu, and settings show the alias names instead of real provider names.
+// true source name VidLink 🔥 / Alias use for this site: Venom
+// true source name LookMovies 🔥 / Alias use for this site: Oblivion
+const SOURCE_NAME_OVERRIDES: Record<string, string> = {
+  "vidlink-custom": "Abyss 🔥",
+  "vidlink": "Abyss 🔥",
+  lookmovie: "Apex 🔥",
+};
+
 export function getCachedMetadata(): MetaOutput[] {
-  const allMeta = metaDataCache ?? [];
-  return allMeta.filter((v) => {
-    if (v.type === "source") {
-      return ALLOWED_SOURCE_IDS.includes(v.id);
-    }
-    return true;
-  });
+  const allMeta = [...(metaDataCache ?? [])];
+
+  // Inject frontend-only sources if they are not in the metadata cache
+  const hasVidlink = allMeta.some((v) => v.id === "vidlink-custom");
+  if (!hasVidlink) {
+    allMeta.push({
+      id: "vidlink-custom",
+      type: "source",
+      name: "Abyss 🔥",
+      mediaTypes: ["movie", "show"],
+    });
+  }
+  const hasLookmovie = allMeta.some((v) => v.id === "lookmovie");
+  if (!hasLookmovie) {
+    allMeta.push({
+      id: "lookmovie",
+      type: "source",
+      name: "Apex 🔥",
+      mediaTypes: ["movie", "show"],
+    });
+  }
+
+  return allMeta
+    .filter((v) => {
+      if (v.type === "source") {
+        return ALLOWED_SOURCE_IDS.includes(v.id);
+      }
+      return true;
+    })
+    .map((v) => {
+      if (v.type === "source" && SOURCE_NAME_OVERRIDES[v.id]) {
+        return { ...v, name: SOURCE_NAME_OVERRIDES[v.id] };
+      }
+      return v;
+    });
 }
 
 export function setApiToken(newToken: string) {

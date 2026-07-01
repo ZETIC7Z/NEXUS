@@ -58,7 +58,13 @@ export function MetaPart(props: MetaPartProps) {
       try {
         await fetchMetadata(providerApiUrl);
       } catch (err) {
-        throw new Error("failed-api-metadata");
+        // Fallback to local provider metadata when the provider API is
+        // unreachable or returns an error. This keeps the player working in
+        // local/dev mode where no backend is available.
+        setCachedMetadata([
+          ...getProviders().listSources(),
+          ...getProviders().listEmbeds(),
+        ]);
       }
     } else {
       setCachedMetadata([

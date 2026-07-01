@@ -115,11 +115,19 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
 
   function reportAudioTracks() {
     if (!hls) return;
-    const currentLanguage = useLanguageStore.getState().language;
     const audioTracks = hls.audioTracks;
-    const languageTrack = audioTracks.find((v) => v.lang === currentLanguage);
-    if (languageTrack) {
-      hls.audioTrack = audioTracks.indexOf(languageTrack);
+    // Always prefer English by default if available in tracks, otherwise fall back to user UI language
+    let defaultTrack = audioTracks.find(
+      (v) =>
+        v.lang?.toLowerCase().startsWith("en") ||
+        v.name?.toLowerCase().includes("english"),
+    );
+    if (!defaultTrack) {
+      const currentLanguage = useLanguageStore.getState().language;
+      defaultTrack = audioTracks.find((v) => v.lang === currentLanguage);
+    }
+    if (defaultTrack) {
+      hls.audioTrack = audioTracks.indexOf(defaultTrack);
     }
     const currentTrack = audioTracks?.[hls.audioTrack ?? 0];
     if (!currentTrack) return;
