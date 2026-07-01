@@ -218,7 +218,8 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
 
     let result: SourcererOutput | undefined;
     try {
-      if (providerApiUrl && !isExtensionActiveCached()) {
+      const isCinepro = sourceId.startsWith("cinepro-core-");
+      if (providerApiUrl && !isExtensionActiveCached() && !isCinepro) {
         const baseUrlMaker = makeProviderUrl(providerApiUrl);
         const conn = await connectServerSideEvents<SourcererOutput>(
           baseUrlMaker.scrapeSource(sourceId, scrapeMedia),

@@ -464,7 +464,8 @@ export function useScrape() {
 
       const providerApiUrl = getLoadbalancedProviderApiUrl();
       const extensionActive = await isExtensionActive();
-      if (providerApiUrl && !extensionActive) {
+      const hasCinepro = providerSourceOrder.some((id) => id.startsWith("cinepro-core-"));
+      if (providerApiUrl && !extensionActive && !hasCinepro) {
         startScrape();
         const baseUrlMaker = makeProviderUrl(providerApiUrl);
         const conn = await connectServerSideEvents<RunOutput | "">(
