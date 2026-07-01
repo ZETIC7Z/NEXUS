@@ -166,10 +166,9 @@ function convertSources(
   subtitles: CineProSubtitle[],
 ): SourcererOutput {
   const captions = subtitles.map((sub) => {
-    const unwrapped = unwrapProxiedUrl(sub.url);
     return {
       id: sub.label,
-      url: unwrapped.url,
+      url: sub.url,
       language: sub.label,
       type: (sub.format === "vtt" ? "vtt" : "srt") as "vtt" | "srt",
       hasCorsRestrictions: false,
@@ -177,20 +176,19 @@ function convertSources(
   });
 
   const streams = sources.map((s, i) => {
-    const unwrapped = unwrapProxiedUrl(s.url);
     const base = {
       id: `cinepro-core-${providerId.toLowerCase()}-${i}`,
       name: `${s.quality}`,
       flags: [] as string[],
       captions,
-      headers: unwrapped.headers,
+      headers: {},
     };
 
     if (s.type === "hls") {
       return {
         ...base,
         type: "hls" as const,
-        playlist: createM3U8ProxyUrl(unwrapped.url, unwrapped.headers),
+        playlist: s.url,
       };
     }
 
@@ -200,7 +198,7 @@ function convertSources(
       qualities: {
         [s.quality]: {
           type: "mp4" as const,
-          url: unwrapped.url,
+          url: s.url,
         },
       },
     };
