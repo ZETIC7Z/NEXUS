@@ -6,6 +6,8 @@ import {
   SourcererOutput,
 } from "@p-stream/providers";
 
+import { createM3U8ProxyUrl } from "@/components/player/utils/proxy";
+
 const CINEPRO_URL =
   import.meta.env.VITE_CINEPRO_CORE_URL || "http://localhost:3000";
 
@@ -188,7 +190,7 @@ function convertSources(
       return {
         ...base,
         type: "hls" as const,
-        playlist: unwrapped.url,
+        playlist: createM3U8ProxyUrl(unwrapped.url, unwrapped.headers),
       };
     }
 
