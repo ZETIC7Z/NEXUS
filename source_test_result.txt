@@ -1,0 +1,29 @@
+CINEPRO CORE PROVIDER DIAGNOSTICS & TEST RESULTS
+===============================================
+Tested on: 3 Popular Movies (Gladiator II, Moana 2, Mufasa: The Lion King)
+           3 TV Series S01E01 (FROM, House of the Dragon, Breaking Bad)
+
+WORKING / ACTIVE SOURCES (Returned valid streams):
+-------------------------------------------------
+1. Vortex (fsharetv)
+2. Phantom (Icefy)
+3. Malice (vidapi)
+4. Nebula (vidrock)
+5. Cipher (vixsrc)
+
+DEAD / INACTIVE SOURCES (Returned 0 streams on all tests):
+---------------------------------------------------------
+1. Venom (02moviedownloader)
+2. Oblivion (anyembed)
+3. Anomaly (CineSu)
+4. Tempest (fmovies4u)
+5. Eclipse (Peachify)
+6. Havoc (popr)
+7. Rupture (streammafia)
+8. Wrath (tulnex)
+9. Omen (Videasy)
+10. Vertex (vidnest)
+11. Spectre (vidsrc)
+12. Onyx (vidzee)
+
+* Note: Abyss (vidlink-custom) and Apex (lookmovie) are native embedded providers in NEXUS and remain active and working.

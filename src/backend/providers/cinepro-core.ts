@@ -23,38 +23,14 @@ const CINEPRO_URL =
 //   true source name <RealName> 🔥 / Alias use for this site: <Alias>
 // ─────────────────────────────────────────────────────────────────────────────
 export const CINEPRO_PROVIDERS = [
-  // true source name 02MovieDownloader 🔥 / Alias use for this site: Venom
-  { id: "02moviedownloader", alias: "Venom" },
-  // true source name AnyEmbed 🔥 / Alias use for this site: Oblivion
-  { id: "anyembed", alias: "Oblivion" },
-  // true source name CineSu 🔥 / Alias use for this site: Anomaly
-  { id: "CineSu", alias: "Anomaly" },
-  // true source name Fmovies4U 🔥 / Alias use for this site: Tempest
-  { id: "fmovies4u", alias: "Tempest" },
   // true source name FshareTV 🔥 / Alias use for this site: Vortex
   { id: "fsharetv", alias: "Vortex" },
   // true source name Icefy 🔥 / Alias use for this site: Phantom
   { id: "Icefy", alias: "Phantom" },
-  // true source name Peachify 🔥 / Alias use for this site: Eclipse
-  { id: "Peachify", alias: "Eclipse" },
-  // true source name Popr 🔥 / Alias use for this site: Havoc
-  { id: "popr", alias: "Havoc" },
-  // true source name MafiaEmbed 🔥 / Alias use for this site: Rupture
-  { id: "streammafia", alias: "Rupture" },
-  // true source name Tulnex 🔥 / Alias use for this site: Wrath
-  { id: "tulnex", alias: "Wrath" },
   // true source name VidApi 🔥 / Alias use for this site: Malice
   { id: "vidapi", alias: "Malice" },
-  // true source name Videasy 🔥 / Alias use for this site: Omen
-  { id: "Videasy", alias: "Omen" },
-  // true source name VidNest 🔥 / Alias use for this site: Vertex
-  { id: "vidnest", alias: "Vertex" },
   // true source name VidRock 🔥 / Alias use for this site: Nebula
   { id: "vidrock", alias: "Nebula" },
-  // true source name VidSrc 🔥 / Alias use for this site: Spectre
-  { id: "vidsrc", alias: "Spectre" },
-  // true source name VidZee 🔥 / Alias use for this site: Onyx
-  { id: "vidzee", alias: "Onyx" },
   // true source name VixSrc 🔥 / Alias use for this site: Cipher
   { id: "vixsrc", alias: "Cipher" },
 ] as const;
