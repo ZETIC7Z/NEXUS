@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
-import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { cineproCoreScrapers, getActiveProvidersFromCache } from "@/backend/providers/cinepro-core";
 import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
@@ -157,7 +157,9 @@ export function SourceSelectionView({
 }: SourceSelectionViewProps) {
   const { t } = useTranslation();
   const router = useOverlayRouter(id);
-  const metaType = usePlayerStore((s) => s.meta?.type);
+  const playerMeta = usePlayerStore((s) => s.meta);
+  const probedSources = usePlayerStore((s) => s.probedSources);
+  const metaType = playerMeta?.type;
   const currentSourceId = usePlayerStore((s) => s.sourceId);
   const setResumeFromSourceId = usePlayerStore((s) => s.setResumeFromSourceId);
   const setStatus = usePlayerStore((s) => s.setStatus);
@@ -187,11 +189,18 @@ export function SourceSelectionView({
     // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
     const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
 
+    const activeCineProIds = getActiveProvidersFromCache(playerMeta);
+
     let allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id))
-      .filter((v) => sortOrder.includes(v.id));
+      .filter((v) => sortOrder.includes(v.id))
+      .filter((v) => {
+        if (!v.id.startsWith("cinepro-core-")) return true;
+        if (!activeCineProIds) return true; // show all if not resolved yet
+        return activeCineProIds.includes(v.id);
+      });
 
     allSources.sort((a, b) => {
       const idxA = sortOrder.indexOf(a.id);
@@ -205,6 +214,8 @@ export function SourceSelectionView({
     disabledSources,
     preferredSourceOrder,
     enableSourceOrder,
+    playerMeta,
+    probedSources,
   ]);
 
   const handleFindNextSource = () => {

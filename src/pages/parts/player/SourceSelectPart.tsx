@@ -4,7 +4,7 @@ import React, { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
-import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { cineproCoreScrapers, getActiveProvidersFromCache } from "@/backend/providers/cinepro-core";
 import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
@@ -173,11 +173,18 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
     const mediaKey = getMediaKey(playerMeta);
     const probedForMedia = mediaKey ? probedSources[mediaKey] : null;
 
+    const activeCineProIds = getActiveProvidersFromCache(playerMeta);
+
     const allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
       .filter((v) => v.mediaTypes?.includes(metaType))
       .filter((v) => !(disabledSources || []).includes(v.id))
       .filter((v) => sortOrder.includes(v.id))
+      .filter((v) => {
+        if (!v.id.startsWith("cinepro-core-")) return true;
+        if (!activeCineProIds) return true; // show all if not resolved yet
+        return activeCineProIds.includes(v.id);
+      })
       // Hide failed sources
       .filter((v) => {
         if (!probedForMedia) return true;
