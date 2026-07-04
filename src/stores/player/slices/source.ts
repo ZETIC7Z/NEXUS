@@ -257,6 +257,18 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.status = playerStatus.PLAYING;
       s.audioTracks = [];
       s.currentAudioTrack = null;
+
+      // Auto-select English subtitle if none is currently selected
+      if (!s.caption?.selected) {
+        const engCaption = captions.find((c) => 
+          c.language?.toLowerCase().startsWith("en") || 
+          (c.label && c.label.toLowerCase().includes("english"))
+        );
+        if (engCaption) {
+          if (!s.caption) s.caption = { selected: null, asTrack: false };
+          s.caption.selected = engCaption.id;
+        }
+      }
     });
     const store = get();
     store.redisplaySource(startAt);
@@ -447,6 +459,18 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
             (c) => !existingIds.has(c.id),
           );
           s.captionList = [...s.captionList, ...newCaptions];
+
+          // Auto-select English subtitle if none is currently selected
+          if (!s.caption?.selected) {
+            const engCaption = s.captionList.find((c) => 
+              c.language?.toLowerCase().startsWith("en") || 
+              (c.label && c.label.toLowerCase().includes("english"))
+            );
+            if (engCaption) {
+              if (!s.caption) s.caption = { selected: null, asTrack: false };
+              s.caption.selected = engCaption.id;
+            }
+          }
         });
         console.log(`Added ${externalCaptions.length} external captions`);
       }
