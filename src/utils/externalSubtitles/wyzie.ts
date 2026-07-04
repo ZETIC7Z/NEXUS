@@ -5,7 +5,7 @@ import { CaptionListItem } from "@/stores/player/slices/source";
 
 export async function scrapeWyzieCaptions(
   tmdbId: string | number,
-  imdbId: string,
+  imdbId?: string,
   season?: number,
   episode?: number,
 ): Promise<CaptionListItem[]> {
@@ -13,8 +13,11 @@ export async function scrapeWyzieCaptions(
     const searchParams: any = {
       encoding: "utf-8",
       source: "all",
-      imdb_id: imdbId,
     };
+    
+    if (imdbId) {
+      searchParams.imdb_id = imdbId;
+    }
 
     if (tmdbId && !imdbId) {
       searchParams.tmdb_id =

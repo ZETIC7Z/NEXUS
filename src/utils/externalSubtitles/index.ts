@@ -13,8 +13,7 @@ export async function scrapeExternalSubtitles(
     // Extract IMDb ID from meta
     const imdbId = meta.imdbId;
     if (!imdbId) {
-      console.log("No IMDb ID available for external subtitle scraping");
-      return [];
+      console.log("No IMDb ID available for external subtitle scraping, some providers may be skipped");
     }
 
     const season = meta.season?.number;
