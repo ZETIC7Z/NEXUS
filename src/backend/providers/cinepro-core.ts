@@ -18,21 +18,29 @@ const CINEPRO_URL =
 // the alias display name used inside Nexus. The alias appears in the turnstile
 // spinner, source menu, and settings. The real provider name is kept in the
 // comment above each entry so future maintenance is easy.
-//
 // Format:
 //   true source name <RealName> 🔥 / Alias use for this site: <Alias>
 // ─────────────────────────────────────────────────────────────────────────────
 export const CINEPRO_PROVIDERS = [
-  // true source name FshareTV 🔥 / Alias use for this site: Vortex
+  // Railway CinePro Core providers
   { id: "fsharetv", alias: "Vortex" },
-  // true source name Icefy 🔥 / Alias use for this site: Phantom
   { id: "Icefy", alias: "Phantom" },
-  // true source name VidApi 🔥 / Alias use for this site: Malice
   { id: "vidapi", alias: "Malice" },
-  // true source name VidRock 🔥 / Alias use for this site: Nebula
   { id: "vidrock", alias: "Nebula" },
-  // true source name VixSrc 🔥 / Alias use for this site: Cipher
   { id: "vixsrc", alias: "Cipher" },
+  // Hugging Face Space providers
+  { id: "vsembed", alias: "VsEmbed" },
+  { id: "anikoto", alias: "AniKoto" },
+  { id: "showbox", alias: "Showbox" },
+  { id: "notorrent", alias: "NoTorrent" },
+  { id: "4khdhub", alias: "4KHDHub" },
+  { id: "dahmermovies", alias: "DahmerMovies" },
+  { id: "lordflix", alias: "Lordflix" },
+  { id: "videasy", alias: "Videasy" },
+  { id: "vidlink", alias: "Vidlink" },
+  { id: "febbox fid", alias: "Febbox" },
+  { id: "vidsrc", alias: "VidSrc" },
+  { id: "vidembed", alias: "VidEmbed" }
 ] as const;
 
 interface CineProSource {
@@ -65,6 +73,20 @@ function getMediaCacheKey(
 }
 
 const cineProResponseCache = new Map<string, Promise<CineProResponse>>();
+const resolvedCineProCache = new Map<string, CineProResponse>();
+
+export function getActiveProvidersFromCache(media: any): string[] | null {
+  if (!media) return null;
+  const cacheKey = media.type === "movie" 
+    ? `movie-${media.tmdbId}` 
+    : `show-${media.tmdbId}-${media.season?.number}-${media.episode?.number}`;
+    
+  const resolved = resolvedCineProCache.get(cacheKey);
+  if (!resolved) return null;
+  
+  const activeIds = new Set(resolved.sources.map(s => `cinepro-core-${s.provider.id.toLowerCase()}`));
+  return Array.from(activeIds);
+}
 
 async function fetchCinePro(
   ctx: MovieScrapeContext | ShowScrapeContext,
@@ -76,35 +98,78 @@ async function fetchCinePro(
   const { tmdbId } = ctx.media;
   const isMovie = ctx.media.type === "movie";
 
-  let apiUrl: string;
-  if (isMovie) {
-    apiUrl = `${CINEPRO_URL}/v1/movies/${tmdbId}`;
-  } else {
-    const showCtx = ctx as ShowScrapeContext;
-    apiUrl = `${CINEPRO_URL}/v1/tv/${tmdbId}/seasons/${showCtx.media.season.number}/episodes/${showCtx.media.episode.number}`;
-  }
+  const railwayUrl = isMovie
+    ? `${CINEPRO_URL}/v1/movies/${tmdbId}`
+    : `${CINEPRO_URL}/v1/tv/${tmdbId}/seasons/${(ctx as ShowScrapeContext).media.season.number}/episodes/${(ctx as ShowScrapeContext).media.episode.number}`;
+
+  const hfUrl = isMovie
+    ? `https://stycanine1-tmdb-embed-api.hf.space/api/streams/movie/${tmdbId}`
+    : `https://stycanine1-tmdb-embed-api.hf.space/api/streams/series/${tmdbId}?season=${(ctx as ShowScrapeContext).media.season.number}&episode=${(ctx as ShowScrapeContext).media.episode.number}`;
 
   const promise = (async () => {
-    // CinePro Core is CORS-enabled, so fetch it directly. Fall back to the
-    // proxied fetcher only if the browser blocks the request.
-    let data: CineProResponse | null = null;
-    try {
-      const res = await fetch(apiUrl);
-      if (!res.ok) {
-        if (res.status === 404)
-          throw new NotFoundError("CinePro Core: no streams found");
-        throw new Error(`CinePro Core API error: ${res.status}`);
+    // Query both backends in parallel
+    const [railwayRes, hfRes] = await Promise.allSettled([
+      fetch(railwayUrl).then(async (r) => {
+        if (!r.ok) throw new Error("Railway API error");
+        return r.json() as Promise<CineProResponse>;
+      }),
+      fetch(hfUrl).then(async (r) => {
+        if (!r.ok) throw new Error("HF API error");
+        return r.json();
+      })
+    ]);
+
+    const combinedSources: CineProSource[] = [];
+    const combinedSubtitles: CineProSubtitle[] = [];
+
+    // Parse old Railway CinePro response
+    if (railwayRes.status === "fulfilled" && railwayRes.value && Array.isArray(railwayRes.value.sources)) {
+      combinedSources.push(...railwayRes.value.sources);
+      if (Array.isArray(railwayRes.value.subtitles)) {
+        combinedSubtitles.push(...railwayRes.value.subtitles);
       }
-      data = await res.json();
-    } catch {
-      data = await ctx.proxiedFetcher<CineProResponse>(apiUrl);
     }
 
-    if (!data || !Array.isArray(data.sources)) {
-      throw new NotFoundError("CinePro Core: invalid response");
+    // Parse our new Hugging Face Space response
+    if (hfRes.status === "fulfilled" && hfRes.value && Array.isArray(hfRes.value.streams)) {
+      const mappedHf = hfRes.value.streams.flatMap((s: any) => {
+        const isHls = s.url.includes('m3u8') || s.url.includes('hls') || s.url.includes('playlist') || s.url.includes('proxy');
+        const base = {
+          url: s.url,
+          type: (isHls ? "hls" : "mp4") as "hls" | "mp4",
+          quality: s.quality || "Auto",
+          audioTracks: [],
+        };
+        const pid = s.provider.toLowerCase();
+        
+        // If the provider is vidsrc/vsembed, duplicate it for both aliases
+        // so it shows up under both VidSrc and VidEmbed in the settings list.
+        if (pid === "vidsrc" || pid === "vsembed") {
+          return [
+            { ...base, provider: { id: "vidsrc", name: "VidSrc" } },
+            { ...base, provider: { id: "vidembed", name: "VidEmbed" } }
+          ];
+        }
+        
+        return [{
+          ...base,
+          provider: { id: pid, name: s.provider }
+        }];
+      });
+      combinedSources.push(...mappedHf);
     }
 
-    return data;
+    if (combinedSources.length === 0) {
+      throw new NotFoundError("CinePro: no streams found from any backend");
+    }
+
+    const result = {
+      sources: combinedSources,
+      subtitles: combinedSubtitles
+    } as CineProResponse;
+
+    resolvedCineProCache.set(cacheKey, result);
+    return result;
   })();
 
   cineProResponseCache.set(cacheKey, promise);
