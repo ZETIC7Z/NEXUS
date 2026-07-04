@@ -37,8 +37,18 @@ export function useCaptions() {
   );
 
   const captions = useMemo(
-    () =>
-      captionList.length !== 0 ? captionList : (getHlsCaptionList?.() ?? []),
+    () => {
+      const hlsCaptions = getHlsCaptionList?.() ?? [];
+      const externalCaptions = captionList ?? [];
+      // Combine them, filtering out duplicates by id if any
+      const combined = [...hlsCaptions];
+      for (const caption of externalCaptions) {
+        if (!combined.find(c => c.id === caption.id)) {
+          combined.push(caption);
+        }
+      }
+      return combined;
+    },
     [captionList, getHlsCaptionList],
   );
 

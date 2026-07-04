@@ -137,7 +137,7 @@ async function fetchCinePro(
         const base = {
           url: s.url,
           type: (isHls ? "hls" : "mp4") as "hls" | "mp4",
-          quality: s.quality || "Auto",
+          quality: s.quality === "Auto" ? "unknown" : (s.quality || "unknown"),
           audioTracks: [],
         };
         const pid = s.provider.toLowerCase();
