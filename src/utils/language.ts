@@ -146,7 +146,6 @@ const nameToLanguageCode: Record<string, string> = {
   српски: "sr",
   slovak: "sk",
   slovenčina: "sk",
-  slovenčina: "sk",
   slovenian: "sl",
   slovenščina: "sl",
   spanish: "es",
@@ -172,14 +171,10 @@ const nameToLanguageCode: Record<string, string> = {
   burmese: "my",
   tagalog: "tl",
   filipino: "tl",
-  croatian: "hr",
   hrvatski: "hr",
-  czech: "cs",
   čeština: "cs",
   cestina: "cs",
-  danish: "da",
   dansk: "da",
-  finnish: "fi",
   suomi: "fi",
 };
 
