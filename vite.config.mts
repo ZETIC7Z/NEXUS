@@ -31,6 +31,10 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 5180,
       proxy: {
+        '/api/streams': {
+          target: process.env.HF_API_URL || 'https://stycanine1-tmdb-embed-api.hf.space',
+          changeOrigin: true,
+        },
         '/api': {
           target: 'https://mirurotvapi.vercel.app',
           changeOrigin: true,

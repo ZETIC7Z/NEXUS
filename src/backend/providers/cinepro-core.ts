@@ -35,12 +35,12 @@ export const CINEPRO_PROVIDERS = [
   { id: "notorrent", alias: "NoTorrent" },
   { id: "4khdhub", alias: "4KHDHub" },
   { id: "dahmermovies", alias: "DahmerMovies" },
-  { id: "lordflix", alias: "Lordflix" },
-  { id: "videasy", alias: "Videasy" },
+  { id: "anikai", alias: "AniKai" },
   { id: "vidlink", alias: "Vidlink" },
   { id: "febbox fid", alias: "Febbox" },
   { id: "vidsrc", alias: "VidSrc" },
-  { id: "vidembed", alias: "VidEmbed" }
+  { id: "vidembed", alias: "VidEmbed" },
+  { id: "moviebox", alias: "MovieBox" }
 ] as const;
 
 interface CineProSource {
@@ -103,8 +103,8 @@ async function fetchCinePro(
     : `${CINEPRO_URL}/v1/tv/${tmdbId}/seasons/${(ctx as ShowScrapeContext).media.season.number}/episodes/${(ctx as ShowScrapeContext).media.episode.number}`;
 
   const hfUrl = isMovie
-    ? `https://stycanine1-tmdb-embed-api.hf.space/api/streams/movie/${tmdbId}`
-    : `https://stycanine1-tmdb-embed-api.hf.space/api/streams/series/${tmdbId}?season=${(ctx as ShowScrapeContext).media.season.number}&episode=${(ctx as ShowScrapeContext).media.episode.number}`;
+    ? `/api/streams?type=movie&id=${tmdbId}`
+    : `/api/streams?type=series&id=${tmdbId}&season=${(ctx as ShowScrapeContext).media.season.number}&episode=${(ctx as ShowScrapeContext).media.episode.number}`;
 
   const promise = (async () => {
     // Query both backends in parallel
@@ -142,9 +142,9 @@ async function fetchCinePro(
         };
         const pid = s.provider.toLowerCase();
         
-        // If the provider is vidsrc/vsembed, duplicate it for both aliases
+        // If the provider is vidsrc/vsembed/vixsrc, duplicate it for both aliases
         // so it shows up under both VidSrc and VidEmbed in the settings list.
-        if (pid === "vidsrc" || pid === "vsembed") {
+        if (pid === "vidsrc" || pid === "vsembed" || pid === "vixsrc") {
           return [
             { ...base, provider: { id: "vidsrc", name: "VidSrc" } },
             { ...base, provider: { id: "vidembed", name: "VidEmbed" } }
