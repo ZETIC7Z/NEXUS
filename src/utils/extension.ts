@@ -11,8 +11,10 @@ export type ExtensionStatus =
 
 export async function getExtensionState(): Promise<ExtensionStatus> {
   const info = await extensionInfo();
-  if (!info) return "unknown"; // cant talk to extension
+  if (!info) return "unknown"; // can't talk to extension
   if (!info.success) return "failed"; // extension failed to respond
   if (!isAllowedExtensionVersion(info.version)) return "outdated"; // extension is too old
-  return "success"; // no problems
+  if (!info.allowed) return "disallowed"; // extension is installed but not enabled for this page
+  if (!info.hasPermission) return "noperms"; // extension needs to grant permissions
+  return "success"; // all good
 }
