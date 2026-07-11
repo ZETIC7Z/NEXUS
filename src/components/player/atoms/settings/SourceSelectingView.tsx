@@ -2,8 +2,9 @@ import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
-import { cineproCoreScrapers, getActiveProvidersFromCache } from "@/backend/providers/cinepro-core";
+import { zeticuzScrapers, getActiveZeticuzProviders } from "@/backend/providers/zeticuz-provider";
 import { getSourceSortOrder } from "@/backend/providers/providers";
+import { getMediaKey } from "@/stores/player/slices/source";
 import { Loading } from "@/components/layout/Loading";
 import {
   useEmbedScraping,
@@ -178,8 +179,8 @@ export function SourceSelectionView({
   const febboxKey = usePreferencesStore((s) => s.febboxKey);
   const hasFebboxKey = febboxKey && febboxKey.length > 0;
 
-  const CINEPRO_SOURCE_IDS = useMemo(
-    () => cineproCoreScrapers.map((s) => s.id),
+  const ZETICUZ_SOURCE_IDS = useMemo(
+    () => zeticuzScrapers.map((s) => s.id),
     [],
   );
 
@@ -189,7 +190,12 @@ export function SourceSelectionView({
     // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
     const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
 
-    const activeCineProIds = getActiveProvidersFromCache(playerMeta);
+    const mediaKey = getMediaKey(playerMeta);
+    const probedForMedia = mediaKey ? probedSources[mediaKey] : null;
+    const probeComplete = probedForMedia && Object.values(probedForMedia).some((s) => s === "working" || s === "failed");
+
+    // Fallback: use activeZeticuzIds only when probe hasn't completed yet
+    const activeZeticuzIds = probeComplete ? null : getActiveZeticuzProviders(playerMeta);
 
     let allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
@@ -197,9 +203,26 @@ export function SourceSelectionView({
       .filter((v) => !(disabledSources || []).includes(v.id))
       .filter((v) => sortOrder.includes(v.id))
       .filter((v) => {
-        if (!v.id.startsWith("cinepro-core-")) return true;
-        if (!activeCineProIds) return true; // show all if not resolved yet
-        return activeCineProIds.includes(v.id);
+        // For zeticuz providers: use probed status when available, else activeZeticuzIds
+        if (!v.id.startsWith("zeticuz-")) return true;
+        if (probeComplete && probedForMedia) {
+          const status = probedForMedia[v.id];
+          return status === "working";
+        }
+        if (!activeZeticuzIds) return true; // show all if not resolved yet
+        return activeZeticuzIds.includes(v.id);
+      })
+      // For non-zeticuz: also filter by probe status
+      .filter((v) => {
+        if (v.id.startsWith("zeticuz-")) return true; // already handled above
+        if (!probedForMedia) return true;
+        const status = probedForMedia[v.id];
+        return status === "working" || status === "probing" || status === undefined;
+      })
+      // Hide anime-only sources when watching a movie
+      .filter((v) => {
+        if (metaType !== "movie") return true;
+        return v.id !== "zeticuz-anikoto" && v.id !== "zeticuz-anikai";
       });
 
     allSources.sort((a, b) => {

@@ -29,6 +29,14 @@ export async function scrapeOpenSubtitlesCaptions(
     const openSubtitlesCaptions: CaptionListItem[] = [];
 
     for (const caption of data) {
+      // Validate season and episode for TV shows to ensure accuracy
+      if (season !== undefined && caption.SeriesSeason !== undefined && caption.SeriesSeason !== null && caption.SeriesSeason !== "") {
+        if (parseInt(caption.SeriesSeason, 10) !== season) continue;
+      }
+      if (episode !== undefined && caption.SeriesEpisode !== undefined && caption.SeriesEpisode !== null && caption.SeriesEpisode !== "") {
+        if (parseInt(caption.SeriesEpisode, 10) !== episode) continue;
+      }
+
       const downloadUrl = caption.SubDownloadLink.replace(".gz", "").replace(
         "download/",
         "download/subencoding-utf8/",

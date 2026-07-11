@@ -14,12 +14,12 @@ import {
   setupM3U8Proxy,
 } from "@/backend/providers/fetchers";
 import { vidlinkScraper } from "@/backend/providers/custom";
-import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { zeticuzScrapers } from "@/backend/providers/zeticuz-provider";
 
 // Initialize M3U8 proxy on module load
 setupM3U8Proxy();
 
-const cineproCoreIds = cineproCoreScrapers.map((s) => s.id);
+const zeticuzIds = zeticuzScrapers.map((s) => s.id);
 
 /**
  * Patch builtin provider names so we can add emojis without touching the package.
@@ -45,24 +45,24 @@ function patchProviderNames<T extends { id: string; name: string }[]>(
 function buildBase(includeExtensionSources: boolean) {
   const builder = buildProviders().setFetcher(makeStandardFetcher(fetch));
 
-  // Add each CinePro Core provider as its own selectable source.
-  // They share a response cache inside cinepro-core.ts so the backend is only
+  // Add each ZETICUZ provider as its own selectable source.
+  // They share a response cache inside zeticuz-provider.ts so the backend is only
   // called once per media even though every provider is registered separately.
   // Ranks must be unique, so decrement by 1 for each provider.
-  cineproCoreScrapers.forEach((scraper, index) => {
+  zeticuzScrapers.forEach((scraper, index) => {
     builder.addSource({ ...scraper, rank: 950 - index } as any);
   });
 
   if (includeExtensionSources) {
-    // VidLink 🔥 rank: 890
+    // Abyss (VidLink) 🔥 rank: 890 — requires browser extension
     const vidlink = { ...vidlinkScraper, rank: 890 };
     builder.addSource(vidlink as any);
 
-    // LookMovies 🔥 — only available with the browser extension/app path.
+    // Apex (LookMovies) 🔥 — only available with the browser extension/app path.
     const builtinSources = getBuiltinSources();
     patchProviderNames(builtinSources);
     const activeBuiltinIds = new Set(["lookmovie"]);
-    const customIds = new Set(["vidlink", "vidlink-custom", ...cineproCoreIds]);
+    const customIds = new Set(["vidlink", "vidlink-custom", ...zeticuzIds]);
     builtinSources.forEach((source) => {
       if (activeBuiltinIds.has(source.id) && !customIds.has(source.id)) {
         builder.addSource(source);
@@ -93,9 +93,9 @@ export function getProviders() {
 
   setupM3U8Proxy();
 
-  // Default setup: CinePro sources are always available even without the
+  // Default setup: ZETICUZ sources are always available even without the
   // extension. We use the extension target so sources without the CORS_ALLOWED
-  // flag (like CinePro) are still selectable; streams are still proxied through
+  // flag are still selectable; streams are still proxied through
   // the configured M3U8 proxy.
   return builder
     .setProxiedFetcher(makeLoadBalancedSimpleProxyFetcher())
@@ -113,8 +113,8 @@ export function getAllProviders() {
 
 export function getProviderDisplayName(id: string): string {
   if (PROVIDER_NAME_PATCHES[id]) return PROVIDER_NAME_PATCHES[id];
-  const cinepro = cineproCoreScrapers.find((p) => p.id === id);
-  if (cinepro) return cinepro.name;
+  const zeticuz = zeticuzScrapers.find((p) => p.id === id);
+  if (zeticuz) return zeticuz.name;
   return id;
 }
 
@@ -133,18 +133,14 @@ export function getSourceSortOrder(
 
   // Default order: Abyss first, Apex second, rest alphabetical by display name
   const patched = allSources.map((s) => {
-    // Determine the name
     let displayName = s.name;
     if (PROVIDER_NAME_PATCHES[s.id]) {
       displayName = PROVIDER_NAME_PATCHES[s.id];
     } else {
-      const cinepro = cineproCoreScrapers.find((p) => p.id === s.id);
-      if (cinepro) displayName = cinepro.name;
+      const zeticuz = zeticuzScrapers.find((p) => p.id === s.id);
+      if (zeticuz) displayName = zeticuz.name;
     }
-    return {
-      id: s.id,
-      name: displayName,
-    };
+    return { id: s.id, name: displayName };
   });
 
   const abyss = patched.find((s) => s.id === "vidlink-custom" || s.id === "vidlink");
@@ -164,5 +160,4 @@ export function getSourceSortOrder(
 }
 
 export { patchProviderNames };
-export { cineproCoreIds };
-
+export { zeticuzIds };

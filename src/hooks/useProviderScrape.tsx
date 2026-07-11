@@ -12,10 +12,11 @@ import {
   makeProviderUrl,
 } from "@/backend/helpers/providerApi";
 import { getLoadbalancedProviderApiUrl } from "@/backend/providers/fetchers";
-import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { zeticuzScrapers } from "@/backend/providers/zeticuz-provider";
 import { getProviders, getSourceSortOrder } from "@/backend/providers/providers";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
+import { getSecureEmbedApiUrl } from "@/utils/secure-config";
 
 export interface ScrapingItems {
   id: string;
@@ -46,7 +47,7 @@ const SOURCE_NAME_OVERRIDES: Record<string, string> = {
   lookmovie: "Apex 🔥",
 };
 
-const CINEPRO_SOURCE_IDS = cineproCoreScrapers.map((s) => s.id);
+const ZETICUZ_SOURCE_IDS = zeticuzScrapers.map((s) => s.id);
 
 function applyNameOverrides(
   metadata: { id: string; name: string }[],
@@ -56,8 +57,94 @@ function applyNameOverrides(
   );
 }
 
+// Mapping from backend provider name patterns → zeticuz scraper IDs
+const PROVIDER_ALIAS_MAP: Record<string, string[]> = {
+  showbox:       ["showbox", "febboxfid", "febbox"],
+  dahmermovies:  ["dahmermovies"],
+  notorrent:     ["notorrent"],
+  "4khdhub":     ["4khdhub"],
+  videasy:       ["videasy"],
+  vixsrc:        ["vixsrc"],
+  anikoto:       ["anikoto"],
+  anikai:        ["anikai"],
+  vidbox:        ["vidbox"],
+  vidcore:       ["vidcore"],
+  vidlink:       ["vidlink"],
+};
+
+function matchZeticuzScraperId(backendProviderId: string): string[] {
+  const norm = backendProviderId.toLowerCase().replace(/[\s_-]/g, "");
+  const matched: string[] = [];
+  for (const [scraperId, aliases] of Object.entries(PROVIDER_ALIAS_MAP)) {
+    if (aliases.some((a) => norm.includes(a) || a.includes(norm))) {
+      matched.push(`zeticuz-${scraperId}`);
+    }
+  }
+  return matched;
+}
+
 /**
- * Probe all sourceIds in parallel — each gets a PROBE_TIMEOUT_MS window to return a stream.
+ * Probe zeticuz providers with a SINGLE direct API call.
+ * All zeticuz scrapers share the same backend response — calling runSourceScraper
+ * 12 times in parallel would issue 12 simultaneous fetches to the same URL and
+ * hit the 12-second timeout before a response arrives (API takes 20-40s).
+ *
+ * Instead we call the backend API once with a generous 45-second timeout,
+ * then mark each zeticuz scraper working/failed based on which provider IDs
+ * appear in the response.
+ */
+async function probeZeticuzProviders(
+  zeticuzIds: string[],
+  media: ScrapeMedia,
+  PROBE_TIMEOUT_MS = 45_000,
+): Promise<{ workingIds: Set<string>; isAnime: boolean }> {
+  const embedApiBase = getSecureEmbedApiUrl();
+  if (!embedApiBase) return { workingIds: new Set(zeticuzIds), isAnime: false };
+
+  const url = (() => {
+    const imdbId = (media as any).imdbId as string | undefined;
+    const imdbParam = imdbId && imdbId.startsWith("tt") ? `&imdbId=${encodeURIComponent(imdbId)}` : "";
+    if (media.type === "movie") {
+      return `${embedApiBase}/api/streams/movie/${media.tmdbId}${imdbParam ? `?${imdbParam.slice(1)}` : ""}`;
+    }
+    const s = media as any;
+    return `${embedApiBase}/api/streams/series/${s.tmdbId}?season=${s.season?.number}&episode=${s.episode?.number}${imdbParam}`;
+  })();
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+    let data: any;
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) return { workingIds: new Set(), isAnime: false };
+      data = await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+
+    const isAnime = data?.isAnime === true;
+    if (!data?.streams || !Array.isArray(data.streams)) return { workingIds: new Set(), isAnime };
+
+    // Collect which zeticuz scrapers have at least one working stream
+    const working = new Set<string>();
+    for (const stream of data.streams) {
+      if (!stream?.url || !stream?.provider) continue;
+      const provId: string = String(stream.provider);
+      const matchedIds = matchZeticuzScraperId(provId);
+      for (const id of matchedIds) {
+        if (zeticuzIds.includes(id)) working.add(id);
+      }
+    }
+    return { workingIds: working, isAnime };
+  } catch (err) {
+    // Timeout or network error — return empty set so only working sources appear
+    return { workingIds: new Set(), isAnime: false };
+  }
+}
+
+/**
+ * Probe non-zeticuz sourceIds in parallel — each gets a PROBE_TIMEOUT_MS window.
  * Returns a Set of IDs that successfully returned a stream.
  */
 async function parallelProbe(
@@ -65,6 +152,7 @@ async function parallelProbe(
   media: ScrapeMedia,
   PROBE_TIMEOUT_MS = 12_000,
 ): Promise<Set<string>> {
+  if (sourceIds.length === 0) return new Set();
   const providers = getProviders();
   const results = await Promise.allSettled(
     sourceIds.map(async (id) => {
@@ -274,6 +362,7 @@ export function useScrape() {
 
   const startScraping = useCallback(
     async (media: ScrapeMedia, startFromSourceId?: string) => {
+      const extensionActive = await isExtensionActive();
       const providerInstance = getProviders();
       const allSources = providerInstance.listSources();
       const playerState = usePlayerStore.getState();
@@ -321,8 +410,15 @@ export function useScrape() {
         })
         .map((source) => source.id);
 
-      const baseSourceOrder = availableSources;
+      let baseSourceOrder = availableSources;
       baseSourceOrder.sort((a, b) => {
+        if (extensionActive) {
+          const extensionIds = ["vidlink-custom", "lookmovie"];
+          const isExtA = extensionIds.includes(a);
+          const isExtB = extensionIds.includes(b);
+          if (isExtA && !isExtB) return -1;
+          if (!isExtA && isExtB) return 1;
+        }
         const idxA = sortOrder.indexOf(a);
         const idxB = sortOrder.indexOf(b);
         return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
@@ -396,13 +492,145 @@ export function useScrape() {
         usePlayerStore.getState().setProbedSources(mediaKey, initialProbeState);
       }
 
-      // Run all probes in parallel (12 s timeout each)
+      // Split probe order into zeticuz vs regular providers.
+      // Zeticuz providers must NOT be probed via parallelProbe (all 12 scrapers
+      // share the same slow API call — the 12s timeout fires before it responds).
+      // Instead, probe zeticuz once via a direct API fetch (45s timeout).
+      const zeticuzProbeIds = probeOrder.filter((id) => id.startsWith("zeticuz-"));
+      const regularProbeIds = probeOrder.filter((id) => !id.startsWith("zeticuz-"));
+
+      let zeticuzPromise = Promise.resolve({ workingIds: new Set<string>(), isAnime: false });
+      if (zeticuzProbeIds.length > 0) {
+        zeticuzPromise = probeZeticuzProviders(zeticuzProbeIds, media);
+      }
+
       let workingSourceIds: Set<string>;
-      try {
-        workingSourceIds = await parallelProbe(probeOrder, media);
-      } catch {
-        // If probe itself crashes, gracefully fall back to trying all sources
-        workingSourceIds = new Set(probeOrder);
+      let isAnime = false;
+      let regularWorking: Set<string>;
+
+      if (extensionActive) {
+        // Probe local providers first
+        regularWorking = await parallelProbe(regularProbeIds, media);
+        let allowedExtensionWorking = [...regularWorking].filter(
+          (id) => id === "lookmovie" || id === "vidlink-custom"
+        );
+        if (media.type === "show") {
+          allowedExtensionWorking = allowedExtensionWorking.filter(
+            (id) => id !== "lookmovie"
+          );
+        }
+
+        if (allowedExtensionWorking.length > 0) {
+          const firstId = allowedExtensionWorking[0];
+          try {
+            const patchedMetaForSpinner = applyNameOverrides(
+              allSources.map((s) => ({ id: s.id, name: s.name })),
+            );
+            const source = patchedMetaForSpinner.find((s) => s.id === firstId);
+            const rawName = source?.name || firstId;
+            const patchedName = SOURCE_NAME_OVERRIDES[firstId] ?? rawName;
+
+            setSources({
+              [firstId]: {
+                id: firstId,
+                name: patchedName,
+                status: "pending",
+                percentage: 0,
+              },
+            });
+            setSourceOrder([{ id: firstId, children: [] }]);
+            setCurrentSource(firstId);
+            lastId.current = firstId;
+            startScrape();
+
+            const providers = getProviders();
+            const out = await providers.runSourceScraper({
+              id: firstId,
+              media,
+              events: {
+                init: initEvent,
+                start: startEvent,
+                update: updateEvent,
+                discoverEmbeds: discoverEmbedsEvent,
+              },
+            });
+
+            if (out?.stream && out.stream.length > 0) {
+              const partialProbeState: Record<string, ProbeStatus> = {};
+              probeOrder.forEach((id) => {
+                partialProbeState[id] = id === firstId ? "working" : "probing";
+              });
+              setProbedSources(partialProbeState);
+
+              if (isExtensionActiveCached()) {
+                await prepareStream(out.stream);
+              }
+
+              // Background resolution of zeticuz results
+              zeticuzPromise.then((zeticuzResult) => {
+                const finalProbeState: Record<string, ProbeStatus> = {};
+                probeOrder.forEach((id) => {
+                  const isWorking =
+                    id === firstId ||
+                    zeticuzResult.workingIds.has(id) ||
+                    regularWorking.has(id);
+                  finalProbeState[id] = isWorking ? "working" : "failed";
+                });
+                setProbedSources(finalProbeState);
+                if (mediaKey) {
+                  usePlayerStore.getState().setProbedSources(mediaKey, finalProbeState);
+                }
+              }).catch(console.error);
+
+              return getResult(out);
+            }
+          } catch (err) {
+            console.error(`Early scrape failed for ${firstId}`, err);
+          }
+        }
+
+        // If local run failed or returned no streams, wait for zeticuz to finish
+        try {
+          const zeticuzResult = await zeticuzPromise;
+          workingSourceIds = new Set([...zeticuzResult.workingIds, ...regularWorking]);
+          isAnime = zeticuzResult.isAnime;
+        } catch {
+          workingSourceIds = new Set(probeOrder);
+        }
+      } else {
+        // Fallback: wait for both
+        try {
+          const [zeticuzResult, regWorking] = await Promise.all([
+            zeticuzPromise,
+            parallelProbe(regularProbeIds, media),
+          ]);
+          regularWorking = regWorking;
+          workingSourceIds = new Set([...zeticuzResult.workingIds, ...regularWorking]);
+          isAnime = zeticuzResult.isAnime;
+        } catch {
+          workingSourceIds = new Set(probeOrder);
+        }
+      }
+
+      if (isAnime) {
+        const animeFiltered = (id: string) => id !== "lookmovie" && id !== "vidlink" && id !== "vidlink-custom";
+        workingSourceIds = new Set([...workingSourceIds].filter(animeFiltered));
+        baseSourceOrder = baseSourceOrder.filter(animeFiltered);
+        filteredSourceOrder = filteredSourceOrder.filter(animeFiltered);
+      }
+
+      if (media.type === "movie") {
+        const movieFiltered = (id: string) => id !== "zeticuz-anikoto" && id !== "zeticuz-anikai";
+        workingSourceIds = new Set([...workingSourceIds].filter(movieFiltered));
+        baseSourceOrder = baseSourceOrder.filter(movieFiltered);
+        filteredSourceOrder = filteredSourceOrder.filter(movieFiltered);
+      }
+
+      if (media.type === "show") {
+        const showFiltered = (id: string) => id !== "lookmovie";
+        workingSourceIds = new Set([...workingSourceIds].filter(showFiltered));
+        baseSourceOrder = baseSourceOrder.filter(showFiltered);
+        filteredSourceOrder = filteredSourceOrder.filter(showFiltered);
       }
 
       // Update probedSources with final results
@@ -463,9 +691,8 @@ export function useScrape() {
       const providerSourceOrder = startFromSourceId ? filteredSourceOrder : effectiveSourceOrder;
 
       const providerApiUrl = getLoadbalancedProviderApiUrl();
-      const extensionActive = await isExtensionActive();
-      const hasCinepro = providerSourceOrder.some((id) => id.startsWith("cinepro-core-"));
-      if (providerApiUrl && !extensionActive && !hasCinepro) {
+      const hasZeticuz = providerSourceOrder.some((id) => id.startsWith("zeticuz-"));
+      if (providerApiUrl && !extensionActive && !hasZeticuz) {
         startScrape();
         const baseUrlMaker = makeProviderUrl(providerApiUrl);
         const conn = await connectServerSideEvents<RunOutput | "">(

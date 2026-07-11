@@ -109,11 +109,14 @@ export function RealPlayerView() {
 
   const metaChange = useCallback(
     (meta: PlayerMeta) => {
-      if (meta?.type === "show")
+      if (meta?.type === "show") {
+        const showId = meta.tmdbId;
+        const seasonNum = meta.season?.number ?? 1;
+        const episodeNum = meta.episode?.number ?? 1;
         navigate(
-          `/media/${params.media}/${meta.season?.tmdbId}/${meta.episode?.tmdbId}`,
+          `/media/${params.media}/${showId}-s${seasonNum}/${showId}-s${seasonNum}-e${episodeNum}`,
         );
-      else navigate(`/media/${params.media}`);
+      } else navigate(`/media/${params.media}`);
     },
     [navigate, params],
   );

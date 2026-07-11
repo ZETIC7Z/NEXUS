@@ -93,7 +93,14 @@ export function selectQuality(
 } {
   if (source.type === "hls")
     return {
-      stream: source,
+      stream: {
+        type: source.type,
+        url: source.url,
+        headers: source.headers,
+        preferredHeaders: source.preferredHeaders,
+        // Preserve multi-quality map if present (e.g., from zeticuz provider)
+        hlsQualities: (source as any).hlsQualities ?? undefined,
+      } as LoadableSource,
       quality: null,
     };
   if (source.type === "file") {

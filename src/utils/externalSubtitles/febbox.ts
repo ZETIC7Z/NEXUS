@@ -1,14 +1,18 @@
-﻿/* eslint-disable no-console */
+/* eslint-disable no-console */
 import { labelToLanguageCode } from "@p-stream/providers";
 
 import { CaptionListItem } from "@/stores/player/slices/source";
 
 export async function scrapeFebboxCaptions(
-  imdbId: string,
+  imdbId: string | undefined,
   season?: number,
   episode?: number,
 ): Promise<CaptionListItem[]> {
   try {
+    if (!imdbId) {
+      console.log("No IMDb ID provided for Febbox subtitle scraping");
+      return [];
+    }
     let url: string;
     if (season && episode) {
       url = `https://fed-subs.pstream.mov/tv/${imdbId}/${season}/${episode}`;

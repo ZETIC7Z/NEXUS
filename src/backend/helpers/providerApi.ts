@@ -3,7 +3,7 @@
 import { jwtDecode } from "jwt-decode";
 
 import { mwFetch } from "@/backend/helpers/fetch";
-import { cineproCoreScrapers } from "@/backend/providers/cinepro-core";
+import { zeticuzScrapers } from "@/backend/providers/zeticuz-provider";
 import { getTurnstileToken, isTurnstileInitialized } from "@/stores/turnstile";
 
 let metaDataCache: MetaOutput[] | null = null;
@@ -13,13 +13,13 @@ export function setCachedMetadata(data: MetaOutput[]) {
   metaDataCache = data;
 }
 
-const CINEPRO_SOURCE_IDS = cineproCoreScrapers.map((s) => s.id);
+const ZETICUZ_SOURCE_IDS = zeticuzScrapers.map((s) => s.id);
 
 const ALLOWED_SOURCE_IDS = [
   "vidlink",
   "vidlink-custom",
   "lookmovie",
-  ...CINEPRO_SOURCE_IDS,
+  ...ZETICUZ_SOURCE_IDS,
 ];
 
 // Display aliases applied to source metadata so the turnstile spinner,

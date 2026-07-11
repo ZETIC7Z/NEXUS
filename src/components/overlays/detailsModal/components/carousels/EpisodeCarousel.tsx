@@ -69,8 +69,8 @@ export function EpisodeCarousel({
 
     if (!season || !mediaId || !mediaTitle) return "#";
 
-    // Create the URL in the format: /media/tmdb-tv-{showId}-{showName}/{seasonId}/{episodeId}
-    return `/media/tmdb-tv-${mediaId}-${mediaTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/${season.id}/${episode.id}`;
+    const cleanTitle = mediaTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return `/media/tmdb-tv-${mediaId}-${cleanTitle}/${mediaId}-s${season.season_number}/${mediaId}-s${season.season_number}-e${episode.episode_number}`;
   };
 
   useEffect(() => {
@@ -149,7 +149,8 @@ export function EpisodeCarousel({
     }
 
     // Navigate to the episode using the same URL format as getEpisodeUrl
-    const url = `/media/tmdb-tv-${mediaId}-${mediaTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/${seasonData.id}/${episodeData.id}`;
+    const cleanTitle = mediaTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const url = `/media/tmdb-tv-${mediaId}-${cleanTitle}/${mediaId}-s${seasonData.season_number}/${mediaId}-s${seasonData.season_number}-e${episodeData.episode_number}`;
     window.location.href = url;
     setShowEpisodeMenu(false);
   };

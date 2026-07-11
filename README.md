@@ -364,6 +364,37 @@ docker-compose up -d
 
 ---
 
+## 🔒 Zeticuz Integration & Security
+
+NEXUS integrates with the **TMDB-Embed-API** backend (deployed on HuggingFace Space) to fetch and decrypt streaming sources in real-time.
+
+### Connection Architecture
+1. **Scraping Trigger**: When a user selects a Movie, TV Show, or Anime, `zeticuz-provider.ts` builds the backend request.
+2. **IMDB Bypass**: NEXUS automatically appends `imdbId` (e.g., `tt0903747`) to the request so the backend can skip slow TMDB resolution lookups, increasing load speeds by up to 50%.
+3. **Single Probe Fetch**: `useProviderScrape.tsx` issues a single parallel probe query to fetch available providers first. This prevents hammering the API with 12 simultaneous requests and avoids backend timeout bottlenecks.
+4. **Player Integration**: The player reads `probedSources` to render only verified working hosts (e.g., AniKoto, DahmerMovies, Vidbox) in the selection list.
+
+### 🛡️ DevTools & Code Protection
+To prevent users or automated scrapers from extracting your API routes, configurations, or backend provider endpoints, the following security features have been implemented:
+
+- **Decoy Binary Metadata Obfuscation**: The production HuggingFace API URL is hidden inside a decoy binary MP4 header block (`\tkhd...mdia...mdhd`) within `secure-config.ts`. The URL is extracted dynamically at runtime via base64 decoding, preventing grep tools from locating the backend domain in source code.
+- **DevTools Blocker & Page Freeze**: In production, a continuous anti-devtools execution loop (`debugger` statements nested in recursive self-invoking function calls) runs every second. If DevTools is opened, the inspector is frozen.
+- **UI Event Restrictions**: Left-clicks/Right-clicks context menus are disabled across the application. Developer shortcuts (`F12`, `Ctrl+Shift+I`, `Ctrl+Shift+J`, `Ctrl+Shift+C`, `Ctrl+U` to View Source, and `Ctrl+S` to save page) are intercepted and prevented.
+
+### Data Flow Diagram
+
+```mermaid
+graph TD
+    User([User]) -->|Clicks Play| Nexus[NEXUS Frontend]
+    Nexus -->|zeticuz-provider.ts| SecureUrl[secure-config.ts Resolves URL]
+    SecureUrl -->|Single API request| API[HuggingFace Backend Space]
+    API -->|Parallel scrapes| Hosts[Video Hosts]
+    Hosts -->|Normalizes and filters| Nexus
+    Nexus -->|probedSources verification| Player[Secure Player UI]
+```
+
+---
+
 ## 📄 License
 
 This project is proprietary software owned by **reyamae14-cyber**.

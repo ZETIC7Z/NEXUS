@@ -161,9 +161,11 @@ export function SubtitleView(props: { controlsShown: boolean }) {
     (s) => s.enableNativeSubtitles,
   );
 
+  const enabled = useSubtitleStore((s) => s.enabled);
+
   // Hide custom captions when native subtitles are enabled
   const shouldUseNativeTrack = enableNativeSubtitles && source !== null;
-  if (shouldUseNativeTrack || !caption || isCasting) return null;
+  if (shouldUseNativeTrack || !caption || isCasting || !enabled) return null;
 
   return (
     <Transition animation="slide-up" show>

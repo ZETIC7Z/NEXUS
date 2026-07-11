@@ -30,6 +30,8 @@ export function convertRunoutputToSource(out: {
       url: out.stream.playlist,
       headers: out.stream.headers,
       preferredHeaders: out.stream.preferredHeaders,
+      // Pass through multi-quality map if the provider supplied one
+      hlsQualities: (out.stream as any).hlsQualities ?? undefined,
     };
   }
   if (out.stream.type === "file") {

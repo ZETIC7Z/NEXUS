@@ -392,7 +392,11 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
           const info = HLS_QUALITY_INFO[quality] || { bandwidth: 1500000, resolution: "854x480" };
           const name = qualityNameMap[quality] || quality;
           m3u8 += `#EXT-X-STREAM-INF:BANDWIDTH=${info.bandwidth},RESOLUTION=${info.resolution},NAME="${name}"\n`;
-          m3u8 += `${url}\n`;
+          let finalUrl = url;
+          if (src.headers && Object.keys(src.headers).length > 0 && !url.includes("proxy")) {
+            finalUrl = createM3U8ProxyUrl(url, src.headers);
+          }
+          m3u8 += `${finalUrl}\n`;
         }
 
         const blob = new Blob([m3u8], { type: "application/x-mpegURL" });
@@ -402,7 +406,11 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         currentBlobUrl = URL.createObjectURL(blob);
         hls.loadSource(currentBlobUrl);
       } else {
-        hls.loadSource(processCdnLink(src.url));
+        let hlsUrl = processCdnLink(src.url);
+        if (src.headers && Object.keys(src.headers).length > 0 && !hlsUrl.includes("proxy")) {
+          hlsUrl = createM3U8ProxyUrl(hlsUrl, src.headers);
+        }
+        hls.loadSource(hlsUrl);
       }
 
       vid.currentTime = startAt;
@@ -868,6 +876,10 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       return hls?.subtitleTracks ?? [];
     },
     async setSubtitlePreference(lang) {
+      if (!lang) {
+        if (hls) hls.subtitleTrack = -1;
+        return Promise.resolve();
+      }
       // default subtitles are already loaded by hls.js
       const track = hls?.subtitleTracks.find((t) => t.lang === lang);
       if (track?.details !== undefined) return Promise.resolve();

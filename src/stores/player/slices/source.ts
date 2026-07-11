@@ -224,10 +224,12 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.interface.hideNextEpisodeBtn = false;
       if (newStatus) s.status = newStatus;
 
-      // Clear failed sources/embeds for the new media when media changes
+      // Clear failed sources/embeds and reset subtitles for the new media when media changes
       if (newMediaKey && oldMediaKey && oldMediaKey !== newMediaKey) {
         delete s.failedSourcesPerMedia[newMediaKey];
         delete s.failedEmbedsPerMedia[newMediaKey];
+        s.captionList = [];
+        s.caption.selected = null;
       }
     });
   },
@@ -258,17 +260,6 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.audioTracks = [];
       s.currentAudioTrack = null;
 
-      // Auto-select English subtitle if none is currently selected
-      if (!s.caption?.selected) {
-        const engCaption = captions.find((c) => 
-          c.language?.toLowerCase().startsWith("en") || 
-          (c.label && c.label.toLowerCase().includes("english"))
-        );
-        if (engCaption) {
-          if (!s.caption) s.caption = { selected: null, asTrack: false };
-          s.caption.selected = engCaption.id;
-        }
-      }
     });
     const store = get();
     store.redisplaySource(startAt);
@@ -460,17 +451,6 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
           );
           s.captionList = [...s.captionList, ...newCaptions];
 
-          // Auto-select English subtitle if none is currently selected
-          if (!s.caption?.selected) {
-            const engCaption = s.captionList.find((c) => 
-              c.language?.toLowerCase().startsWith("en") || 
-              (c.label && c.label.toLowerCase().includes("english"))
-            );
-            if (engCaption) {
-              if (!s.caption) s.caption = { selected: null, asTrack: false };
-              s.caption.selected = engCaption.id;
-            }
-          }
         });
         console.log(`Added ${externalCaptions.length} external captions`);
       }

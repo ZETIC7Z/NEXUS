@@ -5,6 +5,7 @@ import { convertSubtitlesToObjectUrl } from "@/components/player/utils/captions"
 import { playerStatus } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
+import { useSubtitleStore } from "@/stores/subtitles";
 
 import { useInitializeSource } from "../hooks/useInitializePlayer";
 
@@ -77,8 +78,10 @@ function VideoElement() {
     [srtData],
   );
 
+  const subtitlesEnabled = useSubtitleStore((s) => s.enabled);
+
   // Use native tracks when the setting is enabled
-  const shouldUseNativeTrack = enableNativeSubtitles && source !== null;
+  const shouldUseNativeTrack = enableNativeSubtitles && source !== null && subtitlesEnabled;
 
   // report video element to display interface
   useEffect(() => {

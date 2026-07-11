@@ -38,6 +38,23 @@ function getSavedProgress(items: Record<string, any>, meta: any): number {
   return ep.progress.watched;
 }
 
+async function pingUrl(url: string, timeoutMs = 2500): Promise<number> {
+  const start = Date.now();
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    await fetch(url, {
+      method: "GET",
+      mode: "no-cors",
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return Date.now() - start;
+  } catch (err) {
+    return Infinity;
+  }
+}
+
 export function useEmbedScraping(
   routerId: string,
   sourceId: string,
@@ -218,8 +235,8 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
 
     let result: SourcererOutput | undefined;
     try {
-      const isCinepro = sourceId.startsWith("cinepro-core-");
-      if (providerApiUrl && !isExtensionActiveCached() && !isCinepro) {
+      const isZeticuz = sourceId.startsWith("zeticuz-");
+      if (providerApiUrl && !isExtensionActiveCached() && !isZeticuz) {
         const baseUrlMaker = makeProviderUrl(providerApiUrl);
         const conn = await connectServerSideEvents<SourcererOutput>(
           baseUrlMaker.scrapeSource(sourceId, scrapeMedia),
@@ -245,11 +262,22 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
       scrapeSourceOutputToProviderMetric(meta, sourceId, null, "success", null),
     ]);
 
-    if (result.stream) {
+    if (result.stream && result.stream.length > 0) {
+      let bestStream = result.stream[0];
+      if (result.stream.length > 1) {
+        const pingPromises = result.stream.map(async (stream) => {
+          const playlistUrl = stream.type === "hls" ? stream.playlist : (stream.qualities ? stream.qualities[Object.keys(stream.qualities)[0]]?.url : null);
+          const ping = playlistUrl ? await pingUrl(playlistUrl) : Infinity;
+          return { stream, ping };
+        });
+        const pingResults = await Promise.all(pingPromises);
+        pingResults.sort((a, b) => a.ping - b.ping);
+        bestStream = pingResults[0].stream;
+      }
       // Normalize stream to ensure required fields exist
       const normalized = {
-        ...result.stream[0],
-        id: result.stream[0].id ?? `ext-${Date.now()}` as string,
+        ...bestStream,
+        id: bestStream.id ?? `ext-${Date.now()}` as string,
       } as any;
       if (isExtensionActiveCached()) await prepareStream(normalized);
       setEmbedId(null);
@@ -267,71 +295,66 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
       router.close();
       return null;
     }
-    if (result.embeds.length === 1) {
-      let embedResult: EmbedOutput | undefined;
-      if (!meta) return;
-      try {
-        if (providerApiUrl && !isExtensionActiveCached()) {
-          const baseUrlMaker = makeProviderUrl(providerApiUrl);
-          const conn = await connectServerSideEvents<EmbedOutput>(
-            baseUrlMaker.scrapeEmbed(
-              result.embeds[0].embedId,
-              result.embeds[0].url,
-            ),
-            ["completed", "noOutput"],
-          );
-          embedResult = await conn.promise();
-        } else {
-          embedResult = await getProviders().runEmbedScraper({
-            id: result.embeds[0].embedId,
-            url: result.embeds[0].url,
-          });
+
+    if (result.embeds && result.embeds.length > 0) {
+      // Scrape all embeds in parallel to find the fastest/lowest ping one
+      const scrapePromises = result.embeds.map(async (embed) => {
+        try {
+          let embedResult: EmbedOutput;
+          if (providerApiUrl && !isExtensionActiveCached()) {
+            const baseUrlMaker = makeProviderUrl(providerApiUrl);
+            const conn = await connectServerSideEvents<EmbedOutput>(
+              baseUrlMaker.scrapeEmbed(embed.embedId, embed.url),
+              ["completed", "noOutput"],
+            );
+            embedResult = await conn.promise();
+          } else {
+            embedResult = await getProviders().runEmbedScraper({
+              id: embed.embedId,
+              url: embed.url,
+            });
+          }
+          if (embedResult && embedResult.stream && embedResult.stream[0]) {
+            const stream = embedResult.stream[0];
+            const playlistUrl = stream.type === "hls" ? stream.playlist : (stream.qualities ? stream.qualities[Object.keys(stream.qualities)[0]]?.url : null);
+            const ping = playlistUrl ? await pingUrl(playlistUrl) : Infinity;
+            return { embed, embedResult, ping };
+          }
+        } catch (e) {
+          // ignore failed embed scrapes
         }
-      } catch (err) {
-        console.error(`Failed to scrape ${result.embeds[0].embedId}`, err);
-        const notFound = err instanceof NotFoundError;
-        const status = notFound ? "notfound" : "failed";
-        report([
-          scrapeSourceOutputToProviderMetric(
-            meta,
-            sourceId,
-            result.embeds[0].embedId,
-            status,
-            err,
-          ),
-        ]);
-        throw err;
+        return null;
+      });
+
+      const scrapeResults = (await Promise.all(scrapePromises)).filter((r): r is NonNullable<typeof r> => r !== null);
+      if (scrapeResults.length > 0) {
+        // Sort by ping ascending (fastest first)
+        scrapeResults.sort((a, b) => a.ping - b.ping);
+        const best = scrapeResults[0];
+
+        setSourceId(sourceId);
+        setEmbedId(best.embed.embedId);
+        setCaption(null);
+
+        const embedNormalized = {
+          ...best.embedResult.stream[0],
+          id: best.embedResult.stream[0].id ?? `ext-${Date.now()}` as string,
+        } as any;
+
+        if (isExtensionActiveCached()) await prepareStream(embedNormalized);
+        setSource(
+          convertRunoutputToSource({ stream: embedNormalized }),
+          convertProviderCaption(embedNormalized.captions),
+          getSavedProgress(progressItems, meta),
+        );
+        if (enableLastSuccessfulSource) {
+          setLastSuccessfulSource(sourceId);
+        }
+        router.close();
+        return null;
       }
-      report([
-        scrapeSourceOutputToProviderMetric(
-          meta,
-          sourceId,
-          result.embeds[0].embedId,
-          "success",
-          null,
-        ),
-      ]);
-      setSourceId(sourceId);
-      setEmbedId(result.embeds[0].embedId);
-      setCaption(null);
-      // Normalize embed stream
-      const embedNormalized = {
-        ...embedResult.stream[0],
-        id: embedResult.stream[0].id ?? `ext-${Date.now()}` as string,
-      } as any;
-      if (isExtensionActiveCached()) await prepareStream(embedNormalized);
-      setSource(
-        convertRunoutputToSource({ stream: embedNormalized }),
-        convertProviderCaption(embedNormalized.captions),
-        getSavedProgress(progressItems, meta),
-      );
-      // Save the last successful source when manually selected
-      if (enableLastSuccessfulSource) {
-        setLastSuccessfulSource(sourceId);
-      }
-      router.close();
     }
-    return result.embeds;
+    throw new NotFoundError("No streams found");
   }, [
     sourceId,
     meta,

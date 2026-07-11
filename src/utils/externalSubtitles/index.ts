@@ -30,7 +30,7 @@ export async function scrapeExternalSubtitles(
       season,
       episode,
     );
-    // const febboxPromise = scrapeFebboxCaptions(imdbId, season, episode);
+    const febboxPromise = _scrapeFebboxCaptions(imdbId, season, episode);
     const vdrkPromise = scrapeVdrkCaptions(tmdbId, season, episode);
 
     // Create timeout promises
@@ -44,7 +44,7 @@ export async function scrapeExternalSubtitles(
     const allCaptions: import("@/stores/player/slices/source").CaptionListItem[] =
       [];
     let completedSources = 0;
-    const totalSources = 3;
+    const totalSources = 4;
 
     // Helper function to handle individual source completion
     const handleSourceCompletion = (
@@ -68,10 +68,10 @@ export async function scrapeExternalSubtitles(
         handleSourceCompletion("OpenSubtitles", captions);
         return captions;
       }),
-      // Promise.race([febboxPromise, timeoutPromise]).then((captions) => {
-      //   handleSourceCompletion("Febbox", captions);
-      //   return captions;
-      // }),
+      Promise.race([febboxPromise, timeoutPromise]).then((captions) => {
+        handleSourceCompletion("Febbox", captions);
+        return captions;
+      }),
       Promise.race([vdrkPromise, timeoutPromise]).then((captions) => {
         handleSourceCompletion("Granite", captions);
         return captions;

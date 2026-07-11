@@ -4,7 +4,7 @@ import React, { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
-import { cineproCoreScrapers, getActiveProvidersFromCache } from "@/backend/providers/cinepro-core";
+import { zeticuzScrapers, getActiveZeticuzProviders } from "@/backend/providers/zeticuz-provider";
 import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
@@ -172,8 +172,10 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
 
     const mediaKey = getMediaKey(playerMeta);
     const probedForMedia = mediaKey ? probedSources[mediaKey] : null;
+    const probeComplete = probedForMedia && Object.values(probedForMedia).some((s) => s === "working" || s === "failed");
 
-    const activeCineProIds = getActiveProvidersFromCache(playerMeta);
+    // Fallback: use activeZeticuzIds only when probe hasn't completed yet
+    const activeZeticuzIds = probeComplete ? null : getActiveZeticuzProviders(playerMeta);
 
     const allSources = getCachedMetadata()
       .filter((v) => v.type === "source")
@@ -181,15 +183,26 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
       .filter((v) => !(disabledSources || []).includes(v.id))
       .filter((v) => sortOrder.includes(v.id))
       .filter((v) => {
-        if (!v.id.startsWith("cinepro-core-")) return true;
-        if (!activeCineProIds) return true; // show all if not resolved yet
-        return activeCineProIds.includes(v.id);
+        // For zeticuz providers: use probed status when available, else activeZeticuzIds
+        if (!v.id.startsWith("zeticuz-")) return true;
+        if (probeComplete && probedForMedia) {
+          const status = probedForMedia[v.id];
+          return status === "working";
+        }
+        if (!activeZeticuzIds) return true; // show all if not resolved yet
+        return activeZeticuzIds.includes(v.id);
       })
-      // Hide failed sources
+      // For non-zeticuz: filter by probe status
       .filter((v) => {
+        if (v.id.startsWith("zeticuz-")) return true; // already handled above
         if (!probedForMedia) return true;
         const status = probedForMedia[v.id];
-        return status === "working" || status === "probing";
+        return status === "working" || status === "probing" || status === undefined;
+      })
+      // Hide anime-only sources when watching a movie
+      .filter((v) => {
+        if (metaType !== "movie") return true;
+        return v.id !== "zeticuz-anikoto" && v.id !== "zeticuz-anikai";
       });
 
     allSources.sort((a, b) => {

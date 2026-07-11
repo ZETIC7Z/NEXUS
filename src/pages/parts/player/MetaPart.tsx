@@ -102,13 +102,25 @@ export function MetaPart(props: MetaPartProps) {
       let ep = meta.meta.seasonData.episodes.find(
         (v) => v.id === params.episode,
       );
+      if (!ep && params.episode) {
+        const epMatch = params.episode.match(/-e(\d+)$/) || params.episode.match(/^e(\d+)$/);
+        if (epMatch) {
+          const epNumber = parseInt(epMatch[1], 10);
+          ep = meta.meta.seasonData.episodes.find((v) => v.number === epNumber);
+        }
+      }
       if (!ep) ep = meta.meta.seasonData.episodes[0];
       epId = ep.id;
+
+      const showId = data.id;
+      const expectedSeasonParam = `${showId}-s${meta.meta.seasonData.number}`;
+      const expectedEpisodeParam = `${showId}-s${meta.meta.seasonData.number}-e${ep.number}`;
+
       if (
-        params.season !== meta.meta.seasonData.id ||
-        params.episode !== ep.id
+        params.season !== expectedSeasonParam ||
+        params.episode !== expectedEpisodeParam
       ) {
-        navigate(`/media/${params.media}/${meta.meta.seasonData.id}/${ep.id}`, {
+        navigate(`/media/${params.media}/${expectedSeasonParam}/${expectedEpisodeParam}`, {
           replace: true,
         });
       }

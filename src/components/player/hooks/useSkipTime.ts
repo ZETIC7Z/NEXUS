@@ -49,7 +49,7 @@ export function useSkipTime() {
   const skipSegmentsCacheKey = usePlayerStore((s) => s.skipSegmentsCacheKey);
   const skipSegments = usePlayerStore((s) => s.skipSegments);
   const setSkipSegments = usePlayerStore((s) => s.setSkipSegments);
-  const tidbKey = usePreferencesStore((s) => s.tidbKey);
+  const tidbKey = usePreferencesStore((s) => s.tidbKey) || "theintrodb:user_38mAe7xudBytvfY8ZqLxWNyozOz:_MKFslJhsftBquIpWD546F8gO3zKRZa4z9Jmpsk9WQs";
 
   useEffect(() => {
     if (!cacheKey) return;

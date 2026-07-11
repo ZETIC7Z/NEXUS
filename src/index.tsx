@@ -1,3 +1,4 @@
+import "@/utils/security";
 import "@/setup/pwa";
 import "core-js/stable";
 import "./stores/__old/imports";

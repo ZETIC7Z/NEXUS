@@ -141,7 +141,8 @@ export function useCaptions() {
     setIsOpenSubtitles(false);
     setCaption(null);
     setLanguage(null);
-  }, [setCaption, setLanguage, setIsOpenSubtitles]);
+    await setSubtitlePreference?.(null);
+  }, [setCaption, setLanguage, setIsOpenSubtitles, setSubtitlePreference]);
 
   const selectLastUsedLanguage = useCallback(async () => {
     const { countryCode } = (
