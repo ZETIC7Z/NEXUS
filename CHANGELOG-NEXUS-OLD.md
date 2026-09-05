@@ -131,6 +131,24 @@ same-origin path-style URLs (as the Vite dev server rewrites them), but Vercel
 only served the query-style form — production TMDB metadata was 404-ing. This
 was found during the post-deploy live test and fixed in commit 35ba450.
 
+## 13. Notification modal position/size matched to 3.0 exactly
+
+After the initial 3.0 notification swap, the modal box still sat lower than
+3.0's: the old project's `FancyModal` wrapper (in
+`src/components/overlays/Modal.tsx`) differed from 3.0's. Replaced it with
+3.0's exact implementation (commit `17c2ae5`):
+
+- Panel now sits inside a `p-4` centered wrapper with its own
+  `max-h-[85vh] overflow-y-auto` container (was: bare `Flare.Base` with
+  `mx-4`, `-m-[0.705em]`, inner `max-h-[90dvh]` scroll and a stray
+  `mb-2p-[0.4em]` class).
+- Result: box truly centered and sitting higher, scrolls internally instead
+  of clipping, and mobile behavior is byte-identical to 3.0 (`w-full` inside
+  the `p-4` wrapper + 85vh scroll).
+- Verified live: DOM measures `isCentered: true`, `max-h: 580px = 85vh`,
+  `overflow-y: auto`, top margin respected; production bundle contains the
+  85vh wrapper and the old 90dvh wrapper is gone.
+
 ---
 
 ## Verification (live tests, not just typecheck)
@@ -151,6 +169,7 @@ was found during the post-deploy live test and fixed in commit 35ba450.
     per-stream headers; SSRF guard rejects insecure targets (403).
   - /api/downloads -> 200.
   - notifications.xml serves exactly 1 item (the new changelog notification).
+  - Notification modal wrapper verified byte-identical to 3.0 (see #13).
   - Env double-check: production bundle bakes the same values as local .env
     (VITE_BACKEND_URL=https://backend.zstream.mov, same CORS proxies, same
     VITE_TMDB_EMBED_API_URL=https://stycanine1-tmdb-embed-api.hf.space, same
