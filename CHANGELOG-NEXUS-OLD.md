@@ -149,6 +149,14 @@ After the initial 3.0 notification swap, the modal box still sat lower than
   `overflow-y: auto`, top margin respected; production bundle contains the
   85vh wrapper and the old 90dvh wrapper is gone.
 
+## 14. Notification modal pulled up to sit under the header nav
+
+On desktop the notification box was vertically centered, leaving a large gap
+below the nav bar. Added an `align` prop to `FancyModal` (default `"center"`,
+so Disclaimer/Partners/Support/onboarding modals are unchanged) and set the
+notification modal to `align="top"`, which renders it ~23px below the nav bar
+for a cleaner look. Commit `9eb66d2`.
+
 ---
 
 ## Verification (live tests, not just typecheck)
