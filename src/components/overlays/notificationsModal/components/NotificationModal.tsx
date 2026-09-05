@@ -380,6 +380,7 @@ export function NotificationModal({ id }: NotificationModalProps) {
               : "Notifications"
       }
       size="lg"
+      align="top"
     >
       {currentView === "list" ? (
         <ListView

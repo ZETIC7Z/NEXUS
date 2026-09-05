@@ -67,6 +67,7 @@ export function FancyModal(props: {
   children?: ReactNode;
   title?: string;
   size?: "md" | "lg" | "xl";
+  align?: "center" | "top";
   oneTime?: boolean;
 }) {
   const modal = useModal(props.id);
@@ -92,7 +93,14 @@ export function FancyModal(props: {
       <Helmet>
         <html data-no-scroll />
       </Helmet>
-      <div className="flex absolute inset-0 items-center justify-center p-4 overflow-hidden">
+      <div
+        className={classNames(
+          "flex absolute inset-0 justify-center overflow-hidden",
+          props.align === "top"
+            ? "items-start pt-[6.5rem] px-4 pb-4"
+            : "items-center p-4",
+        )}
+      >
         <div className="overflow-y-auto max-h-[85vh] pointer-events-auto">
           <Flare.Base
             className={classNames(
