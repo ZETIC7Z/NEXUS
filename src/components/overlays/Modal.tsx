@@ -21,11 +21,18 @@ export function useModal(id: string) {
   };
 }
 
-
-export function ModalCard(props: { children?: ReactNode; className?: string }) {
+export function ModalCard(props: {
+  children?: ReactNode;
+  className?: ReactNode;
+}) {
   return (
-    <div className={classNames("w-full max-w-[30rem] m-4", props.className)}>
-      <div className="w-full bg-modal-background rounded-xl p-8 pointer-events-auto">
+    <div
+      className={classNames(
+        "w-full max-w-[30rem] m-4 pointer-events-auto",
+        props.className,
+      )}
+    >
+      <div className="w-full bg-modal-background rounded-xl p-8">
         {props.children}
       </div>
     </div>
@@ -48,7 +55,7 @@ export function Modal(props: { id: string; children?: ReactNode }) {
       <Helmet>
         <html data-no-scroll />
       </Helmet>
-      <div className="flex absolute inset-0 items-center justify-center flex-col">
+      <div className="flex absolute inset-0 items-center justify-center flex-col pointer-events-none">
         {props.children}
       </div>
     </OverlayPortal>
@@ -59,7 +66,6 @@ export function FancyModal(props: {
   id: string;
   children?: ReactNode;
   title?: string;
-  header?: ReactNode;
   size?: "md" | "lg" | "xl";
   oneTime?: boolean;
 }) {
@@ -82,51 +88,49 @@ export function FancyModal(props: {
   };
 
   return (
-    <OverlayPortal darken close={handleClose} show={modal.isShown} animation="fade">
+    <OverlayPortal darken close={handleClose} show={modal.isShown}>
       <Helmet>
         <html data-no-scroll />
       </Helmet>
-      <div className="flex absolute inset-0 items-center justify-center">
-        <Flare.Base
-          className={classNames(
-            "group -m-[0.705em] rounded-3xl bg-background-main transition-colors duration-300 focus:relative focus:z-10",
-            "w-full mx-4 p-6 bg-mediaCard-hoverBackground bg-opacity-60 backdrop-filter backdrop-blur-lg shadow-lg",
-            props.size === "md" ? "max-w-md" : "max-w-2xl",
-            props.size === "xl" ? "max-w-7xl" : "max-w-2xl",
-          )}
-        >
-          <div className="transition-transform duration-300 overflow-y-scroll max-h-[90dvh] scrollbar-none">
-            <Flare.Light
-              flareSize={300}
-              cssColorVar="--colors-mediaCard-hoverAccent"
-              backgroundClass="bg-modal-background duration-100"
-              className="rounded-3xl bg-background-main group-hover:opacity-100"
-            />
-            <Flare.Child className="pointer-events-auto relative mb-2p-[0.4em] transition-transform duration-300">
-              <div className="flex justify-between items-center mb-4 min-h-[40px]">
-                <div className="flex items-center gap-4 flex-1">
-                  {props.header}
-                  {props.title && !props.header && (
+      <div className="flex absolute inset-0 items-center justify-center p-4 overflow-hidden">
+        <div className="overflow-y-auto max-h-[85vh] pointer-events-auto">
+          <Flare.Base
+            className={classNames(
+              "group rounded-3xl bg-background-main transition-colors duration-300 focus:relative focus:z-10",
+              "w-full p-6 bg-mediaCard-hoverBackground bg-opacity-60 backdrop-filter backdrop-blur-lg shadow-lg",
+              props.size === "md" ? "max-w-md" : "max-w-2xl",
+              props.size === "xl" ? "max-w-7xl" : "max-w-2xl",
+            )}
+          >
+            <div className="overflow-y-auto overflow-x-hidden max-h-[85vh]">
+              <Flare.Light
+                flareSize={300}
+                cssColorVar="--colors-mediaCard-hoverAccent"
+                backgroundClass="bg-modal-background duration-100"
+                className="rounded-3xl bg-background-main group-hover:opacity-100"
+              />
+              <Flare.Child className="pointer-events-auto relative">
+                <div className="flex justify-between items-center mb-4">
+                  {props.title && (
                     <Heading2 className="!mt-0 !mb-0 pr-6">
                       {props.title}
                     </Heading2>
                   )}
+                  <button
+                    type="button"
+                    className="text-s font-semibold text-type-secondary hover:text-white transition-transform hover:scale-95"
+                    onClick={handleClose}
+                  >
+                    <IconPatch icon={Icons.X} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="text-s font-semibold text-type-secondary hover:text-white transition-transform hover:scale-95"
-                  onClick={handleClose}
-                >
-                  <IconPatch icon={Icons.X} />
-                </button>
-              </div>
-              <div className="text-lg text-type-secondary">
-                {props.children}
-              </div>
-            </Flare.Child>
-          </div>
-        </Flare.Base>
+                <div className="text-lg text-type-secondary">
+                  {props.children}
+                </div>
+              </Flare.Child>
+            </div>
+          </Flare.Base>
+        </div>
       </div>
     </OverlayPortal>
   );
