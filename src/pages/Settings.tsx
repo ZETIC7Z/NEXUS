@@ -24,6 +24,7 @@ import { useIsIOS, useIsMobile, useIsPWA } from "@/hooks/useIsMobile";
 import { useSettingsState } from "@/hooks/useSettingsState";
 import { AccountActionsPart } from "@/pages/parts/settings/AccountActionsPart";
 import { AccountEditPart } from "@/pages/parts/settings/AccountEditPart";
+import { AdsPart } from "@/pages/parts/settings/AdsPart";
 import { AppearancePart } from "@/pages/parts/settings/AppearancePart";
 import { CaptionsPart } from "@/pages/parts/settings/CaptionsPart";
 import { ConnectionsPart } from "@/pages/parts/settings/ConnectionsPart";
@@ -156,6 +157,7 @@ export function SettingsPage() {
         "settings-appearance",
         "settings-captions",
         "settings-connection",
+        "settings-ads",
       ];
 
       // Map sub-section hashes to their parent categories
@@ -206,6 +208,7 @@ export function SettingsPage() {
           "settings-appearance",
           "settings-captions",
           "settings-connection",
+          "settings-ads",
         ];
         const subSectionToCategory: Record<string, string> = {
           "source-order": "settings-preferences",
@@ -837,6 +840,13 @@ export function SettingsPage() {
               debridService={state.debridService.state}
               setdebridService={state.debridService.set}
             />
+          </div>
+        )}
+        {(searchQuery.trim() ||
+          !selectedCategory ||
+          selectedCategory === "settings-ads") && (
+          <div id="settings-ads">
+            <AdsPart />
           </div>
         )}
       </SettingsLayout>

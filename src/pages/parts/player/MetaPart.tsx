@@ -5,14 +5,10 @@ import type { AsyncReturnType } from "type-fest";
 
 import { isAllowedExtensionVersion } from "@/backend/extension/compatibility";
 import { extensionInfo, sendPage } from "@/backend/extension/messaging";
-import {
-  fetchMetadata,
-  setCachedMetadata,
-} from "@/backend/helpers/providerApi";
+import { setCachedMetadata } from "@/backend/helpers/providerApi";
 import { DetailedMeta, getMetaFromId } from "@/backend/metadata/getmeta";
 import { decodeTMDBId } from "@/backend/metadata/tmdb";
 import { MWMediaType } from "@/backend/metadata/types/mw";
-import { getLoadbalancedProviderApiUrl } from "@/backend/providers/fetchers";
 import { getProviders } from "@/backend/providers/providers";
 import { Button } from "@/components/buttons/Button";
 import { Icons } from "@/components/Icon";
@@ -52,26 +48,11 @@ export function MetaPart(props: MetaPartProps) {
       if (!info.hasPermission) throw new Error("extension-no-permission");
     }
 
-    // use api metadata or providers metadata
-    const providerApiUrl = getLoadbalancedProviderApiUrl();
-    if (providerApiUrl && !isValidExtension) {
-      try {
-        await fetchMetadata(providerApiUrl);
-      } catch (err) {
-        // Fallback to local provider metadata when the provider API is
-        // unreachable or returns an error. This keeps the player working in
-        // local/dev mode where no backend is available.
-        setCachedMetadata([
-          ...getProviders().listSources(),
-          ...getProviders().listEmbeds(),
-        ]);
-      }
-    } else {
-      setCachedMetadata([
-        ...getProviders().listSources(),
-        ...getProviders().listEmbeds(),
-      ]);
-    }
+    // use providers metadata
+    setCachedMetadata([
+      ...getProviders().listSources(),
+      ...getProviders().listEmbeds(),
+    ]);
 
     // get media meta data
     let data: ReturnType<typeof decodeTMDBId> = null;
@@ -88,8 +69,12 @@ export function MetaPart(props: MetaPartProps) {
     let meta: AsyncReturnType<typeof getMetaFromId> = null;
     try {
       meta = await getMetaFromId(data.type, data.id, params.season);
-    } catch (err) {
-      if ((err as any).status === 404) {
+    } catch (err: any) {
+      const is404 =
+        err.status === 404 ||
+        err.statusCode === 404 ||
+        err.response?.status === 404;
+      if (is404) {
         return null;
       }
       throw err;
@@ -99,28 +84,22 @@ export function MetaPart(props: MetaPartProps) {
     // replace link with new link if youre not already on the right link
     let epId = params.episode;
     if (meta.meta.type === MWMediaType.SERIES) {
+      const suffixMatch = params.episode ? params.episode.match(/-s\d+-e\d+$/) : null;
+      const suffix = suffixMatch ? suffixMatch[0] : "";
+      const cleanEpId = params.episode ? params.episode.replace(/-s\d+-e\d+$/, "") : "";
+
       let ep = meta.meta.seasonData.episodes.find(
-        (v) => v.id === params.episode,
+        (v) => v.id === cleanEpId,
       );
-      if (!ep && params.episode) {
-        const epMatch = params.episode.match(/-e(\d+)$/) || params.episode.match(/^e(\d+)$/);
-        if (epMatch) {
-          const epNumber = parseInt(epMatch[1], 10);
-          ep = meta.meta.seasonData.episodes.find((v) => v.number === epNumber);
-        }
+      if (!ep) {
+        ep = meta.meta.seasonData.episodes[0];
       }
-      if (!ep) ep = meta.meta.seasonData.episodes[0];
-      epId = ep.id;
-
-      const showId = data.id;
-      const expectedSeasonParam = `${showId}-s${meta.meta.seasonData.number}`;
-      const expectedEpisodeParam = `${showId}-s${meta.meta.seasonData.number}-e${ep.number}`;
-
+      epId = ep.id + suffix;
       if (
-        params.season !== expectedSeasonParam ||
-        params.episode !== expectedEpisodeParam
+        params.season !== meta.meta.seasonData.id ||
+        params.episode !== epId
       ) {
-        navigate(`/media/${params.media}/${expectedSeasonParam}/${expectedEpisodeParam}`, {
+        navigate(`/media/${params.media}/${meta.meta.seasonData.id}/${epId}`, {
           replace: true,
         });
       }
@@ -165,28 +144,6 @@ export function MetaPart(props: MetaPartProps) {
           </IconPill>
           <Title>{t("player.metadata.legal.title")}</Title>
           <Paragraph>{t("player.metadata.legal.text")}</Paragraph>
-          <Button
-            href="/"
-            theme="purple"
-            padding="md:px-12 p-2.5"
-            className="mt-6"
-          >
-            {t("player.metadata.failed.homeButton")}
-          </Button>
-        </ErrorContainer>
-      </ErrorLayout>
-    );
-  }
-
-  if (error && error.message === "failed-api-metadata") {
-    return (
-      <ErrorLayout>
-        <ErrorContainer>
-          <IconPill icon={Icons.WAND}>
-            {t("player.metadata.failed.badge")}
-          </IconPill>
-          <Title>{t("player.metadata.api.text")}</Title>
-          <Paragraph>{t("player.metadata.api.title")}</Paragraph>
           <Button
             href="/"
             theme="purple"

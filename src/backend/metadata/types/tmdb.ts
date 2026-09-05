@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export enum TMDBContentTypes {
   MOVIE = "movie",
   TV = "tv",
@@ -21,11 +20,13 @@ export type TMDBEpisodeShort = {
 
 export type TMDBMediaResult = {
   title: string;
+  originalTitle?: string;
   poster?: string;
   id: number;
   original_release_date?: Date;
   object_type: TMDBContentTypes;
   seasons?: TMDBSeasonShort[];
+  overview?: string;
 };
 
 export type TMDBSeasonMetaResult = {
@@ -381,6 +382,32 @@ export interface TMDBPersonImage {
 export interface TMDBPersonImages {
   id: number;
   profiles: TMDBPersonImage[];
+}
+
+export interface TMDBPersonCreditItem {
+  id: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  poster_path: string | null;
+  backdrop_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  media_type: "movie" | "tv";
+  character?: string;
+  job?: string;
+  department?: string;
+  popularity?: number;
+  vote_average?: number;
+  vote_count?: number;
+  episode_count?: number;
+}
+
+export interface TMDBPersonCombinedCredits {
+  id: number;
+  cast: TMDBPersonCreditItem[];
+  crew: TMDBPersonCreditItem[];
 }
 
 export interface TMDBVideo {

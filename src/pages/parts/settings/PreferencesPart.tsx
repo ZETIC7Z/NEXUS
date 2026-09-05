@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { getAllProviders, getProviders } from "@/backend/providers/providers";
 import { Button } from "@/components/buttons/Button";
 import { Toggle } from "@/components/buttons/Toggle";
-import { AdsToggle } from "@/components/ads/AdsToggle";
 import { FlagIcon } from "@/components/FlagIcon";
 import { Dropdown } from "@/components/form/Dropdown";
 import { SortableListWithToggles } from "@/components/form/SortableListWithToggles";
@@ -177,9 +176,6 @@ export function PreferencesPart(props: {
               </p>
             </div>
           </div>
-
-          {/* Advertisement Preference */}
-          <AdsToggle />
 
           {/* Autoplay Preference */}
           <div>

@@ -1,16 +1,17 @@
 import { useEffect } from "react";
 
+// import { proxiedFetch } from "@/backend/helpers/fetch";
 import { mwFetch, proxiedFetch } from "@/backend/helpers/fetch";
 import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { conf } from "@/setup/config";
 import type { PlayerMeta } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
-import { getTurnstileToken } from "@/utils/turnstile";
+import { getTurnstileToken } from "@/utils/hosting/turnstile";
 
 // Thanks Nemo for this API
-const THE_INTRO_DB_BASE_URL = "https://api.theintrodb.org/v2";
-const FED_SKIPS_BASE_URL = "https://fed-skips.pstream.mov";
+const THE_INTRO_DB_BASE_URL = "https://api.theintrodb.org/v3";
+const FED_SKIPS_BASE_URL = "";
 const INTRODB_BASE_URL = "https://api.introdb.app/intro";
 const MAX_RETRIES = 3;
 
@@ -38,8 +39,6 @@ export interface SegmentData {
   type: "intro" | "recap" | "credits" | "preview";
   start_ms: number | null;
   end_ms: number | null;
-  confidence: number | null;
-  submission_count: number;
 }
 
 export function useSkipTime() {
@@ -49,13 +48,13 @@ export function useSkipTime() {
   const skipSegmentsCacheKey = usePlayerStore((s) => s.skipSegmentsCacheKey);
   const skipSegments = usePlayerStore((s) => s.skipSegments);
   const setSkipSegments = usePlayerStore((s) => s.setSkipSegments);
-  const tidbKey = usePreferencesStore((s) => s.tidbKey) || "theintrodb:user_38mAe7xudBytvfY8ZqLxWNyozOz:_MKFslJhsftBquIpWD546F8gO3zKRZa4z9Jmpsk9WQs";
+  const tidbKey = usePreferencesStore((s) => s.tidbKey);
 
   useEffect(() => {
     if (!cacheKey) return;
-    // Already have segments for this media – don't refetch
+    // Already have segments for this media – don't refetch (e.g. when opening menu)
     if (usePlayerStore.getState().skipSegmentsCacheKey === cacheKey) return;
-    // Another fetch for this key is already in progress
+    // Another fetch for this key is already in progress (e.g. two components mounted)
     if (fetchingForCacheKey === cacheKey) return;
     fetchingForCacheKey = cacheKey;
 
@@ -75,6 +74,13 @@ export function useSkipTime() {
           apiUrl += `&season=${meta.season.number}&episode=${meta.episode.number}`;
         }
 
+        const durationMs = Math.round(
+          (usePlayerStore.getState().progress?.duration ?? 0) * 1000,
+        );
+        if (durationMs > 0) {
+          apiUrl += `&duration_ms=${durationMs}`;
+        }
+
         const data = await mwFetch(apiUrl, {
           headers: {
             Authorization: tidbKey ? `Bearer ${tidbKey}` : undefined,
@@ -82,67 +88,26 @@ export function useSkipTime() {
         });
 
         const fetchedSegments: SegmentData[] = [];
+        const segmentTypes = [
+          "intro",
+          "recap",
+          "credits",
+          "preview",
+        ] as const;
 
-        // Process intro segments (v2: array of segments)
-        if (Array.isArray(data?.intro) && data.intro.length > 0) {
-          for (const segment of data.intro) {
-            if (segment.submission_count > 0) {
+        for (const segType of segmentTypes) {
+          if (Array.isArray(data?.[segType])) {
+            for (const segment of data[segType]) {
               fetchedSegments.push({
-                type: "intro",
+                type: segType,
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
               });
             }
           }
         }
 
-        // Process recap segments
-        if (Array.isArray(data?.recap) && data.recap.length > 0) {
-          for (const segment of data.recap) {
-            if (segment.submission_count > 0) {
-              fetchedSegments.push({
-                type: "recap",
-                start_ms: segment.start_ms,
-                end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
-              });
-            }
-          }
-        }
-
-        // Process credits segments
-        if (Array.isArray(data?.credits) && data.credits.length > 0) {
-          for (const segment of data.credits) {
-            if (segment.submission_count > 0) {
-              fetchedSegments.push({
-                type: "credits",
-                start_ms: segment.start_ms,
-                end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
-              });
-            }
-          }
-        }
-
-        // Process preview segments
-        if (Array.isArray(data?.preview) && data.preview.length > 0) {
-          for (const segment of data.preview) {
-            if (segment.submission_count > 0) {
-              fetchedSegments.push({
-                type: "preview",
-                start_ms: segment.start_ms,
-                end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
-              });
-            }
-          }
-        }
-
+        // TIDB returned 200 – we have segment data for this media (even if no intro)
         return { segments: fetchedSegments, tidbNotFound: false };
       } catch (error: unknown) {
         const err = error as {
@@ -188,7 +153,7 @@ export function useSkipTime() {
 
         const parseSkipTime = (timeStr: string | undefined): number | null => {
           if (!timeStr || typeof timeStr !== "string") return null;
-          const match = timeStr.match(/^(\d+)s$/);
+          const match = timeStr.match(/^($\d+$)s$/);
           if (!match) return null;
           return parseInt(match[1], 10);
         };
@@ -211,6 +176,7 @@ export function useSkipTime() {
         const data = await proxiedFetch(apiUrl);
 
         if (data && typeof data.end_ms === "number") {
+          // Convert milliseconds to seconds
           return Math.floor(data.end_ms / 1000);
         }
 
@@ -222,6 +188,7 @@ export function useSkipTime() {
     };
 
     const applySegments = (segmentsToApply: SegmentData[]) => {
+      // Only update store if this fetch is still for the current media (avoid stale overwrite)
       const currentKey = getSkipSegmentsCacheKey(
         usePlayerStore.getState().meta ?? null,
       );
@@ -238,13 +205,15 @@ export function useSkipTime() {
         const { segments: tidbSegments, tidbNotFound } =
           await fetchTheIntroDBSegments();
 
+        // TIDB returned 200 – use whatever segments we got (intro, recap, credits; may be empty)
         if (!tidbNotFound) {
           currentSkipTimeSource = "theintrodb";
           applySegments(tidbSegments);
           return;
         }
 
-        // TIDB returned 404 – no segment data; try fallbacks for intro only
+        // TIDB returned 404 – no segment data for this media; try fallbacks for intro only
+        const nonIntroSegments: SegmentData[] = [];
         let fallbackIntroSegment: SegmentData | null = null;
 
         // Fall back to Fed-skips (TV shows only)
@@ -256,8 +225,6 @@ export function useSkipTime() {
               type: "intro",
               start_ms: 0,
               end_ms: fedSkipsTime * 1000,
-              confidence: null,
-              submission_count: 1,
             };
           }
         }
@@ -271,8 +238,6 @@ export function useSkipTime() {
               type: "intro",
               start_ms: 0,
               end_ms: introDBTime * 1000,
-              confidence: null,
-              submission_count: 1,
             };
           }
         }
@@ -281,6 +246,7 @@ export function useSkipTime() {
         if (fallbackIntroSegment) {
           finalSegments.push(fallbackIntroSegment);
         }
+        finalSegments.push(...nonIntroSegments);
 
         applySegments(finalSegments);
       } finally {
@@ -304,6 +270,6 @@ export function useSkipTime() {
     tidbKey,
   ]);
 
-  // Only return segments when they're for the current media
+  // Only return segments when they're for the current media (avoid showing stale data)
   return cacheKey === skipSegmentsCacheKey ? skipSegments : [];
 }

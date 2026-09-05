@@ -1,5 +1,5 @@
 import { getLoadbalancedM3U8ProxyUrl } from "@/backend/providers/fetchers";
-import { getM3U8ProxyUrls } from "@/utils/proxyUrls";
+import { getM3U8ProxyUrls } from "@/utils/hosting/proxyUrls";
 import {
   isOriginDead,
   markOriginNetworkDead,

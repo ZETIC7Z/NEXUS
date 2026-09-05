@@ -8,6 +8,7 @@ import {
 import { usePlayerStore } from "@/stores/player/store";
 import { SourceSliceSource } from "@/stores/player/utils/qualities";
 import { ProgressMediaItem, useProgressStore } from "@/stores/progress";
+import { useAudioTrackStore } from "@/utils/player/audioTracks";
 
 export interface Source {
   url: string;
@@ -64,15 +65,23 @@ export function usePlayer() {
       captions: CaptionListItem[],
       sourceId: string | null,
       startAtOverride?: number,
+      audioTracks?: any[],
+      embedId?: string | null,
     ) {
       const start = startAtOverride ?? getProgress(progressStore.items, meta);
       setCaption(null);
-      setEmbedId(null);
+      setEmbedId(embedId ?? null);
       setSource(source, captions, start);
       setSourceId(sourceId);
       setStatus(playerStatus.PLAYING);
+      if (audioTracks?.length) {
+        useAudioTrackStore.getState().setTracks(audioTracks);
+      } else {
+        useAudioTrackStore.getState().reset();
+      }
       init();
     },
+
     setScrapeStatus() {
       setStatus(playerStatus.SCRAPING);
     },

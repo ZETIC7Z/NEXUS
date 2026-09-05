@@ -1,17 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-﻿import {
+import {
   Fetcher,
   makeSimpleProxyFetcher,
   setM3U8ProxyUrl,
-} from "@p-stream/providers";
+} from "@nexus/providers";
 
 import { sendExtensionRequest } from "@/backend/extension/messaging";
 import { getApiToken, setApiToken } from "@/backend/helpers/providerApi";
-import {
-  getM3U8ProxyUrls,
-  getProviderApiUrls,
-  getProxyUrls,
-} from "@/utils/proxyUrls";
+import { getM3U8ProxyUrls, getProxyUrls } from "@/utils/hosting/proxyUrls";
 
 import { convertBodyToObject, getBodyTypeFromBody } from "../extension/request";
 
@@ -29,8 +24,6 @@ function makeLoadbalancedList(getter: () => string[]) {
 }
 
 export const getLoadbalancedProxyUrl = makeLoadbalancedList(getProxyUrls);
-export const getLoadbalancedProviderApiUrl =
-  makeLoadbalancedList(getProviderApiUrls);
 function getEnabledM3U8ProxyUrls() {
   const allM3U8ProxyUrls = getM3U8ProxyUrls();
   const enabledProxies = localStorage.getItem("m3u8-proxy-enabled");
@@ -40,9 +33,9 @@ function getEnabledM3U8ProxyUrls() {
   }
 
   try {
-    const enabled = JSON.parse(enabledProxies);
+    const enabled = JSON.parse(enabledProxies) as Record<string, boolean>;
     return allM3U8ProxyUrls.filter(
-      (_url, index) => enabled[index.toString()] !== false,
+      (_url: string, index: number) => enabled[index.toString()] !== false,
     );
   } catch {
     return allM3U8ProxyUrls;

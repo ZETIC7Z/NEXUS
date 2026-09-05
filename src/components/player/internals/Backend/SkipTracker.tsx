@@ -19,11 +19,11 @@ interface PendingSkip {
   startTime: number;
   endTime: number;
   hasBackwardMovement: boolean;
+  skipTimeSource: "fed-skips" | null;
   timer: ReturnType<typeof setTimeout>;
 }
 
 export function SkipTracker() {
-  const skipTimeSource = useSkipTimeSource();
   const { latestSkip } = useSkipTracking(20);
   const lastLoggedSkipRef = useRef<number>(0);
   const [pendingSkips, setPendingSkips] = useState<PendingSkip[]>([]);
@@ -32,19 +32,13 @@ export function SkipTracker() {
   // Player metadata for context
   const meta = usePlayerStore((s) => s.meta);
   const progress = usePlayerStore((s) => s.progress);
-  const turnstileToken = ""; // Placeholder for turnstile token if needed
-
-  // Only send analytics for auto-generated sources
-  const shouldSendAnalytics =
-    skipTimeSource === "fed-skips" || skipTimeSource === "introdb";
+  const turnstileToken = "";
+  const skipTimeSource = useSkipTimeSource();
 
   const sendSkipAnalytics = useCallback(
     async (skip: SkipEvent, adjustedConfidence: number) => {
-      // Don't send if we shouldn't
-      if (!shouldSendAnalytics) return;
-
       try {
-        await fetch("https://skips.pstream.mov/send", {
+        await fetch("https://skips.nexus.mov/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -53,18 +47,17 @@ export function SkipTracker() {
             skip_duration: skip.skipDuration,
             content_id: meta?.tmdbId,
             content_type: meta?.type,
-            season_id: meta?.season?.tmdbId,
-            episode_id: meta?.episode?.tmdbId,
+            season: meta?.season?.number,
+            episode: meta?.episode?.number,
             confidence: adjustedConfidence,
             turnstile_token: turnstileToken ?? "",
-            source: skipTimeSource,
           }),
         });
       } catch (error) {
         console.error("Failed to send skip analytics:", error);
       }
     },
-    [meta, turnstileToken, shouldSendAnalytics, skipTimeSource],
+    [meta, turnstileToken],
   );
 
   const createPendingSkip = useCallback(
@@ -81,8 +74,11 @@ export function SkipTracker() {
             ? Math.max(0.1, pendingSkip.originalConfidence * 0.5) // Reduce confidence by half if adjusted
             : pendingSkip.originalConfidence;
 
-          // Send analytics
-          sendSkipAnalytics(pendingSkip.skip, adjustedConfidence);
+          // Only send analytics if skip time came from fed-skips
+          if (pendingSkip.skipTimeSource === "fed-skips") {
+            // Send analytics
+            sendSkipAnalytics(pendingSkip.skip, adjustedConfidence);
+          }
 
           // Remove from pending
           return prev.filter((p) => p.skip.timestamp !== skip.timestamp);
@@ -92,13 +88,14 @@ export function SkipTracker() {
       return {
         skip,
         originalConfidence: skip.confidence,
-        startTime: progress.time,
+        startTime: skip.startTime,
         endTime: skip.endTime,
         hasBackwardMovement: false,
+        skipTimeSource,
         timer,
       };
     },
-    [progress.time, sendSkipAnalytics],
+    [sendSkipAnalytics, skipTimeSource],
   );
 
   useEffect(() => {
@@ -107,9 +104,13 @@ export function SkipTracker() {
     // Avoid processing the same skip multiple times
     if (latestSkip.timestamp === lastLoggedSkipRef.current) return;
 
+    // Log completed skip session
+    // eslint-disable-next-line no-console
+    console.log(`Skip session completed: ${latestSkip.skipDuration}s total`);
+
     // Create pending skip with 5-second delay
     const pendingSkip = createPendingSkip(latestSkip);
-    setPendingSkips((prev) => [...prev, pendingSkip]);
+    setPendingSkips((prev) => [...prev, pendingSkip as PendingSkip]);
 
     lastLoggedSkipRef.current = latestSkip.timestamp;
   }, [latestSkip, meta, createPendingSkip]);

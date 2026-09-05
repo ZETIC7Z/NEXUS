@@ -14,7 +14,7 @@ import {
   qualityToString,
 } from "@/stores/player/utils/qualities";
 import { useQualityStore } from "@/stores/quality";
-import { canPlayHlsNatively } from "@/utils/detectFeatures";
+import { canPlayHlsNatively } from "@/utils/browser/detectFeatures";
 
 const alwaysVisibleQualities: Record<SourceQuality, boolean> = {
   unknown: false,
@@ -40,6 +40,7 @@ function useIsIosHls() {
 export function QualityView({ id }: { id: string }) {
   const router = useOverlayRouter(id);
   const isIosHls = useIsIosHls();
+  const sourceType = usePlayerStore((s) => s.source?.type);
   const availableQualities = usePlayerStore((s) => s.qualities);
   const currentQuality = usePlayerStore((s) => s.currentQuality);
   const switchQuality = usePlayerStore((s) => s.switchQuality);
@@ -49,22 +50,48 @@ export function QualityView({ id }: { id: string }) {
   const setAutomaticQuality = useQualityStore((s) => s.setAutomaticQuality);
   const setLastChosenQuality = useQualityStore((s) => s.setLastChosenQuality);
   const autoQuality = useQualityStore((s) => s.quality.automaticQuality);
+  const lastChosenQuality = useQualityStore((s) => s.quality.lastChosenQuality);
+
+
+  const supportsAutoQuality = sourceType === "hls";
 
   const change = useCallback(
     (q: SourceQuality) => {
       setLastChosenQuality(q);
-      setAutomaticQuality(false);
+    
       switchQuality(q);
       router.close();
     },
-    [router, switchQuality, setLastChosenQuality, setAutomaticQuality],
+    [router, switchQuality, setLastChosenQuality],
   );
 
   const changeAutomatic = useCallback(() => {
     const newValue = !autoQuality;
     setAutomaticQuality(newValue);
-    if (newValue) enableAutomaticQuality();
-  }, [setAutomaticQuality, autoQuality, enableAutomaticQuality]);
+    if (newValue) {
+      enableAutomaticQuality();
+      return;
+    }
+ 
+    const target =
+      (currentQuality && currentQuality !== "unknown" ? currentQuality : null) ??
+      lastChosenQuality ??
+      availableQualities[0] ??
+      null;
+    if (target) {
+      setLastChosenQuality(target);
+      switchQuality(target);
+    }
+  }, [
+    setAutomaticQuality,
+    autoQuality,
+    enableAutomaticQuality,
+    currentQuality,
+    lastChosenQuality,
+    availableQualities,
+    setLastChosenQuality,
+    switchQuality,
+  ]);
 
   const visibleQualities = allQualities.filter((quality) => {
     if (alwaysVisibleQualities[quality]) return true;
@@ -90,12 +117,18 @@ export function QualityView({ id }: { id: string }) {
             {qualityToString(v)}
           </SelectableLink>
         ))}
-        <Menu.Divider />
-        <Menu.Link
-          rightSide={<Toggle onClick={changeAutomatic} enabled={autoQuality} />}
-        >
-          {t("player.menus.quality.automaticLabel")}
-        </Menu.Link>
+        {supportsAutoQuality && (
+          <>
+            <Menu.Divider />
+            <Menu.Link
+              rightSide={
+                <Toggle onClick={changeAutomatic} enabled={autoQuality} />
+              }
+            >
+              {t("player.menus.quality.automaticLabel")}
+            </Menu.Link>
+          </>
+        )}
         <Menu.SmallText>
           <Trans
             i18nKey={

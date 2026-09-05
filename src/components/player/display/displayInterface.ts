@@ -3,7 +3,7 @@ import { MediaPlaylist } from "hls.js";
 import { MWMediaType } from "@/backend/metadata/types/mw";
 import { AudioTrack, CaptionListItem } from "@/stores/player/slices/source";
 import { LoadableSource, SourceQuality } from "@/stores/player/utils/qualities";
-import { Listener } from "@/utils/events";
+import { Listener } from "@/utils/common/events";
 
 export type DisplayErrorType = "hls" | "htmlvideo" | "global";
 export type DisplayError = {
@@ -48,7 +48,6 @@ export type DisplayInterfaceEvents = {
   audiotracks: AudioTrack[];
   changedaudiotrack: AudioTrack | null;
   needstrack: boolean;
-  canairplay: boolean;
   playbackrate: number;
   error: DisplayError;
 };
@@ -87,11 +86,11 @@ export interface DisplayInterface extends Listener<DisplayInterfaceEvents> {
   processContainerElement(container: HTMLElement): void;
   toggleFullscreen(): void;
   togglePictureInPicture(): void;
+  startAirplay?(): void;
   setSeeking(active: boolean): void;
   setVolume(vol: number): void;
   setTime(t: number): void;
   destroy(): void;
-  startAirplay(): void;
   setPlaybackRate(rate: number): void;
   setMeta(meta: DisplayMeta): void;
   setCaption(caption: DisplayCaption | null): void;
@@ -99,4 +98,22 @@ export interface DisplayInterface extends Listener<DisplayInterfaceEvents> {
   getCaptionList(): CaptionListItem[];
   getSubtitleTracks(): MediaPlaylist[];
   setSubtitlePreference(lang: string): Promise<void>;
+  getAudioActivity?(): { t: number; e: number }[];
+
+  isAudioSyncAvailable?(): boolean;
+
+  getAudioWindow?(durationSec: number): {
+    pcm: Float32Array;
+    sampleRate: number;
+    startTime: number;
+    endTime: number;
+  } | null;
+
+  // Real codec fourccs (e.g. "avc1.4d0020,mp4a.40.2") probed client-side by
+  // hls.js against actual segment data, or null if unavailable/not hls.
+  getCodecsHint?(): string | null;
+
+  // The currently-active HLS level's own resolved media-playlist URL (not
+  // the master), or null if unavailable/not hls.
+  getResolvedVariantUrl?(): string | null;
 }

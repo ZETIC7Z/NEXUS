@@ -38,7 +38,7 @@ import { PageTitle } from "@/pages/parts/util/PageTitle";
 import { conf } from "@/setup/config";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { usePreferencesStore } from "@/stores/preferences";
-import { getProxyUrls } from "@/utils/proxyUrls";
+import { getProxyUrls } from "@/utils/hosting/proxyUrls";
 
 import { FebboxSetup } from "../parts/settings/ConnectionsPart";
 

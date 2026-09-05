@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAsync } from "react-use";
 
 import { getMetaFromId } from "@/backend/metadata/getmeta";
+import { formatTMDBEpisode, getEpisodes } from "@/backend/metadata/tmdb";
 import { MWMediaType, MWSeasonMeta } from "@/backend/metadata/types/mw";
 import { Icon, Icons } from "@/components/Icon";
 import { ProgressRing } from "@/components/layout/ProgressRing";
@@ -20,9 +21,12 @@ import { PlayerMeta } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { useProgressStore } from "@/stores/progress";
-import { scrollToElement } from "@/utils/scroll";
+import { concurrentMap } from "@/utils/common/async";
+import { scrollToElement } from "@/utils/common/scroll";
 
 import { hasAired } from "../utils/aired";
+
+const EMPTY_ARRAY: string[] = [];
 
 function CenteredText(props: { children: React.ReactNode }) {
   return (
@@ -30,6 +34,15 @@ function CenteredText(props: { children: React.ReactNode }) {
       {props.children}
     </div>
   );
+}
+
+function formatDisplayTitle(title: string | undefined, epNum: number): string {
+  if (!title) return `Episode ${epNum}`;
+  const trimmed = title.trim();
+  if (/^Episode\s+#?\d+(?:\.\d+)?$/i.test(trimmed)) {
+    return `Episode ${epNum}`;
+  }
+  return trimmed;
 }
 
 interface EpisodeItemProps {
@@ -143,7 +156,7 @@ function EpisodeItem({
                   ? `S${seasonNumber}E${episode.number}`
                   : `E${episode.number}`}
               </span>
-              <span className="line-clamp-1 break-all">{episode.title}</span>
+              <span className="line-clamp-1 break-all">{formatDisplayTitle(episode.title, episode.number)}</span>
             </div>
           </Menu.LinkTitle>
         </Menu.Link>
@@ -165,7 +178,7 @@ function EpisodeItem({
         <div className="relative aspect-video max-h-[110px] w-1/3 flex-shrink-0 bg-video-context-hoverColor">
           {episode.still_path ? (
             <img
-              src={`https://image.tmdb.org/t/p/w300${episode.still_path}`}
+              src={episode.still_path.startsWith("http") ? episode.still_path : `https://image.tmdb.org/t/p/w300${episode.still_path}`}
               alt={episode.title}
               className="w-full h-full object-cover"
             />
@@ -231,7 +244,7 @@ function EpisodeItem({
 
         {/* Content */}
         <div className="p-3 flex-1">
-          <h3 className="font-bold text-white line-clamp-1">{episode.title}</h3>
+          <h3 className="font-bold text-white line-clamp-1">{formatDisplayTitle(episode.title, episode.number)}</h3>
           {episode.overview && (
             <div className="relative">
               <p
@@ -382,7 +395,7 @@ function EpisodeItem({
         >
           <div className="flex items-start justify-between">
             <h3 className="font-bold text-white line-clamp-1">
-              {episode.title}
+              {formatDisplayTitle(episode.title, episode.number)}
             </h3>
             {expandedEpisodes[`large-${episode.id}`] && isAired && (
               <div className="flex gap-1">
@@ -504,8 +517,11 @@ function SeasonsView({
     meta?.tmdbId ?? "",
     selectedSeason,
   );
-  const getFavoriteEpisodes = useBookmarkStore((s) => s.getFavoriteEpisodes);
-  const favoriteEpisodes = meta?.tmdbId ? getFavoriteEpisodes(meta.tmdbId) : [];
+  const favoriteEpisodes = useBookmarkStore((s) =>
+    meta?.tmdbId
+      ? (s.bookmarks[meta.tmdbId]?.favoriteEpisodes ?? EMPTY_ARRAY)
+      : EMPTY_ARRAY,
+  );
 
   let content: ReactNode = null;
   if (seasons) {
@@ -574,8 +590,11 @@ export function EpisodesView({
   );
   const progress = useProgressStore();
   const updateItem = useProgressStore((s) => s.updateItem);
-  const getFavoriteEpisodes = useBookmarkStore((s) => s.getFavoriteEpisodes);
-  const favoriteEpisodes = meta?.tmdbId ? getFavoriteEpisodes(meta.tmdbId) : [];
+  const favoriteEpisodes = useBookmarkStore((s) =>
+    meta?.tmdbId
+      ? (s.bookmarks[meta.tmdbId]?.favoriteEpisodes ?? EMPTY_ARRAY)
+      : EMPTY_ARRAY,
+  );
   const bookmarks = useBookmarkStore((s) => s.bookmarks);
 
   // Load all seasons for favorites view
@@ -586,23 +605,21 @@ export function EpisodesView({
     if (selectedSeason === "favorites" && meta?.tmdbId && seasons) {
       setAllSeasonsLoading(true);
       const loadAllSeasons = async () => {
-        const seasonPromises = seasons.map(async (season) => {
+        const results = await concurrentMap(seasons, 5, async (season) => {
           try {
-            const data = await getMetaFromId(
-              MWMediaType.SERIES,
-              meta.tmdbId,
-              season.id,
-            );
-            return data?.meta.type === MWMediaType.SERIES
-              ? data.meta.seasonData
-              : null;
+            const episodes = await getEpisodes(meta.tmdbId!, season.number);
+            return {
+              id: season.id,
+              number: season.number,
+              title: season.title,
+              episodes: episodes.map(formatTMDBEpisode),
+            };
           } catch (error) {
             console.error(`Failed to load season ${season.id}:`, error);
             return null;
           }
         });
 
-        const results = await Promise.all(seasonPromises);
         setAllSeasonsData(results.filter(Boolean));
         setAllSeasonsLoading(false);
       };

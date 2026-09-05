@@ -1,0 +1,90 @@
+import { detect } from "detect-browser";
+import fscreen from "fscreen";
+
+export const isSafari = /^((?!chrome|android).)*safari/i.test(
+  navigator.userAgent,
+);
+
+export const isIOS =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
+export const isFirefox = detect()?.name === "firefox";
+
+let cachedVolumeResult: boolean | null = null;
+export async function canChangeVolume(): Promise<boolean> {
+  if (cachedVolumeResult === null) {
+    const timeoutPromise = new Promise<false>((resolve) => {
+      setTimeout(() => resolve(false), 1e3);
+    });
+    const promise = new Promise<true>((resolve) => {
+      const video = document.createElement("video");
+      const handler = () => {
+        video.removeEventListener("volumechange", handler);
+        resolve(true);
+      };
+
+      video.addEventListener("volumechange", handler);
+
+      video.volume = 0.5;
+    });
+
+    cachedVolumeResult = await Promise.race([promise, timeoutPromise]);
+  }
+  return cachedVolumeResult;
+}
+
+export function canFullscreenAnyElement(): boolean {
+  return fscreen.fullscreenEnabled;
+}
+
+export function canWebkitFullscreen(): boolean {
+  return canFullscreenAnyElement() || isSafari;
+}
+
+export function canFullscreen(): boolean {
+  return canFullscreenAnyElement() || canWebkitFullscreen();
+}
+
+export function canPictureInPicture(): boolean {
+  return "pictureInPictureEnabled" in document;
+}
+
+export function canWebkitPictureInPicture(): boolean {
+  return "webkitSupportsPresentationMode" in document.createElement("video");
+}
+
+export function canPlayHlsNatively(video: HTMLVideoElement): boolean {
+  // Native Safari/iOS HLS support: prefer the platform player. On MSE-capable
+  // browsers hls.js handles playback, so "native" is only relevant when MSE
+  // is unavailable (iOS Safari, some WebViews). Checking MSE here (instead of
+  // importing hls.js) keeps the 510 KB hls chunk off the boot path.
+  if (typeof window !== "undefined" && window.MediaSource?.isTypeSupported?.("video/mp4; codecs=\"avc1.42E01E\"")) {
+    return false; // MSE-capable: hls.js will take over
+  }
+  return !!video.canPlayType("application/vnd.apple.mpegurl");
+}
+
+export type ExtensionDetectionResult =
+  | "unknown" // unknown detection or weird browser
+  | "firefox" // firefox extensions
+  | "chrome" // chrome extension (could be chromium, but still works with chrome extensions)
+  | "ios"; // ios, no extensions
+
+export function detectExtensionInstall(): ExtensionDetectionResult {
+  const res = detect();
+
+  // not a browser or failed to detect
+  if (res?.type !== "browser") return "unknown";
+
+  if (res.name === "ios" || res.name === "ios-webview") return "ios";
+  if (
+    res.name === "chrome" ||
+    res.name === "chromium-webview" ||
+    res.name === "edge-chromium" ||
+    res.name === "opera"
+  )
+    return "chrome";
+  if (res.name === "firefox") return "firefox";
+  return "unknown";
+}

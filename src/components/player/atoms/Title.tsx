@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { usePlayerStore } from "@/stores/player/store";
-import { formatSeconds } from "@/utils/formatSeconds";
+import { formatSeconds } from "@/utils/format/formatSeconds";
 
 export function Title() {
   const title = usePlayerStore((s) => s.meta?.title);
@@ -46,16 +46,8 @@ export function Title() {
   return (
     <p
       onClick={handleTitleClick}
-      className="cursor-copy transform transition-transform duration-200 hover:scale-105 text-base md:text-lg font-bold line-clamp-1 max-w-full overflow-hidden text-ellipsis"
+      className="cursor-copy transform transition-transform duration-200 hover:scale-105"
       title={isShifting ? "Copy with current time" : "Copy link"}
-      style={{
-        fontSize:
-          title && title.length > 50
-            ? "0.875rem"
-            : title && title.length > 30
-              ? "0.95rem"
-              : undefined,
-      }}
     >
       {title}
     </p>

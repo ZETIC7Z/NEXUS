@@ -141,6 +141,7 @@ export function CaptionsPart(props: {
       verticalPosition: 1,
       fontStyle: "default",
       borderThickness: 1,
+      lineHeight: 1.5,
     });
   };
 

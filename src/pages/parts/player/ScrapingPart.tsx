@@ -1,4 +1,4 @@
-import { ProviderControls, ScrapeMedia } from "@p-stream/providers";
+import { ProviderControls, ScrapeMedia } from "@nexus/providers";
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -21,8 +21,8 @@ import {
   useListCenter,
   useScrape,
 } from "@/hooks/useProviderScrape";
-
-import { WarningPart } from "../util/WarningPart";
+import { playerStatus } from "@/stores/player/slices/source";
+import { usePlayerStore } from "@/stores/player/store";
 
 export interface ScrapingProps {
   media: ScrapeMedia;
@@ -36,23 +36,20 @@ export interface ScrapingProps {
 
 export function ScrapingPart(props: ScrapingProps) {
   const { report } = useReportProviders();
-  const { startScraping, resumeScraping, sourceOrder, sources, currentSource, probedSources } =
+  const { startScraping, resumeScraping, sourceOrder, sources, currentSource } =
     useScrape();
-  const acts = useScrape();
   const isMounted = useMountedState();
   const { t } = useTranslation();
+  const setStatus = usePlayerStore((s) => s.setStatus);
+  const addFailedSource = usePlayerStore((s) => s.addFailedSource);
+  const sourceId = usePlayerStore((s) => s.sourceId);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [failedStartScrape, setFailedStartScrape] = useState<boolean>(false);
-  
-  // Filter out failed sources from the spinner
-  const visibleSourceOrder = sourceOrder.filter((o) => probedSources[o.id] !== "failed");
-
   const renderedOnce = useListCenter(
     containerRef,
     listRef,
-    visibleSourceOrder,
+    sourceOrder,
     currentSource,
   );
 
@@ -79,6 +76,10 @@ export function ScrapingPart(props: ScrapingProps) {
         ? await resumeScraping(props.media, props.startFromSourceId)
         : await startScraping(props.media);
       if (!isMounted()) return;
+      props.onResult?.(
+        resultRef.current.sources,
+        resultRef.current.sourceOrder,
+      );
       report(
         scrapePartsToProviderMetric(
           props.media,
@@ -86,53 +87,66 @@ export function ScrapingPart(props: ScrapingProps) {
           resultRef.current.sources,
         ),
       );
-
-      if (output) {
-        props.onGetStream?.(output);
-      } else {
-        props.onResult?.(
-          resultRef.current.sources,
-          resultRef.current.sourceOrder,
-        );
+      props.onGetStream?.(output);
+    })().catch((error) => {
+      if (!isMounted()) return;
+      // Treat scraping failure as fatal error
+      // Mark current source as failed if we have one
+      if (sourceId) {
+        addFailedSource(sourceId);
+      } else if (currentSource) {
+        addFailedSource(currentSource);
       }
-    })().catch(() => setFailedStartScrape(true));
-  }, [startScraping, resumeScraping, props, report, isMounted]);
+      // Set error and status to trigger PlaybackErrorPart
+      usePlayerStore.setState((s) => {
+        s.interface.error = {
+          errorName: "ScrapingError",
+          message: error?.message || "Failed to start scraping",
+          type: "global",
+        };
+        s.status = playerStatus.PLAYBACK_ERROR;
+      });
+    });
+  }, [
+    startScraping,
+    resumeScraping,
+    props,
+    report,
+    isMounted,
+    setStatus,
+    addFailedSource,
+    sourceId,
+    currentSource,
+  ]);
 
-  let currentProviderIndex = visibleSourceOrder.findIndex(
+  let currentProviderIndex = sourceOrder.findIndex(
     (s) => s.id === currentSource || s.children.includes(currentSource ?? ""),
   );
-  if (currentProviderIndex === -1) currentProviderIndex = 0;
-
-  const isProbing = Object.values(probedSources || {}).some((status) => status === "probing");
-
-  if (failedStartScrape)
-    return <WarningPart>{t("player.turnstile.error")}</WarningPart>;
+  if (currentProviderIndex === -1)
+    currentProviderIndex = sourceOrder.length - 1;
 
   return (
     <div
       className="h-full w-full relative dir-neutral:origin-top-left flex"
       ref={containerRef}
     >
-      {isProbing || !visibleSourceOrder || visibleSourceOrder.length === 0 ? (
+      {!sourceOrder || sourceOrder.length === 0 ? (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center flex flex-col justify-center z-0">
-          <Loading className="mb-4" />
-          <p className="text-white/60 text-xs font-semibold tracking-wider uppercase animate-pulse">
-            {isProbing ? "Scanning all sources..." : "Initializing player..."}
-          </p>
+          <Loading className="mb-8" />
+          <p>{t("player.scraping.items.pending")}</p>
         </div>
       ) : null}
       <div
         className={classNames({
-          "absolute transition-[transform,opacity] duration-300 ease-in-out opacity-0 dir-neutral:left-0": true,
-          "!opacity-100": renderedOnce && !isProbing,
+          "absolute transition-[transform,opacity] opacity-0 dir-neutral:left-0": true,
+          "!opacity-100": renderedOnce,
         })}
         ref={listRef}
       >
-        {visibleSourceOrder.map((order) => {
+        {sourceOrder.map((order) => {
           const source = sources[order.id];
-          if (!source) return null;
           const distance = Math.abs(
-            visibleSourceOrder.findIndex((o) => o.id === order.id) -
+            sourceOrder.findIndex((o) => o.id === order.id) -
               currentProviderIndex,
           );
           return (
@@ -155,7 +169,6 @@ export function ScrapingPart(props: ScrapingProps) {
                 >
                   {order.children.map((embedId) => {
                     const embed = sources[embedId];
-                    if (!embed) return null;
                     return (
                       <ScrapeItem
                         id={embedId}

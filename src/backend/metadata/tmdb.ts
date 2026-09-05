@@ -1,25 +1,26 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import slugify from "slugify";
 
-import { conf } from "@/setup/config";
 import { useLanguageStore } from "@/stores/language";
 import { usePreferencesStore } from "@/stores/preferences";
-import { SimpleCache } from "@/utils/cache";
-import { getTmdbLanguageCode } from "@/utils/language";
-import { MediaItem } from "@/utils/mediaTypes";
-import { getProxyUrls } from "@/utils/proxyUrls";
+import { SimpleCache } from "@/utils/common/cache";
+import { getTmdbLanguageCode } from "@/utils/locale/language";
+import { MediaItem } from "@/utils/media/mediaTypes";
+import { getProxyUrls } from "@/utils/hosting/proxyUrls";
 
 import { MWMediaMeta, MWMediaType, MWSeasonMeta } from "./types/mw";
+import { getImdbEpisodes } from "./imdbMetadataProvider";
 import {
   ExternalIdMovieSearchResult,
   TMDBContentTypes,
   TMDBCredits,
+  TMDBEpisode,
   TMDBEpisodeShort,
   TMDBMediaResult,
   TMDBMovieData,
   TMDBMovieSearchResult,
   TMDBPerson,
   TMDBPersonImages,
+  TMDBPersonCombinedCredits,
   TMDBSearchResult,
   TMDBSeason,
   TMDBSeasonMetaResult,
@@ -30,6 +31,7 @@ import {
 } from "./types/tmdb";
 import { mwFetch } from "../helpers/fetch";
 
+// Re-export for callers that import TMDBContentTypes from this module.
 export { TMDBContentTypes };
 
 export function mediaTypeToTMDB(type: MWMediaType): TMDBContentTypes {
@@ -58,6 +60,24 @@ export function TMDBMediaToMediaItemType(
   throw new Error("unsupported type");
 }
 
+export function formatTMDBEpisode(v: TMDBEpisodeShort): {
+  id: string;
+  number: number;
+  title: string;
+  air_date: string;
+  still_path: string | null;
+  overview: string;
+} {
+  return {
+    id: v.id.toString(),
+    number: v.episode_number,
+    title: v.title,
+    air_date: v.air_date,
+    still_path: v.still_path,
+    overview: v.overview,
+  };
+}
+
 export function formatTMDBMeta(
   media: TMDBMediaResult,
   season?: TMDBSeasonMetaResult,
@@ -65,8 +85,8 @@ export function formatTMDBMeta(
   const type = TMDBMediaToMediaType(media.object_type);
   let seasons: undefined | MWSeasonMeta[];
   if (type === MWMediaType.SERIES) {
-    seasons = media.seasons
-      ?.sort((a, b) => a.season_number - b.season_number)
+    seasons = (media.seasons ?? [])
+      .sort((a, b) => a.season_number - b.season_number)
       .map(
         (v): MWSeasonMeta => ({
           title: v.title,
@@ -78,26 +98,21 @@ export function formatTMDBMeta(
 
   return {
     title: media.title,
+    originalTitle: media.originalTitle,
     id: media.id.toString(),
     year: media.original_release_date?.getFullYear()?.toString(),
     poster: media.poster,
     type,
+    overview: media.overview,
     seasons: seasons as any,
     seasonData: season
       ? {
           id: season.id.toString(),
           number: season.season_number,
           title: season.title,
-          episodes: season.episodes
+          episodes: (season.episodes ?? [])
             .sort((a, b) => a.episode_number - b.episode_number)
-            .map((v) => ({
-              id: v.id.toString(),
-              number: v.episode_number,
-              title: v.title,
-              air_date: v.air_date,
-              still_path: v.still_path,
-              overview: v.overview,
-            })),
+            .map(formatTMDBEpisode),
         }
       : (undefined as any),
   };
@@ -145,7 +160,7 @@ export function decodeTMDBId(
   paramId: string,
 ): { id: string; type: MWMediaType } | null {
   const [prefix, type, id] = paramId.split("-", 3);
-  if (prefix !== "tmdb") return null;
+  if (prefix !== "tmdb" || !/^\d+$/.test(id ?? "")) return null;
   let mediaType;
   try {
     mediaType = TMDBMediaToMediaType(type as TMDBContentTypes);
@@ -157,16 +172,6 @@ export function decodeTMDBId(
     id,
   };
 }
-
-const tmdbBaseUrl1 = "https://api.themoviedb.org/3/";
-const tmdbBaseUrl2 = "https://api.tmdb.org/3/";
-
-const apiKey = conf().TMDB_READ_API_KEY;
-
-const tmdbHeaders = {
-  accept: "application/json",
-  Authorization: `Bearer ${apiKey}`,
-};
 
 // Cache for TMDB API responses
 interface TMDBCacheKey {
@@ -191,6 +196,7 @@ function abortOnTimeout(timeout: number): AbortSignal {
   return controller.signal;
 }
 
+
 let proxyRotationIndex = 0;
 
 function getNextProxy(proxyUrls: string[]): string | undefined {
@@ -201,80 +207,28 @@ function getNextProxy(proxyUrls: string[]): string | undefined {
 }
 
 export async function get<T>(url: string, params?: object): Promise<T> {
-  const proxyUrls = getProxyUrls();
-  const proxy = getNextProxy(proxyUrls);
-  const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
   const userLanguage = useLanguageStore.getState().language;
   const formattedLanguage = getTmdbLanguageCode(userLanguage);
 
-  if (!apiKey) throw new Error("TMDB API key not set");
-
-  // Check cache first
-  const cacheKey: TMDBCacheKey = {
-    url,
-    params: params || {},
-    language: formattedLanguage,
-  };
-
+  const cacheKey: TMDBCacheKey = { url, params: params || {}, language: formattedLanguage };
   const cachedResult = tmdbCache.get(cacheKey);
-  if (cachedResult) {
-    return cachedResult as T;
-  }
+  if (cachedResult) return cachedResult as T;
 
-  // directly writing parameters, otherwise it will start the first parameter in the proxied request as "&" instead of "?" because it doesnt understand its proxied
-  const cleanUrl = url.startsWith("/") ? url.slice(1) : url;
-  const fullUrl = new URL(tmdbBaseUrl1 + cleanUrl);
-  const allParams = {
-    ...params,
-    language: formattedLanguage,
-  };
+  // TMDB credentials are injected by /api/tmdb on the server. Keeping this
+  // request same-origin prevents the token from entering the client bundle,
+  // browser network requests, or third-party proxy URLs.
+  const allParams = { ...params, language: formattedLanguage };
+  const result = await mwFetch<T>(encodeURI(url), {
+    headers: { accept: "application/json" },
+    baseURL: "/api/tmdb/",
+    params: allParams,
+    signal: abortOnTimeout(10000),
+  });
 
-  if (allParams) {
-    Object.entries(allParams).forEach(([key, value]) => {
-      fullUrl.searchParams.append(key, String(value));
-    });
-  }
-
-  let result: T;
-
-  if (proxy && shouldProxyTmdb) {
-    try {
-      result = await mwFetch<T>(
-        `/?destination=${encodeURIComponent(fullUrl.toString())}`,
-        {
-          headers: tmdbHeaders,
-          baseURL: proxy,
-          signal: abortOnTimeout(15000),
-        },
-      );
-    } catch (err) {
-      console.error(err);
-      // Fall through to try direct connection
-    }
-  }
-
-  if (!result!) {
-    try {
-      result = await mwFetch<T>(encodeURI(cleanUrl), {
-        headers: tmdbHeaders,
-        baseURL: tmdbBaseUrl1,
-        params: allParams,
-        signal: abortOnTimeout(15000),
-      });
-    } catch (err) {
-      result = await mwFetch<T>(encodeURI(cleanUrl), {
-        headers: tmdbHeaders,
-        baseURL: tmdbBaseUrl2,
-        params: allParams,
-        signal: abortOnTimeout(45000),
-      });
-    }
-  }
-
-  // Cache the result for 1 hour (3600 seconds)
   tmdbCache.set(cacheKey, result, 3600);
   return result;
 }
+
 
 export async function multiSearch(
   query: string,
@@ -285,7 +239,7 @@ export async function multiSearch(
     page: 1,
   });
   // filter out results that aren't movies or shows
-  const results = data.results.filter(
+  const results = (Array.isArray(data.results) ? data.results : []).filter(
     (r) =>
       r.media_type === TMDBContentTypes.MOVIE ||
       r.media_type === TMDBContentTypes.TV,
@@ -303,7 +257,7 @@ export async function searchMovies(
     include_adult: false,
     page: 1,
   });
-  return data.results.map((result) => ({
+  return (Array.isArray(data.results) ? data.results : []).map((result) => ({
     ...result,
     media_type: TMDBContentTypes.MOVIE,
   }));
@@ -319,63 +273,7 @@ export async function searchTVShows(
     include_adult: false,
     page: 1,
   });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.TV,
-  }));
-}
-
-export async function getUpcomingMovies(
-  page: number = 1,
-): Promise<TMDBMovieSearchResult[]> {
-  const data = await get<{
-    results: TMDBMovieSearchResult[];
-  }>("movie/upcoming", {
-    page,
-  });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.MOVIE,
-  }));
-}
-
-export async function getTrendingMovies(
-  page: number = 1,
-): Promise<TMDBMovieSearchResult[]> {
-  const data = await get<{
-    results: TMDBMovieSearchResult[];
-  }>("trending/movie/day", {
-    page,
-  });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.MOVIE,
-  }));
-}
-
-export async function getTrendingTV(
-  page: number = 1,
-): Promise<TMDBShowSearchResult[]> {
-  const data = await get<{
-    results: TMDBShowSearchResult[];
-  }>("trending/tv/day", {
-    page,
-  });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.TV,
-  }));
-}
-
-export async function getUpcomingTV(
-  page: number = 1,
-): Promise<TMDBShowSearchResult[]> {
-  const data = await get<{
-    results: TMDBShowSearchResult[];
-  }>("tv/on_the_air", {
-    page,
-  });
-  return data.results.map((result) => ({
+  return (Array.isArray(data.results) ? data.results : []).map((result) => ({
     ...result,
     media_type: TMDBContentTypes.TV,
   }));
@@ -405,6 +303,24 @@ type MediaDetailReturn<T extends TMDBContentTypes> =
       ? TMDBShowData
       : never;
 
+export async function getEpisodeDetails(
+  showId: string,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<{ vote_average: number } | null> {
+  try {
+    const data = await get<TMDBEpisode>(
+      `/tv/${showId}/season/${seasonNumber}/episode/${episodeNumber}`,
+    );
+    return {
+      vote_average:
+        typeof data.vote_average === "number" ? data.vote_average : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getSeasonDetails(
   id: string,
   season: number,
@@ -425,7 +341,7 @@ export async function getSeasonDetails(
     name: episode.name,
     episode_number: episode.episode_number,
     overview: episode.overview,
-    still_path: episode.still_path,
+    still_path: episode.still_path || seasonData.poster_path,
     air_date: episode.air_date,
     season_number: season,
   }));
@@ -454,11 +370,41 @@ export async function getMediaDetails<
 
     // Fetch episodes for each season
     const showDetails = showData as TMDBShowData;
-    const episodePromises = showDetails.seasons.map(async (season) => {
-      return getSeasonDetails(id, season.season_number);
-    });
+    const seasons = Array.isArray(showDetails.seasons)
+      ? showDetails.seasons
+      : [];
+    const allEpisodesBySeason = new Array(seasons.length);
+    const seasonsQueue = seasons.map((season, index) => ({
+      season,
+      index,
+    }));
+    const concurrencyLimit = 5;
 
-    const allEpisodes = (await Promise.all(episodePromises)).flat();
+    const workers = Array.from(
+      { length: Math.min(concurrencyLimit, seasonsQueue.length) },
+      async () => {
+        while (seasonsQueue.length > 0) {
+          const item = seasonsQueue.shift();
+          if (!item) break;
+          const { season, index } = item;
+          const seasonData = await get<TMDBSeason>(
+            `/tv/${id}/season/${season.season_number}`,
+          );
+          allEpisodesBySeason[index] = seasonData.episodes.map((episode) => ({
+            id: episode.id,
+            name: episode.name,
+            episode_number: episode.episode_number,
+            overview: episode.overview,
+            still_path: episode.still_path || seasonData.poster_path,
+            air_date: episode.air_date,
+            season_number: season.season_number,
+          }));
+        }
+      },
+    );
+
+    await Promise.all(workers);
+    const allEpisodes = allEpisodesBySeason.flat();
 
     return {
       ...showData,
@@ -495,23 +441,107 @@ export function getMediaPoster(posterPath: string | null): string | undefined {
   if (posterPath) return imgUrl;
 }
 
+/**
+ * Fetches the poster URL for a movie or show from TMDB by ID.
+ * Use this when importing from external sources (e.g. Trakt) that may not have poster URLs.
+ */
+export async function getPosterForMedia(
+  tmdbId: string,
+  type: "movie" | "show",
+): Promise<string | undefined> {
+  try {
+    const tmdbType =
+      type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
+    const details = await getMediaDetails(tmdbId, tmdbType, false);
+    const posterPath =
+      (details as TMDBMovieData | TMDBShowData).poster_path ?? null;
+    return getMediaPoster(posterPath);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getCollectionDetails(collectionId: number): Promise<any> {
   return get<any>(`/collection/${collectionId}`);
+}
+
+export interface TMDBCollectionSearchResult {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+}
+
+/** Searches TMDB collections (franchises) by name. */
+export async function searchCollections(
+  query: string,
+): Promise<TMDBCollectionSearchResult[]> {
+  const data = await get<{ results: TMDBCollectionSearchResult[] }>(
+    "search/collection",
+    {
+      query,
+      include_adult: false,
+      page: 1,
+    },
+  );
+  return data.results ?? [];
+}
+
+/** Returns a collection's films, shaped like movie search results. */
+export async function getCollectionParts(
+  collectionId: number,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{ parts?: TMDBMovieSearchResult[] }>(
+    `/collection/${collectionId}`,
+  );
+  return (data.parts ?? []).map((p) => ({
+    ...p,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
 }
 
 export async function getEpisodes(
   id: string,
   season: number,
 ): Promise<TMDBEpisodeShort[]> {
+  const overrideEps = await getImdbEpisodes(id, season);
+  if (overrideEps) return overrideEps;
+
   const data = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
-  return data.episodes.map((e) => ({
+  return (data.episodes || []).map((e) => ({
     id: e.id,
     episode_number: e.episode_number,
     title: e.name,
     air_date: e.air_date,
-    still_path: e.still_path,
+    still_path: e.still_path || data.poster_path,
     overview: e.overview,
   }));
+}
+
+/**
+ * Resolve TMDB season and episode IDs for a show. Use when external sources
+ * (e.g. Trakt) only provide season/episode numbers.
+ */
+export async function getEpisodeIds(
+  showTmdbId: string,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<{ seasonId: string; episodeId: string } | null> {
+  try {
+    const data = await get<TMDBSeason>(
+      `/tv/${showTmdbId}/season/${seasonNumber}`,
+    );
+    const episode = data.episodes.find(
+      (e) => e.episode_number === episodeNumber,
+    );
+    if (!episode) return null;
+    return {
+      seasonId: data.id.toString(),
+      episodeId: episode.id.toString(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getMovieFromExternalId(
@@ -536,6 +566,7 @@ export function formatTMDBSearchResult(
     const show = result as TMDBShowSearchResult;
     return {
       title: show.name,
+      originalTitle: show.original_name,
       poster: getMediaPoster(show.poster_path),
       id: show.id,
       original_release_date: new Date(show.first_air_date),
@@ -547,6 +578,7 @@ export function formatTMDBSearchResult(
 
   return {
     title: movie.title,
+    originalTitle: movie.original_title,
     poster: getMediaPoster(movie.poster_path),
     id: movie.id,
     original_release_date: new Date(movie.release_date),
@@ -601,7 +633,7 @@ export async function getMediaVideos(
 ): Promise<TMDBVideo[]> {
   const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
   const data = await get<TMDBVideosResponse>(`/${endpoint}/${id}/videos`);
-  return data.results.filter(
+  return (Array.isArray(data.results) ? data.results : []).filter(
     (video) =>
       video.site === "YouTube" &&
       (video.type === "Trailer" || video.type === "Teaser"),
@@ -622,7 +654,67 @@ export async function getRelatedMedia(
     results: TMDBMovieSearchResult[] | TMDBShowSearchResult[];
   }>(`/${endpoint}/${id}/recommendations`);
 
-  return data.results.slice(0, limit);
+  return (Array.isArray(data.results) ? data.results : []).slice(0, limit);
+}
+
+/** Fetches popular, well-voted media matching the given genres. */
+export async function getMediaByGenres(
+  genreIds: number[],
+  type: TMDBContentTypes,
+  limit: number = 12,
+): Promise<TMDBMovieSearchResult[] | TMDBShowSearchResult[]> {
+  const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
+  const data = await get<{
+    results: TMDBMovieSearchResult[] | TMDBShowSearchResult[];
+  }>(`/discover/${endpoint}`, {
+    with_genres: genreIds.join(","),
+    sort_by: "popularity.desc",
+    "vote_count.gte": 200,
+    include_adult: false,
+  });
+
+  // discover results lack media_type; stamp it back on.
+  const mediaType =
+    type === TMDBContentTypes.MOVIE ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
+  return (Array.isArray(data.results) ? data.results : []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: mediaType,
+  })) as TMDBMovieSearchResult[] | TMDBShowSearchResult[];
+}
+
+/** Fetches the current most popular movies (for taste onboarding). */
+export async function getPopularMovies(
+  limit: number = 15,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{ results: TMDBMovieSearchResult[] }>(
+    "/movie/popular",
+    { page: 1 },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
+/** Fetches popular media from any of the given production companies. */
+export async function getMediaByCompanies(
+  companyIds: number[],
+  type: TMDBContentTypes,
+  limit: number = 12,
+): Promise<TMDBMovieSearchResult[] | TMDBShowSearchResult[]> {
+  const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
+  const data = await get<{
+    results: TMDBMovieSearchResult[] | TMDBShowSearchResult[];
+  }>(`/discover/${endpoint}`, {
+    with_companies: companyIds.join("|"),
+    sort_by: "popularity.desc",
+    "vote_count.gte": 200,
+    include_adult: false,
+  });
+  return (Array.isArray(data.results) ? data.results : []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: type,
+  })) as TMDBMovieSearchResult[] | TMDBShowSearchResult[];
 }
 
 export async function getPersonDetails(id: string): Promise<TMDBPerson> {
@@ -631,6 +723,134 @@ export async function getPersonDetails(id: string): Promise<TMDBPerson> {
 
 export async function getPersonImages(id: string): Promise<TMDBPersonImages> {
   return get<TMDBPersonImages>(`/person/${id}/images`);
+}
+
+export async function getPersonCombinedCredits(
+  id: string,
+): Promise<TMDBPersonCombinedCredits> {
+  return get<TMDBPersonCombinedCredits>(`/person/${id}/combined_credits`);
+}
+
+/** Trending movies today (TMDB trending endpoint). */
+export async function getTrendingMovies(
+  limit: number = 20,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{ results: TMDBMovieSearchResult[] }>(
+    "trending/movie/day",
+    { page: 1 },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
+/** Trending TV shows today (TMDB trending endpoint). */
+export async function getTrendingTV(
+  limit: number = 20,
+): Promise<TMDBShowSearchResult[]> {
+  const data = await get<{ results: TMDBShowSearchResult[] }>(
+    "trending/tv/day",
+    { page: 1 },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.TV,
+  }));
+}
+
+/** Movies currently in theatres / upcoming within the next weeks. */
+export async function getUpcomingMovies(
+  limit: number = 20,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{ results: TMDBMovieSearchResult[] }>(
+    "movie/upcoming",
+    { page: 1 },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
+}
+
+/** TV shows airing new episodes soon (TMDB on_the_air). */
+export async function getUpcomingTV(
+  limit: number = 20,
+): Promise<TMDBShowSearchResult[]> {
+  const data = await get<{ results: TMDBShowSearchResult[] }>(
+    "tv/on_the_air",
+    { page: 1 },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.TV,
+  }));
+}
+
+/**
+ * Upcoming content over a long horizon (now → far future) across movies and
+ * TV. Movies come from /movie/upcoming, TV from /discover/tv sorted by
+ * first-air date; results are stamped with media_type like the rest.
+ */
+export async function getUpcomingLongTerm(
+  limit: number = 20,
+): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
+  const [movies, shows] = await Promise.all([
+    get<{ results: TMDBMovieSearchResult[] }>("movie/upcoming", { page: 1 }),
+    get<{ results: TMDBShowSearchResult[] }>("/discover/tv", {
+      sort_by: "first_air_date.desc",
+      "first_air_date.gte": new Date().toISOString().slice(0, 10),
+      "vote_count.gte": 5,
+      include_adult: false,
+      page: 1,
+    }),
+  ]);
+  const combined = [
+    ...(movies.results ?? []).map(
+      (r) =>
+        ({
+          ...r,
+          media_type: TMDBContentTypes.MOVIE,
+        }) as TMDBMovieSearchResult,
+    ),
+    ...(shows.results ?? []).map(
+      (r) =>
+        ({
+          ...r,
+          media_type: TMDBContentTypes.TV,
+        }) as TMDBShowSearchResult,
+    ),
+  ];
+  return combined.slice(0, limit);
+}
+
+/** Trending people today (TMDB trending/person). */
+export async function getTrendingPeople(
+  limit: number = 20,
+): Promise<TMDBPerson[]> {
+  const data = await get<{
+    results: (TMDBPerson & { media_type?: string })[];
+  }>("trending/person/day", { page: 1 });
+  return (data.results ?? []).slice(0, limit);
+}
+
+/** Discover movies popular in the Philippines. */
+export async function getDiscoverPH(
+  limit: number = 20,
+): Promise<TMDBMovieSearchResult[]> {
+  const data = await get<{ results: TMDBMovieSearchResult[] }>(
+    "discover/movie",
+    {
+      with_origin_country: "PH",
+      sort_by: "popularity.desc",
+      include_adult: false,
+      page: 1,
+    },
+  );
+  return (data.results ?? []).slice(0, limit).map((r) => ({
+    ...r,
+    media_type: TMDBContentTypes.MOVIE,
+  }));
 }
 
 export function getPersonProfileImage(
@@ -648,130 +868,4 @@ export function getPersonProfileImage(
   }
 
   if (profilePath) return imgUrl;
-}
-export async function getTrendingPeople(
-  page: number = 1,
-): Promise<TMDBPerson[]> {
-  const data = await get<{
-    results: TMDBPerson[];
-  }>("trending/person/day", {
-    page,
-  });
-  return data.results;
-}
-
-export async function getPersonCombinedCredits(
-  personId: string,
-): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
-  const data = await get<{
-    cast: (TMDBMovieSearchResult | TMDBShowSearchResult)[];
-  }>(`/person/${personId}/combined_credits`);
-  return data.cast;
-}
-
-export async function getDiscoverPH(
-  page: number = 1,
-): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
-  const data = await get<{
-    results: (TMDBMovieSearchResult | TMDBShowSearchResult)[];
-  }>("discover/movie", {
-    page,
-    region: "PH",
-    with_original_language: "tl",
-    sort_by: "release_date.desc",
-  });
-
-  return (data.results || []).map((m: any) => ({
-    ...m,
-    media_type: TMDBContentTypes.MOVIE,
-    title: m.title || m.original_title || "Unknown Movie",
-    original_title: m.original_title || m.title || "",
-    release_date: m.release_date || "",
-    video: m.video || false,
-  }));
-}
-
-export async function getUpcomingLongTerm(
-  page: number = 1,
-): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const startDate = tomorrow.toISOString().split("T")[0];
-  const endDate = "2026-12-31";
-
-  const [movieData, tvData] = await Promise.all([
-    get<{ results: any[] }>("discover/movie", {
-      page,
-      "primary_release_date.gte": startDate,
-      "primary_release_date.lte": endDate,
-      sort_by: "popularity.desc",
-    }),
-    get<{ results: any[] }>("discover/tv", {
-      page,
-      "first_air_date.gte": startDate,
-      "first_air_date.lte": endDate,
-      sort_by: "popularity.desc",
-    }),
-  ]);
-
-  const movies: TMDBMovieSearchResult[] = (movieData.results || []).map(
-    (m) => ({
-      ...m,
-      media_type: TMDBContentTypes.MOVIE,
-      title: m.title || m.original_title || "Unknown Movie",
-      original_title: m.original_title || m.title || "",
-      release_date: m.release_date || "",
-      video: m.video || false,
-    }),
-  );
-
-  const shows: TMDBShowSearchResult[] = (tvData.results || []).map((s) => ({
-    ...s,
-    media_type: TMDBContentTypes.TV,
-    name: s.name || s.original_name || "Unknown Show",
-    original_name: s.original_name || s.name || "",
-    first_air_date: s.first_air_date || "",
-  }));
-
-  return [...movies, ...shows].sort(
-    (a, b) => (b.popularity || 0) - (a.popularity || 0),
-  );
-}
-
-export async function getPosterForMedia(
-  tmdbId: string,
-  type: "movie" | "show",
-): Promise<string | undefined> {
-  try {
-    const tmdbType =
-      type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
-    const details = await getMediaDetails(tmdbId, tmdbType, false);
-    const posterPath =
-      (details as any).poster_path ?? null;
-    return getMediaPoster(posterPath);
-  } catch {
-    return undefined;
-  }
-}
-
-export async function getEpisodeIds(
-  showTmdbId: string,
-  seasonNumber: number,
-  episodeNumber: number,
-): Promise<{ seasonId: string; episodeId: string } | null> {
-  try {
-    const data = await get<any>(
-      `/tv/${showTmdbId}/season/${seasonNumber}`,
-    );
-    const episode = data.episodes.find(
-      (e: any) => e.episode_number === episodeNumber,
-    );
-    if (!episode) return null;
-    return {
-      seasonId: data.id.toString(),
-      episodeId: episode.id.toString(),
-    };
-  } catch {
-    return null;
-  }
 }

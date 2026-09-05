@@ -7,6 +7,8 @@ import path from "path";
 import { handlebars } from "./plugins/handlebars";
 import { PluginOption, loadEnv, splitVendorChunkPlugin } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import { streamProxyPlugin } from "./plugins/stream-proxy";
+import { downloadsApiPlugin } from "./plugins/downloads-api";
 
 // import basicSsl from '@vitejs/plugin-basic-ssl';
 
@@ -31,6 +33,26 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       port: 5180,
       proxy: {
+        // TMDB — metadata via server-side key (same as nexus 3.0).
+        // Vercel production uses api/tmdb.js serverless fn with TMDB_READ_API_KEY.
+        "/api/tmdb": {
+          target: "https://api.themoviedb.org",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (requestPath: string) => {
+            const rewritten = requestPath.replace("/api/tmdb", "/3");
+            const token = env.TMDB_READ_API_KEY;
+            if (!token || token.split(".").length === 3) return rewritten;
+            const separator = rewritten.includes("?") ? "&" : "?";
+            return `${rewritten}${separator}api_key=${encodeURIComponent(token)}`;
+          },
+          headers: (() => {
+            const token = env.TMDB_READ_API_KEY;
+            return token?.split(".").length === 3
+              ? { Authorization: `Bearer ${token}` }
+              : {};
+          })(),
+        },
         '/api/streams': {
           target: process.env.HF_API_URL || 'https://stycanine1-tmdb-embed-api.hf.space',
           changeOrigin: true,
@@ -43,6 +65,8 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
+      streamProxyPlugin(),
+      downloadsApiPlugin(),
 // basicSsl(),
       // ── Local API middleware (replaces Vercel serverless functions during dev) ──
       {

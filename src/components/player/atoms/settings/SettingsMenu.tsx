@@ -1,25 +1,26 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { getArtemisVariantMeta, getVariantMeta } from "@/sdk";
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
 import { Toggle } from "@/components/buttons/Toggle";
 import { Icon, Icons } from "@/components/Icon";
 import { useCaptions } from "@/components/player/hooks/useCaptions";
+import { useCasting } from "@/components/player/casting/useCasting";
 import { Menu } from "@/components/player/internals/ContextMenu";
-import { useChromecastAvailable } from "@/hooks/useChromecastAvailable";
+import { useAudioTrackStore } from "@/utils/player/audioTracks";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { usePlayerStore } from "@/stores/player/store";
 import { qualityToString } from "@/stores/player/utils/qualities";
-import { useQualityStore } from "@/stores/quality";
 import { useSubtitleStore } from "@/stores/subtitles";
-import { isSafari } from "@/utils/detectFeatures";
-import { getPrettyLanguageNameFromLocale } from "@/utils/language";
+import { getPrettyLanguageNameFromLocale } from "@/utils/locale/languageFull";
+import { getServerEmbedLabel } from "@/providers/embeds/shared";
 
 export function SettingsMenu({ id }: { id: string }) {
   const { t } = useTranslation();
   const router = useOverlayRouter(id);
   const currentQuality = usePlayerStore((s) => s.currentQuality);
-  const currentAudioTrack = usePlayerStore((s) => s.currentAudioTrack);
+
   const selectedCaptionLanguage = usePlayerStore(
     (s) => s.caption.selected?.language,
   );
@@ -30,69 +31,56 @@ export function SettingsMenu({ id }: { id: string }) {
   );
   const sourceName = useMemo(() => {
     if (!currentSourceId) return "...";
-
-    // Custom source name mappings for sources not in provider metadata
-    const customSourceNames: Record<string, string> = {
-      febbox: "FebBox 4K ⭐",
-      "febbox-stream": "FebBox 4K ⭐",
-    };
-
-    if (customSourceNames[currentSourceId]) {
-      return customSourceNames[currentSourceId];
-    }
-
     const source = getCachedMetadata().find(
       (src) => src.id === currentSourceId,
     );
-    return source?.name ?? currentSourceId;
+    return source?.name ?? "...";
   }, [currentSourceId]);
   const embedName = useMemo(() => {
     if (!currentEmbedId) return undefined;
+    // Prefer the real server name (Prime / Orbit / Euro) over generic "Server N".
+    const serverLabel = getServerEmbedLabel(currentEmbedId);
+    if (serverLabel) return serverLabel;
     const meta = getCachedMetadata().find((s) => s.id === currentEmbedId);
     return meta?.name;
   }, [currentEmbedId]);
   const { toggleLastUsed } = useCaptions();
 
-  // Get auto quality setting from quality store
-  const autoQuality = useQualityStore((s) => s.quality.automaticQuality);
-
-  // Show "Auto" when auto quality is enabled, otherwise show current quality
-  const qualityDisplayText = autoQuality
-    ? t("player.menus.quality.auto")
-    : currentQuality
-      ? qualityToString(currentQuality)
-      : t("player.menus.quality.auto");
-
   const selectedLanguagePretty = selectedCaptionLanguage
     ? (getPrettyLanguageNameFromLocale(selectedCaptionLanguage) ??
-      "English")
-    : undefined;
-
-  const selectedAudioLanguagePretty = currentAudioTrack
-    ? (getPrettyLanguageNameFromLocale(currentAudioTrack.language) ??
-      currentAudioTrack.label ??
       t("player.menus.subtitles.unknownLanguage"))
     : undefined;
 
+
+
   const source = usePlayerStore((s) => s.source);
+
   const downloadable = source?.type === "file" || source?.type === "hls";
 
-  const display = usePlayerStore((s) => s.display);
-  const canAirplay = usePlayerStore((s) => s.interface.canAirplay);
-  const chromecastAvailable = useChromecastAvailable();
-  const isArtemis = currentSourceId === "artemis";
-  const castPlatformAvailable = !!chromecastAvailable || canAirplay || isSafari;
+
+  const { isCasting, chromecastAvailable, airplayAvailable, startChromecast, startAirplay, stop } =
+    useCasting();
+  const castPlatformAvailable = chromecastAvailable || airplayAvailable;
 
   const requestCast = () => {
-    if (!isArtemis) return;
-    const ctx = (window as any).cast?.framework?.CastContext?.getInstance?.();
-    if (ctx?.requestSession) {
-      ctx.requestSession().catch(() => {});
+    if (isCasting) {
+      stop();
       return;
     }
-
-    display?.startAirplay();
+    if (chromecastAvailable) {
+      startChromecast();
+      return;
+    }
+    startAirplay();
   };
+
+  const variantMeta =
+    currentSourceId === "aurora"
+      ? getVariantMeta()
+      : currentSourceId === "artemis"
+        ? getArtemisVariantMeta()
+        : null;
+  const hasVariants = (variantMeta?.variants?.length ?? 0) > 1;
 
   return (
     <Menu.Card>
@@ -100,24 +88,26 @@ export function SettingsMenu({ id }: { id: string }) {
         <Menu.ChevronLink
           box
           onClick={() => router.navigate("/quality")}
-          rightText={qualityDisplayText}
+          rightText={currentQuality ? qualityToString(currentQuality) : ""}
         >
           {t("player.menus.settings.qualityItem")}
           <span className="text-type-secondary text-sm">
-            {qualityDisplayText}
+            {currentQuality
+              ? qualityToString(currentQuality)
+              : t("player.menus.quality.auto")}
           </span>
         </Menu.ChevronLink>
         <Menu.ChevronLink
           box
           onClick={() => router.navigate("/source")}
-          rightText={sourceName}
+          rightText={embedName ? `${sourceName} \\ ${embedName}` : sourceName}
         >
           {t("player.menus.settings.sourceItem")}
-          <span className="text-type-secondary text-sm">{sourceName}</span>
-          {embedName && (
-            <span className="text-type-secondary text-xs">{embedName}</span>
-          )}
+          <span className="text-type-secondary text-sm">
+            {embedName ? `${sourceName} \\ ${embedName}` : sourceName}
+          </span>
         </Menu.ChevronLink>
+
         <Menu.ChevronLink
           box
           onClick={() => router.navigate("/captions")}
@@ -128,29 +118,16 @@ export function SettingsMenu({ id }: { id: string }) {
             {selectedLanguagePretty ?? t("player.menus.subtitles.offChoice")}
           </span>
         </Menu.ChevronLink>
-        {currentAudioTrack ? (
-          <Menu.ChevronLink
-            box
-            onClick={() => router.navigate("/audio")}
-            rightText={selectedAudioLanguagePretty ?? undefined}
-          >
-            {t("player.menus.settings.audioItem")}
-            <span className="text-type-secondary text-sm">
-              {selectedAudioLanguagePretty}
-            </span>
-          </Menu.ChevronLink>
-        ) : (
-          <Menu.ChevronLink
-            box
-            onClick={() => router.navigate("/audio")}
-            disabled
-          >
-            {t("player.menus.settings.audioItem")}
-            <span className="text-type-secondary text-sm">
-              {t("player.menus.audio.default")}
-            </span>
-          </Menu.ChevronLink>
-        )}
+        <Menu.ChevronLink
+          box
+          onClick={() => router.navigate("/audio")}
+          rightText={useAudioTrackStore.getState().tracks.find(track => track.id === useAudioTrackStore.getState().activeId)?.label ?? "English"}
+        >
+          Audio
+          <span className="text-type-secondary text-sm">
+            {useAudioTrackStore((s) => s.tracks.find(track => track.id === s.activeId)?.label ?? "English")}
+          </span>
+        </Menu.ChevronLink>
       </Menu.Section>
       <Menu.Section>
         <Menu.Link
@@ -175,23 +152,36 @@ export function SettingsMenu({ id }: { id: string }) {
         </Menu.Link>
         {castPlatformAvailable ? (
           <Menu.Link
-            clickable={isArtemis}
-            disabled={!isArtemis}
+            clickable
             onClick={requestCast}
-            rightSide={<Icon className="text-xl" icon={Icons.CASTING} />}
+            rightSide={
+              <Icon
+                className="text-xl"
+                icon={isCasting ? Icons.CIRCLE_CHECK : Icons.CASTING}
+              />
+            }
           >
             <span className="flex flex-col">
-              {t("player.menus.settings.castItem", "Cast to Device")}
-              {!isArtemis && (
+              {t("player.menus.settings.castItem")}
+              {isCasting && (
                 <span className="text-type-secondary text-xs">
-                  {t("player.menus.settings.castArtemisOnly", "Artemis only")}
+                  {t("player.menus.settings.castStop")}
                 </span>
               )}
             </span>
           </Menu.Link>
         ) : null}
       </Menu.Section>
-      <Menu.SectionTitle />
+      {hasVariants ? (
+        <Menu.Section>
+          <Menu.ChevronLink
+            onClick={() => router.navigate("/variant")}
+            rightText={`${variantMeta!.variants!.length}`}
+          >
+            Stream Variants
+          </Menu.ChevronLink>
+        </Menu.Section>
+      ) : null}
       <Menu.Section>
         <Menu.Link
           rightSide={
@@ -206,8 +196,10 @@ export function SettingsMenu({ id }: { id: string }) {
         <Menu.ChevronLink onClick={() => router.navigate("/playback")}>
           {t("player.menus.settings.playbackItem")}
         </Menu.ChevronLink>
-        <Menu.ChevronLink onClick={() => router.navigate("/skipsegments")}>
-          {t("player.skipTime.skipSegments", "Skip Segments")}
+        <Menu.ChevronLink
+          onClick={() => router.navigate("/playback/skip-segments")}
+        >
+          {t("player.skipTime.skipSegments")}
         </Menu.ChevronLink>
       </Menu.Section>
     </Menu.Card>

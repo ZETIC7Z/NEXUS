@@ -208,8 +208,10 @@ export function useAuthData() {
         setLastSuccessfulSource(settings.lastSuccessfulSource);
       }
 
-      if (settings.enableLastSuccessfulSource !== undefined) {
-        setEnableLastSuccessfulSource(settings.enableLastSuccessfulSource);
+      // Default is ON; only let the server turn it on, never force it off
+      // (the user controls this locally).
+      if (settings.enableLastSuccessfulSource === true) {
+        setEnableLastSuccessfulSource(true);
       }
 
       if (settings.disabledSources !== undefined) {
@@ -270,10 +272,9 @@ export function useAuthData() {
         setEnableDoubleClickToSeek(settings.enableDoubleClickToSeek);
       }
 
-      if (settings.enableAutoResumeOnPlaybackError !== undefined) {
-        setEnableAutoResumeOnPlaybackError(
-          settings.enableAutoResumeOnPlaybackError,
-        );
+      // Default is ON; only let the server turn it on, never force it off.
+      if (settings.enableAutoResumeOnPlaybackError === true) {
+        setEnableAutoResumeOnPlaybackError(true);
       }
     },
     [

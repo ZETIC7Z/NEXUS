@@ -75,12 +75,16 @@ export function PlayerPart(props: PlayerPartProps) {
   };
 
   const [thumbsFeedbackData, setThumbsFeedbackData] = useState<{
-    key: string;
-    item: SegmentData;
+    segment: SegmentData;
+    skipTime: number;
   } | null>(null);
 
-  const handleThumbsFeedback = (key: string, item: SegmentData) => {
-    setThumbsFeedbackData({ key, item });
+  const handleSkipTriggered = (segment: SegmentData, skipTime: number) => {
+    setThumbsFeedbackData({ segment, skipTime });
+  };
+
+  const handleThumbsFeedback = () => {
+    setThumbsFeedbackData(null);
   };
 
   const segments = useSkipTime();
@@ -268,6 +272,7 @@ export function PlayerPart(props: PlayerPartProps) {
         segments={segments}
         inControl={inControl}
         onChangeMeta={props.onMetaChange}
+        onSkipTriggered={handleSkipTriggered}
       />
 
       <AutoSkipSegments />

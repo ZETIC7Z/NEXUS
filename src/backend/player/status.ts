@@ -15,11 +15,13 @@ interface PlayerState {
 interface ContentInfo {
   title: string;
   type: string;
-  tmdbId?: number;
+  // TMDB ids are handled as strings throughout the app; the reporter sends
+  // them straight from the player meta, so accept both here.
+  tmdbId?: string | number;
   seasonNumber?: number;
   episodeNumber?: number;
-  seasonId?: number;
-  episodeId?: number;
+  seasonId?: string | number;
+  episodeId?: string | number;
 }
 
 interface PlayerStatusRequest {

@@ -12,6 +12,7 @@ import {
 import { VideoPlayerButton } from "@/components/player/internals/Button";
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
+import { CaptionListItem } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 
 import { AudioView } from "./settings/AudioView";
@@ -20,18 +21,23 @@ import { CaptionsView } from "./settings/CaptionsView";
 import { DownloadRoutes } from "./settings/Downloads";
 import { LanguageSubtitlesView } from "./settings/LanguageSubtitlesView";
 import { PlaybackSettingsView } from "./settings/PlaybackSettingsView";
+import { AdvancedColorView } from "./settings/AdvancedColorView";
 import { QualityView } from "./settings/QualityView";
 import { SettingsMenu } from "./settings/SettingsMenu";
 import { SkipSegmentsView } from "./settings/SkipSegmentsView";
 import { TranscriptView } from "./settings/TranscriptView";
+import { TranslateSubtitleView } from "./settings/TranslateSubtitleView";
 import { WatchPartyView } from "./settings/WatchPartyView";
+import { VariantView } from "./settings/VariantView";
 
 function SettingsOverlay({ id }: { id: string }) {
   const [chosenSourceId, setChosenSourceId] = useState<string | null>(null);
   const [chosenLanguage, setChosenLanguage] = useState<string | null>(null);
+  const [captionToTranslate, setCaptionToTranslate] =
+    useState<CaptionListItem | null>(null);
   const router = useOverlayRouter(id);
 
-  // reset source id when going to home or closing overlay
+  // reset source id and language when going to home or closing overlay
   useEffect(() => {
     if (!router.isRouterActive) {
       setChosenSourceId(null);
@@ -64,28 +70,47 @@ function SettingsOverlay({ id }: { id: string }) {
             <CaptionsView
               id={id}
               backLink
-              onSelectLanguage={(lang) => {
-                setChosenLanguage(lang);
-                router.navigate("/captions/language");
-              }}
+              onChooseLanguage={setChosenLanguage}
             />
-          </Menu.CardWithScrollable>
-        </OverlayPage>
-        <OverlayPage id={id} path="/captions/language" width={343} height={496}>
-          <Menu.CardWithScrollable>
-            <LanguageSubtitlesView id={id} language={chosenLanguage ?? ""} />
           </Menu.CardWithScrollable>
         </OverlayPage>
         {/* This is used by the captions shortcut in bottomControls of player */}
         <OverlayPage id={id} path="/captionsOverlay" width={343} height={496}>
           <Menu.CardWithScrollable>
-            <CaptionsView
-              id={id}
-              onSelectLanguage={(lang) => {
-                setChosenLanguage(lang);
-                router.navigate("/captions/language");
-              }}
-            />
+            <CaptionsView id={id} onChooseLanguage={setChosenLanguage} />
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage
+          id={id}
+          path="/captionsOverlay/languagesOverlay"
+          width={443}
+          height={496}
+        >
+          <Menu.CardWithScrollable>
+            {chosenLanguage && (
+              <LanguageSubtitlesView
+                id={id}
+                language={chosenLanguage}
+                onTranslateSubtitle={setCaptionToTranslate}
+                overlayBackLink
+              />
+            )}
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage
+          id={id}
+          path="/captionsOverlay/languagesOverlay/translateSubtitleOverlay"
+          width={443}
+          height={496}
+        >
+          <Menu.CardWithScrollable>
+            {captionToTranslate && (
+              <TranslateSubtitleView
+                id={id}
+                caption={captionToTranslate}
+                overlayBackLink
+              />
+            )}
           </Menu.CardWithScrollable>
         </OverlayPage>
         <OverlayPage id={id} path="/captions/settings" width={343} height={496}>
@@ -119,6 +144,21 @@ function SettingsOverlay({ id }: { id: string }) {
             <PlaybackSettingsView id={id} />
           </Menu.Card>
         </OverlayPage>
+        <OverlayPage id={id} path="/playback/advanced" width={343} height={446}>
+          <Menu.Card>
+            <AdvancedColorView id={id} />
+          </Menu.Card>
+        </OverlayPage>
+        <OverlayPage
+          id={id}
+          path="/playback/skip-segments"
+          width={343}
+          height={446}
+        >
+          <Menu.Card>
+            <SkipSegmentsView id={id} />
+          </Menu.Card>
+        </OverlayPage>
         <OverlayPage
           id={id}
           path="/captions/transcript"
@@ -129,10 +169,38 @@ function SettingsOverlay({ id }: { id: string }) {
             <TranscriptView id={id} />
           </Menu.CardWithScrollable>
         </OverlayPage>
-        <DownloadRoutes id={id} />
-        <OverlayPage id={id} path="/skipsegments" width={343} height={446}>
+        <OverlayPage
+          id={id}
+          path="/captions/languages"
+          width={443}
+          height={496}
+        >
           <Menu.CardWithScrollable>
-            <SkipSegmentsView id={id} />
+            {chosenLanguage && (
+              <LanguageSubtitlesView
+                id={id}
+                language={chosenLanguage}
+                onTranslateSubtitle={setCaptionToTranslate}
+              />
+            )}
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <OverlayPage
+          id={id}
+          path="/captions/languages/translateSubtitleOverlay"
+          width={443}
+          height={496}
+        >
+          <Menu.CardWithScrollable>
+            {captionToTranslate && (
+              <TranslateSubtitleView id={id} caption={captionToTranslate} />
+            )}
+          </Menu.CardWithScrollable>
+        </OverlayPage>
+        <DownloadRoutes id={id} />
+        <OverlayPage id={id} path="/variant" width={343} height={496}>
+          <Menu.CardWithScrollable>
+            <VariantView id={id} />
           </Menu.CardWithScrollable>
         </OverlayPage>
         <OverlayPage id={id} path="/watchparty" width={343} height={496}>

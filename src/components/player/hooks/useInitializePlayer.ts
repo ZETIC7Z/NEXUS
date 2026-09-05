@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { usePlayerStore } from "@/stores/player/store";
 import { useVolumeStore } from "@/stores/volume";
@@ -20,44 +20,15 @@ export function useInitializePlayer() {
 
 export function useInitializeSource() {
   const source = usePlayerStore((s) => s.source);
-  const captionList = usePlayerStore((s) => s.captionList);
-  const selectedCaption = usePlayerStore((s) => s.caption.selected);
   const sourceIdentifier = useMemo(
     () => (source ? JSON.stringify(source) : null),
     [source],
   );
-  const { autoSelectDefaultSubtitles } = useCaptions();
-
-  const hasSelectedEnglish = useRef<string | null>(null);
-  const hasSelectedFallback = useRef<string | null>(null);
+  const { selectLastUsedLanguageIfEnabled } = useCaptions();
 
   useEffect(() => {
-    if (!sourceIdentifier) {
-      hasSelectedEnglish.current = null;
-      hasSelectedFallback.current = null;
-      return;
+    if (sourceIdentifier) {
+      selectLastUsedLanguageIfEnabled();
     }
-
-    if (captionList.length === 0) return;
-
-    // Check if English subtitles are available
-    const hasEnglish = captionList.some(
-      (c) =>
-        c.language.toLowerCase() === "en" ||
-        c.language.toLowerCase().includes("english")
-    );
-
-    if (hasEnglish) {
-      if (hasSelectedEnglish.current !== sourceIdentifier) {
-        hasSelectedEnglish.current = sourceIdentifier;
-        autoSelectDefaultSubtitles();
-      }
-    } else {
-      // No English yet, select fallback if we haven't done so for this source
-      if (hasSelectedFallback.current !== sourceIdentifier && !selectedCaption) {
-        hasSelectedFallback.current = sourceIdentifier;
-        autoSelectDefaultSubtitles();
-      }
-    }
-  }, [sourceIdentifier, captionList.length, selectedCaption, autoSelectDefaultSubtitles]);
+  }, [sourceIdentifier, selectLastUsedLanguageIfEnabled]);
 }

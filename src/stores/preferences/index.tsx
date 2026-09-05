@@ -5,17 +5,19 @@ import { immer } from "zustand/middleware/immer";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
   KeyboardShortcuts,
-} from "@/utils/keyboardShortcuts";
+} from "@/utils/browser/keyboardShortcuts";
 
 export interface PreferencesStore {
   enableThumbnails: boolean;
   enableAutoplay: boolean;
   enableSkipCredits: boolean;
+  enableAutoSkipSegments: boolean;
   enableDiscover: boolean;
   enableFeatured: boolean;
   enableDetailsModal: boolean;
   enableImageLogos: boolean;
   enableCarouselView: boolean;
+  enableMinimalCards: boolean;
   forceCompactEpisodeView: boolean;
   sourceOrder: string[];
   enableSourceOrder: boolean;
@@ -27,34 +29,43 @@ export interface PreferencesStore {
   disabledEmbeds: string[];
   proxyTmdb: boolean;
   febboxKey: string | null;
+  febboxUseMp4: boolean;
   debridToken: string | null;
-  tidbKey: string | null;
   debridService: string;
+  tidbKey: string | null;
+  wyzieKey: string | null;
+  artemisVipKey: string | null;
   enableLowPerformanceMode: boolean;
   enableNativeSubtitles: boolean;
+  enableAutoSubtitleSync: boolean;
   enableHoldToBoost: boolean;
   homeSectionOrder: string[];
+  bookmarkRowsToShow: number;
+  watchingRowsToShow: number;
   manualSourceSelection: boolean;
   enableDoubleClickToSeek: boolean;
   enableAutoResumeOnPlaybackError: boolean;
-  febboxUseMp4: boolean;
-  enableAutoSkipSegments: boolean;
+  enableNumberKeySeeking: boolean;
   enablePauseOverlay: boolean;
-  enableAutoSubtitleSync: boolean;
   enableGamepadControls: boolean;
   gamepadMapping: Record<string, string>;
-  wyzieKey: string | null;
   keyboardShortcuts: KeyboardShortcuts;
-  enableNumberKeySeeking: boolean;
+  videoBrightness: number;
+  videoContrast: number;
+  videoSaturation: number;
+  videoHueRotate: number;
+  volumeBoost: number;
 
   setEnableThumbnails(v: boolean): void;
   setEnableAutoplay(v: boolean): void;
   setEnableSkipCredits(v: boolean): void;
+  setEnableAutoSkipSegments(v: boolean): void;
   setEnableDiscover(v: boolean): void;
   setEnableFeatured(v: boolean): void;
   setEnableDetailsModal(v: boolean): void;
   setEnableImageLogos(v: boolean): void;
   setEnableCarouselView(v: boolean): void;
+  setEnableMinimalCards(v: boolean): void;
   setForceCompactEpisodeView(v: boolean): void;
   setSourceOrder(v: string[]): void;
   setEnableSourceOrder(v: boolean): void;
@@ -66,25 +77,32 @@ export interface PreferencesStore {
   setDisabledEmbeds(v: string[]): void;
   setProxyTmdb(v: boolean): void;
   setFebboxKey(v: string | null): void;
+  setFebboxUseMp4(v: boolean): void;
   setdebridToken(v: string | null): void;
   setdebridService(v: string): void;
+  setTIDBKey(v: string | null): void;
+  setWyzieKey(v: string | null): void;
+  setArtemisVipKey(v: string | null): void;
   setEnableLowPerformanceMode(v: boolean): void;
   setEnableNativeSubtitles(v: boolean): void;
+  setEnableAutoSubtitleSync(v: boolean): void;
   setEnableHoldToBoost(v: boolean): void;
   setHomeSectionOrder(v: string[]): void;
+  setBookmarkRowsToShow(v: number): void;
+  setWatchingRowsToShow(v: number): void;
   setManualSourceSelection(v: boolean): void;
   setEnableDoubleClickToSeek(v: boolean): void;
   setEnableAutoResumeOnPlaybackError(v: boolean): void;
-  setFebboxUseMp4(v: boolean): void;
-  setEnableAutoSkipSegments(v: boolean): void;
+  setEnableNumberKeySeeking(v: boolean): void;
   setEnablePauseOverlay(v: boolean): void;
-  setTIDBKey(v: string | null): void;
-  setEnableAutoSubtitleSync(v: boolean): void;
   setEnableGamepadControls(v: boolean): void;
   setGamepadMapping(v: Record<string, string>): void;
-  setWyzieKey(v: string | null): void;
   setKeyboardShortcuts(v: KeyboardShortcuts): void;
-  setEnableNumberKeySeeking(v: boolean): void;
+  setVideoBrightness(v: number): void;
+  setVideoContrast(v: number): void;
+  setVideoSaturation(v: number): void;
+  setVideoHueRotate(v: number): void;
+  setVolumeBoost(v: number): void;
 }
 
 export const usePreferencesStore = create(
@@ -93,11 +111,13 @@ export const usePreferencesStore = create(
       enableThumbnails: false,
       enableAutoplay: true,
       enableSkipCredits: true,
+      enableAutoSkipSegments: false,
       enableDiscover: true,
       enableFeatured: false,
-      enableDetailsModal: false,
+      enableDetailsModal: true,
       enableImageLogos: true,
       enableCarouselView: false,
+      enableMinimalCards: false,
       forceCompactEpisodeView: false,
       sourceOrder: [],
       enableSourceOrder: false,
@@ -109,25 +129,32 @@ export const usePreferencesStore = create(
       disabledEmbeds: [],
       proxyTmdb: false,
       febboxKey: null,
+      febboxUseMp4: false,
       debridToken: null,
-      tidbKey: null,
       debridService: "realdebrid",
+      tidbKey: null,
+      wyzieKey: null,
+      artemisVipKey: null,
       enableLowPerformanceMode: false,
       enableNativeSubtitles: false,
+      enableAutoSubtitleSync: false,
       enableHoldToBoost: true,
-      homeSectionOrder: ["watching", "bookmarks"],
+      homeSectionOrder: ["watching"],
+      bookmarkRowsToShow: 1,
+      watchingRowsToShow: 1,
       manualSourceSelection: false,
       enableDoubleClickToSeek: false,
       enableAutoResumeOnPlaybackError: true,
-      febboxUseMp4: false,
-      enableAutoSkipSegments: false,
+      enableNumberKeySeeking: true,
       enablePauseOverlay: true,
-      enableAutoSubtitleSync: false,
       enableGamepadControls: false,
       gamepadMapping: {},
-      wyzieKey: null,
       keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
-      enableNumberKeySeeking: true,
+      videoBrightness: 100,
+      videoContrast: 100,
+      videoSaturation: 100,
+      videoHueRotate: 0,
+      volumeBoost: 100,
       setEnableThumbnails(v) {
         set((s) => {
           s.enableThumbnails = v;
@@ -141,6 +168,11 @@ export const usePreferencesStore = create(
       setEnableSkipCredits(v) {
         set((s) => {
           s.enableSkipCredits = v;
+        });
+      },
+      setEnableAutoSkipSegments(v) {
+        set((s) => {
+          s.enableAutoSkipSegments = v;
         });
       },
       setEnableDiscover(v) {
@@ -166,6 +198,11 @@ export const usePreferencesStore = create(
       setEnableCarouselView(v) {
         set((s) => {
           s.enableCarouselView = v;
+        });
+      },
+      setEnableMinimalCards(v) {
+        set((s) => {
+          s.enableMinimalCards = v;
         });
       },
       setForceCompactEpisodeView(v) {
@@ -223,6 +260,11 @@ export const usePreferencesStore = create(
           s.febboxKey = v;
         });
       },
+      setFebboxUseMp4(v) {
+        set((s) => {
+          s.febboxUseMp4 = v;
+        });
+      },
       setdebridToken(v) {
         set((s) => {
           s.debridToken = v;
@@ -231,6 +273,21 @@ export const usePreferencesStore = create(
       setdebridService(v) {
         set((s) => {
           s.debridService = v;
+        });
+      },
+      setTIDBKey(v) {
+        set((s) => {
+          s.tidbKey = v;
+        });
+      },
+      setWyzieKey(v) {
+        set((s) => {
+          s.wyzieKey = v;
+        });
+      },
+      setArtemisVipKey(v) {
+        set((s) => {
+          s.artemisVipKey = v;
         });
       },
       setEnableLowPerformanceMode(v) {
@@ -248,6 +305,11 @@ export const usePreferencesStore = create(
           s.enableNativeSubtitles = v;
         });
       },
+      setEnableAutoSubtitleSync(v) {
+        set((s) => {
+          s.enableAutoSubtitleSync = v;
+        });
+      },
       setEnableHoldToBoost(v) {
         set((s) => {
           s.enableHoldToBoost = v;
@@ -255,7 +317,17 @@ export const usePreferencesStore = create(
       },
       setHomeSectionOrder(v) {
         set((s) => {
-          s.homeSectionOrder = v.length > 0 ? v : ["watching", "bookmarks"];
+          s.homeSectionOrder = v;
+        });
+      },
+      setBookmarkRowsToShow(v) {
+        set((s) => {
+          s.bookmarkRowsToShow = v;
+        });
+      },
+      setWatchingRowsToShow(v) {
+        set((s) => {
+          s.watchingRowsToShow = v;
         });
       },
       setManualSourceSelection(v) {
@@ -273,29 +345,14 @@ export const usePreferencesStore = create(
           s.enableAutoResumeOnPlaybackError = v;
         });
       },
-      setFebboxUseMp4(v) {
+      setEnableNumberKeySeeking(v) {
         set((s) => {
-          s.febboxUseMp4 = v;
-        });
-      },
-      setEnableAutoSkipSegments(v) {
-        set((s) => {
-          s.enableAutoSkipSegments = v;
+          s.enableNumberKeySeeking = v;
         });
       },
       setEnablePauseOverlay(v) {
         set((s) => {
           s.enablePauseOverlay = v;
-        });
-      },
-      setTIDBKey(v) {
-        set((s) => {
-          s.tidbKey = v;
-        });
-      },
-      setEnableAutoSubtitleSync(v) {
-        set((s) => {
-          s.enableAutoSubtitleSync = v;
         });
       },
       setEnableGamepadControls(v) {
@@ -308,28 +365,44 @@ export const usePreferencesStore = create(
           s.gamepadMapping = v;
         });
       },
-      setWyzieKey(v) {
-        set((s) => {
-          s.wyzieKey = v;
-        });
-      },
       setKeyboardShortcuts(v) {
         set((s) => {
           s.keyboardShortcuts = v;
         });
       },
-      setEnableNumberKeySeeking(v) {
+      setVideoBrightness(v) {
         set((s) => {
-          s.enableNumberKeySeeking = v;
+          s.videoBrightness = v;
+        });
+      },
+      setVolumeBoost(v) {
+        set((s) => {
+          s.volumeBoost = v;
+        });
+      },
+      setVideoContrast(v) {
+        set((s) => {
+          s.videoContrast = v;
+        });
+      },
+      setVideoSaturation(v) {
+        set((s) => {
+          s.videoSaturation = v;
+        });
+      },
+      setVideoHueRotate(v) {
+        set((s) => {
+          s.videoHueRotate = v;
         });
       },
     })),
     {
       name: "__MW::preferences",
-      version: 3,
+      version: 4,
       migrate(persistedState: any, fromVersion: number) {
-        // Force-enable auto-resume and last-used-source for all users migrating to version 3
-        if (fromVersion < 3) {
+        // Force-enable auto-resume and last-used-source for all users
+        // migrating to version 4 (user can still turn them off manually).
+        if (fromVersion < 4) {
           persistedState.enableLastSuccessfulSource = true;
           persistedState.enableAutoResumeOnPlaybackError = true;
         }

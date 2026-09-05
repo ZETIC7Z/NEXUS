@@ -1,4 +1,4 @@
-﻿import { RunOutput } from "@p-stream/providers";
+import { RunOutput } from "@nexus/providers";
 import DOMPurify from "dompurify";
 import { convert, detect, parse } from "subsrt-ts";
 import { ContentCaption } from "subsrt-ts/dist/types/handler";
@@ -84,6 +84,10 @@ export function convertSubtitlesToSrtDataurl(text: string): string {
   return `data:application/x-subrip;base64,${stringToBase64(
     convertSubtitlesToSrt(text),
   )}`;
+}
+
+export function convertSubtitlesToVttDataurl(text: string): string {
+  return `data:text/vtt;base64,${stringToBase64(convertSubtitlesToVtt(text))}`;
 }
 
 export function convertSubtitlesToObjectUrl(text: string): string {

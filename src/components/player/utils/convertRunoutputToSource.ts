@@ -1,4 +1,4 @@
-import { Stream } from "@p-stream/providers";
+import { Stream } from "@nexus/providers";
 
 import {
   SourceFileStream,
@@ -15,7 +15,7 @@ const allowedQualitiesMap: Record<SourceQuality, SourceQuality> = {
   unknown: "unknown",
 };
 const allowedQualities = Object.keys(allowedQualitiesMap);
-const allowedFileTypes = ["mp4", "hls"];
+const allowedFileTypes = ["mp4"];
 
 function isAllowedQuality(inp: string): inp is SourceQuality {
   return allowedQualities.includes(inp);
@@ -30,8 +30,7 @@ export function convertRunoutputToSource(out: {
       url: out.stream.playlist,
       headers: out.stream.headers,
       preferredHeaders: out.stream.preferredHeaders,
-      // Pass through multi-quality map if the provider supplied one
-      hlsQualities: (out.stream as any).hlsQualities ?? undefined,
+      audioTracks: (out.stream as any).audioTracks,
     };
   }
   if (out.stream.type === "file") {
@@ -48,6 +47,8 @@ export function convertRunoutputToSource(out: {
       qualities[entry[0]] = {
         type: entry[1].type,
         url: entry[1].url,
+        headers: (entry[1] as any).headers,
+        preferredHeaders: (entry[1] as any).preferredHeaders,
       };
     });
     return {
@@ -55,6 +56,7 @@ export function convertRunoutputToSource(out: {
       qualities,
       headers: out.stream.headers,
       preferredHeaders: out.stream.preferredHeaders,
+      audioTracks: (out.stream as any).audioTracks,
     };
   }
   throw new Error("unrecognized type");

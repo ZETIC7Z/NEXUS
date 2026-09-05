@@ -7,7 +7,7 @@ import {
   useProgressBar,
 } from "@/hooks/useProgressBar";
 import { usePlayerStore } from "@/stores/player/store";
-import { canChangeVolume } from "@/utils/detectFeatures";
+import { canChangeVolume } from "@/utils/browser/detectFeatures";
 
 import { useVolume } from "../hooks/useVolume";
 
@@ -83,7 +83,7 @@ export function Volume(props: Props) {
       onWheel={handleWheel}
     >
       <div className="pointer-events-auto flex cursor-pointer items-center py-0 touch-none">
-        <div className="px-4 text-xl text-white" onClick={handleClick}>
+        <div className="px-4 text-2xl text-white" onClick={handleClick}>
           <Icon icon={getVolumeIcon(percentage / 100)} />
         </div>
         <div

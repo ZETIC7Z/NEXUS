@@ -1,7 +1,8 @@
 /* eslint-disable no-console */
-import { ScrapeMedia } from "@p-stream/providers";
 
-import type { SegmentData } from "@/components/player/hooks/useSkipTime";
+import { ScrapeMedia } from "@nexus/providers";
+
+import { preloadDownloads } from "@/utils/downloadPreload";
 import { MakeSlice } from "@/stores/player/slices/types";
 import {
   SourceQuality,
@@ -9,7 +10,22 @@ import {
   selectQuality,
 } from "@/stores/player/utils/qualities";
 import { useQualityStore } from "@/stores/quality";
-import { ValuesOf } from "@/utils/typeguard";
+import { useAudioTrackStore } from "@/utils/player/audioTracks";
+import { ValuesOf } from "@/utils/common/typeguard";
+
+// Console hygiene: subtitle auto-load retries can fail repeatedly (CORS etc).
+// Warn only once per session so the dev tools console stays clean.
+let autoCaptionWarnedOnce = false;
+
+// OpenSubtitles download links never send CORS headers, so they cannot be
+// auto-loaded directly (extension/proxy selections still support them).
+function isDirectlyUnloadableCaption(url: string): boolean {
+  try {
+    return new URL(url).hostname === "dl.opensubtitles.org";
+  } catch {
+    return false;
+  }
+}
 
 export const playerStatus = {
   IDLE: "idle",
@@ -33,6 +49,7 @@ export interface PlayerMetaEpisode {
 export interface PlayerMeta {
   type: "movie" | "show";
   title: string;
+  originalTitle?: string;
   tmdbId: string;
   imdbId?: string;
   releaseYear: number;
@@ -45,6 +62,8 @@ export interface PlayerMeta {
     tmdbId: string;
     title: string;
   };
+  customSeason?: number;
+  customEpisode?: number;
 }
 
 export interface Caption {
@@ -68,12 +87,26 @@ export interface CaptionListItem {
   isHearingImpaired?: boolean;
   source?: string;
   encoding?: string;
+  flagUrl?: string;
+  release?: string | null;
+  releases?: string[];
+  origin?: string | null;
 }
 
 export interface AudioTrack {
   id: string;
   label: string;
   language: string;
+}
+
+export interface TranslateTask {
+  targetCaption: CaptionListItem;
+  fetchedTargetCaption?: Caption;
+  targetLanguage: string;
+  translatedCaption?: Caption;
+  done: boolean;
+  error: boolean;
+  cancel: () => void;
 }
 
 export interface SourceSlice {
@@ -90,13 +123,11 @@ export interface SourceSlice {
   caption: {
     selected: Caption | null;
     asTrack: boolean;
+    translateTask: TranslateTask | null;
   };
   meta: PlayerMeta | null;
-  skipSegments: SegmentData[];
-  skipSegmentsCacheKey: string | null;
   failedSourcesPerMedia: Record<string, string[]>; // mediaKey -> array of failed sourceIds
   failedEmbedsPerMedia: Record<string, Record<string, string[]>>; // mediaKey -> sourceId -> array of failed embedIds
-  probedSources: Record<string, Record<string, "probing" | "working" | "failed">>; // mediaKey -> sourceId -> status
   resumeFromSourceId: string | null;
   setStatus(status: PlayerStatus): void;
   setSource(
@@ -113,44 +144,17 @@ export interface SourceSlice {
   redisplaySource(startAt: number): void;
   setCaptionAsTrack(asTrack: boolean): void;
   addExternalSubtitles(): Promise<void>;
+  translateCaption(
+    targetCaption: CaptionListItem,
+    targetLanguage: string,
+  ): Promise<void>;
+  clearTranslateTask(): void;
   addFailedSource(sourceId: string): void;
   addFailedEmbed(sourceId: string, embedId: string): void;
   clearFailedSources(mediaKey?: string): void;
   clearFailedEmbeds(mediaKey?: string): void;
-  setProbedSources(mediaKey: string, probed: Record<string, "probing" | "working" | "failed">): void;
-  setSkipSegments(cacheKey: string, segments: SegmentData[]): void;
-  setResumeFromSourceId(id: string | null): void;
+  setResumeFromSourceId(sourceId: string | null): void;
   reset(): void;
-}
-
-export function metaToScrapeMedia(meta: PlayerMeta): ScrapeMedia {
-  if (meta.type === "show") {
-    if (!meta.episode || !meta.season) throw new Error("missing show data");
-    return {
-      title: meta.title,
-      releaseYear: meta.releaseYear,
-      tmdbId: meta.tmdbId,
-      type: "show",
-      imdbId: meta.imdbId,
-      episode: {
-        number: meta.episode.number,
-        tmdbId: meta.episode.tmdbId,
-      },
-      season: {
-        number: meta.season.number,
-        title: meta.season.title,
-        tmdbId: meta.season.tmdbId,
-      },
-    };
-  }
-
-  return {
-    title: meta.title,
-    releaseYear: meta.releaseYear,
-    tmdbId: meta.tmdbId,
-    type: "movie",
-    imdbId: meta.imdbId,
-  };
 }
 
 /**
@@ -174,6 +178,31 @@ export function getMediaKey(meta: PlayerMeta | null): string | null {
   return `${meta.type}-${meta.tmdbId}`;
 }
 
+export function metaToScrapeMedia(meta: PlayerMeta): ScrapeMedia {
+  if (meta.type === "show") {
+    if (!meta.episode || !meta.season) throw new Error("missing show data");
+    return {
+      title: meta.title || meta.originalTitle,
+      releaseYear: meta.releaseYear,
+      tmdbId: meta.tmdbId,
+      type: "show",
+      imdbId: meta.imdbId,
+      episode: meta.episode,
+      season: meta.season,
+      customSeason: meta.customSeason,
+      customEpisode: meta.customEpisode,
+    } as any;
+  }
+
+  return {
+    title: (meta.title || meta.originalTitle) ?? "",
+    releaseYear: meta.releaseYear,
+    tmdbId: meta.tmdbId,
+    type: "movie",
+    imdbId: meta.imdbId,
+  };
+}
+
 export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   source: null,
   sourceId: null,
@@ -186,15 +215,13 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   currentAudioTrack: null,
   status: playerStatus.IDLE,
   meta: null,
-  skipSegments: [],
-  skipSegmentsCacheKey: null,
   failedSourcesPerMedia: {},
   failedEmbedsPerMedia: {},
-  probedSources: {},
   resumeFromSourceId: null,
   caption: {
     selected: null,
     asTrack: false,
+    translateTask: null,
   },
   setSourceId(id) {
     set((s) => {
@@ -214,7 +241,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     });
   },
   setMeta(meta, newStatus) {
-    const oldMediaKey = getMediaKey(get().meta);
+    const store = get();
+    const oldMediaKey = getMediaKey(store.meta);
     const newMediaKey = getMediaKey(meta);
 
     set((s) => {
@@ -224,18 +252,37 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.interface.hideNextEpisodeBtn = false;
       if (newStatus) s.status = newStatus;
 
-      // Clear failed sources/embeds and reset subtitles for the new media when media changes
+      // Clear failed sources/embeds for the new media when media changes
+      // Since we're doing per-episode tracking, we clear whenever media key changes
+      // Only clear if we're actually switching to different media (not just setting meta for the first time)
       if (newMediaKey && oldMediaKey && oldMediaKey !== newMediaKey) {
+        // Clear failed sources/embeds for the new media (if any exist from previous session)
+        // This ensures a fresh start for each media/episode
         delete s.failedSourcesPerMedia[newMediaKey];
         delete s.failedEmbedsPerMedia[newMediaKey];
-        s.captionList = [];
-        s.caption.selected = null;
       }
     });
+
+    // Warm the Downloads menu (MKV links + subtitles) the moment a title is
+    // chosen, so everything is ready before the user opens the menu.
+    preloadDownloads(
+      meta.type,
+      meta.tmdbId,
+      meta.season?.number,
+      meta.episode?.number,
+    );
   },
   setCaption(caption) {
     const store = get();
     store.display?.setCaption(caption);
+    if (
+      !caption ||
+      (store.caption.translateTask &&
+        store.caption.translateTask.targetCaption.id !== caption?.id &&
+        store.caption.translateTask.translatedCaption?.id !== caption?.id)
+    ) {
+      store.clearTranslateTask();
+    }
     set((s) => {
       s.caption.selected = caption;
     });
@@ -257,10 +304,13 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.captionList = captions;
       s.interface.error = undefined;
       s.status = playerStatus.PLAYING;
-      s.audioTracks = [];
-      s.currentAudioTrack = null;
-
+      s.audioTracks = (stream as any).audioTracks ?? [];
+      s.currentAudioTrack = (stream as any).audioTracks?.find((t: any) => t.default) ?? (stream as any).audioTracks?.[0] ?? null;
     });
+    if ((stream as any).audioTracks?.length) {
+      useAudioTrackStore.getState().setTracks((stream as any).audioTracks);
+    }
+
     const store = get();
     store.redisplaySource(startAt);
 
@@ -272,12 +322,11 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   },
   redisplaySource(startAt: number) {
     const store = get();
-    const quality = store.currentQuality;
     if (!store.source) return;
     const qualityPreferences = useQualityStore.getState();
     const loadableStream = selectQuality(store.source, {
       automaticQuality: qualityPreferences.quality.automaticQuality,
-      lastChosenQuality: quality,
+      lastChosenQuality: qualityPreferences.quality.lastChosenQuality,
     });
     set((s) => {
       s.interface.error = undefined;
@@ -294,20 +343,6 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     const store = get();
     if (!store.source) return;
     if (store.source.type === "file") {
-      const isHlsFile = Object.values(store.source.qualities).some(
-        (q) => q?.type === "hls",
-      );
-
-      if (isHlsFile) {
-        set((s) => {
-          s.currentQuality = quality;
-          s.status = playerStatus.PLAYING;
-          s.interface.error = undefined;
-        });
-        store.display?.changeQuality(false, quality);
-        return;
-      }
-
       const selectedQuality = store.source.qualities[quality];
       if (!selectedQuality) return;
       set((s) => {
@@ -316,7 +351,11 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
         s.interface.error = undefined;
       });
       store.display?.load({
-        source: selectedQuality,
+        source: {
+          ...selectedQuality,
+          headers: store.source.headers,
+          preferredHeaders: store.source.preferredHeaders,
+        },
         startAt: store.progress.time,
         automaticQuality: false,
         preferredQuality: quality,
@@ -335,7 +374,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     });
   },
   addFailedSource(sourceId: string) {
-    const mediaKey = getMediaKey(get().meta);
+    const store = get();
+    const mediaKey = getMediaKey(store.meta);
     if (!mediaKey) return; // Skip tracking if no media is set
 
     set((s) => {
@@ -351,7 +391,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     });
   },
   addFailedEmbed(sourceId: string, embedId: string) {
-    const mediaKey = getMediaKey(get().meta);
+    const store = get();
+    const mediaKey = getMediaKey(store.meta);
     if (!mediaKey) return; // Skip tracking if no media is set
 
     set((s) => {
@@ -372,8 +413,10 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   clearFailedSources(mediaKey?: string) {
     set((s) => {
       if (mediaKey) {
+        // Clear for specific media
         delete s.failedSourcesPerMedia[mediaKey];
       } else {
+        // Clear all
         s.failedSourcesPerMedia = {};
       }
     });
@@ -381,29 +424,21 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   clearFailedEmbeds(mediaKey?: string) {
     set((s) => {
       if (mediaKey) {
+        // Clear for specific media
         delete s.failedEmbedsPerMedia[mediaKey];
       } else {
+        // Clear all
         s.failedEmbedsPerMedia = {};
       }
     });
   },
-  setProbedSources(mediaKey: string, probed: Record<string, "probing" | "working" | "failed">) {
+  setResumeFromSourceId(sourceId: string | null) {
     set((s) => {
-      s.probedSources[mediaKey] = probed;
-    });
-  },
-  setSkipSegments(cacheKey: string, segments: SegmentData[]) {
-    set((s) => {
-      s.skipSegmentsCacheKey = cacheKey;
-      s.skipSegments = segments;
-    });
-  },
-  setResumeFromSourceId(id: string | null) {
-    set((s) => {
-      s.resumeFromSourceId = id;
+      s.resumeFromSourceId = sourceId;
     });
   },
   reset() {
+    get().clearSkipSegments?.();
     set((s) => {
       s.source = null;
       s.sourceId = null;
@@ -416,15 +451,14 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.currentAudioTrack = null;
       s.status = playerStatus.IDLE;
       s.meta = null;
-      s.skipSegments = [];
-      s.skipSegmentsCacheKey = null;
       s.failedSourcesPerMedia = {};
       s.failedEmbedsPerMedia = {};
-      s.probedSources = {};
       s.resumeFromSourceId = null;
+      this.clearTranslateTask();
       s.caption = {
         selected: null,
         asTrack: false,
+        translateTask: null,
       };
     });
   },
@@ -450,16 +484,187 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
             (c) => !existingIds.has(c.id),
           );
           s.captionList = [...s.captionList, ...newCaptions];
-
         });
         console.log(`Added ${externalCaptions.length} external captions`);
+
+        // Auto-select and ALWAYS ENABLE subtitle (OpenSubtitles → Wyzie → Vdrk)
+        const { useSubtitleStore } = await import("@/stores/subtitles");
+        const subtitleState = useSubtitleStore.getState();
+        const currentStore = get();
+        const targetLang = subtitleState.lastSelectedLanguage ?? "en";
+        // Find best caption: preferred language → English → first available
+        const matchedCaption =
+          currentStore.captionList.find(
+            (c) => c.language === targetLang || c.language.startsWith(targetLang),
+          ) ??
+          currentStore.captionList.find(
+            (c) => c.language === "en" || c.language.startsWith("en"),
+          ) ??
+          currentStore.captionList[0];
+
+        if (matchedCaption && !currentStore.caption.selected) {
+          console.log(`Auto-enabling subtitles: ${matchedCaption.id} (${matchedCaption.language})`);
+          const { downloadCaption: importedDownloadCaption } = await import("@/backend/helpers/subs");
+          // Try candidates in order and stop at the first that downloads.
+          // OpenSubtitles download URLs are CORS-blocked in browsers, so
+          // CORS-friendly sources (wyzie/vdrk) are preferred; each failed
+          // candidate is skipped silently and only an all-fail logs a warning.
+          const pool = currentStore.captionList.filter(
+            (c) => !isDirectlyUnloadableCaption(c.url),
+          );
+          const bestNonOpenSubs =
+            pool.find(
+              (c) =>
+                !c.opensubtitles &&
+                (c.language === targetLang || c.language.startsWith(targetLang)),
+            ) ??
+            pool.find(
+              (c) => !c.opensubtitles && (c.language === "en" || c.language.startsWith("en")),
+            ) ??
+            pool.find((c) => !c.opensubtitles);
+          const candidates = [bestNonOpenSubs, matchedCaption]
+            .concat(pool.filter((c) => c !== bestNonOpenSubs && c !== matchedCaption && !c.opensubtitles))
+            .filter((c): c is CaptionListItem => Boolean(c));
+          const uniqueCandidates = [...new Map(candidates.map((c) => [c.id, c])).values()]
+            .filter((c) => !isDirectlyUnloadableCaption(c.url))
+            .slice(0, 4);
+          void (async () => {
+            for (const candidate of uniqueCandidates) {
+              try {
+                const srtData = await importedDownloadCaption(candidate);
+                if (get().caption.selected) return;
+                get().setCaption({
+                  id: candidate.id,
+                  language: candidate.language,
+                  url: candidate.url,
+                  srtData,
+                });
+                // Always enable subtitles — default ON for all providers
+                useSubtitleStore.getState().setSubtitle(true, candidate.language, candidate.id);
+                return;
+              } catch {
+                // Try the next candidate quietly.
+              }
+            }
+            if (!autoCaptionWarnedOnce) {
+              autoCaptionWarnedOnce = true;
+              console.warn("Subtitle auto-load failed (further failures are silent)");
+            }
+          })();
+        } else if (!matchedCaption) {
+          // No external subtitle found: normal, not worth logging.
+        }
       }
     } catch (error) {
-      console.error("Failed to scrape external subtitles:", error);
+      if (!autoCaptionWarnedOnce) {
+          autoCaptionWarnedOnce = true;
+          console.warn("External subtitle scrape failed (further failures are silent):", error);
+        }
     } finally {
       set((s) => {
         s.isLoadingExternalSubtitles = false;
       });
+    }
+  },
+
+  clearTranslateTask() {
+    set((s) => {
+      if (s.caption.translateTask) {
+        s.caption.translateTask.cancel();
+      }
+      s.caption.translateTask = null;
+    });
+  },
+
+  async translateCaption(
+    targetCaption: CaptionListItem,
+    targetLanguage: string,
+  ) {
+    let store = get();
+
+    if (store.caption.translateTask) {
+      console.warn("A translation task is already in progress");
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    set((s) => {
+      s.caption.translateTask = {
+        targetCaption,
+        targetLanguage,
+        done: false,
+        error: false,
+        cancel() {
+          if (!this.done && !this.error) {
+            console.log("Translation task was cancelled");
+          }
+          abortController.abort();
+        },
+      };
+    });
+
+    function handleError(err: any) {
+      if (abortController.signal.aborted) {
+        return;
+      }
+      console.error("Translation task ran into an error", err);
+      set((s) => {
+        if (!s.caption.translateTask) return;
+        s.caption.translateTask.error = true;
+      });
+    }
+
+    try {
+      const { downloadCaption } = await import("@/backend/helpers/subs");
+      const srtData = await downloadCaption(targetCaption);
+      if (abortController.signal.aborted) {
+        return;
+      }
+      if (!srtData) {
+        throw new Error("Fetching failed");
+      }
+      set((s) => {
+        if (!s.caption.translateTask) return;
+        s.caption.translateTask.fetchedTargetCaption = {
+          id: targetCaption.id,
+          language: targetCaption.language,
+          srtData,
+        };
+      });
+      store = get();
+    } catch (err) {
+      handleError(err);
+      return;
+    }
+
+    try {
+      const { translate } = await import("@/utils/translation/index");
+      const { default: googletranslate } = await import("@/utils/translation/googletranslate");
+      const result = await translate(
+        store.caption.translateTask!.fetchedTargetCaption!,
+        targetLanguage,
+        googletranslate,
+        abortController.signal,
+      );
+      if (abortController.signal.aborted) {
+        return;
+      }
+      if (!result) {
+        throw new Error("Translation failed");
+      }
+      set((s) => {
+        if (!s.caption.translateTask) return;
+        const translatedCaption: Caption = {
+          id: `${targetCaption.id}-translated-${targetLanguage}`,
+          language: targetLanguage,
+          srtData: result,
+        };
+        s.caption.translateTask.done = true;
+        s.caption.translateTask.translatedCaption = translatedCaption;
+      });
+    } catch (err) {
+      handleError(err);
     }
   },
 });

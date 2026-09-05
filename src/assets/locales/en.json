@@ -769,7 +769,10 @@
         "qualityItem": "Quality",
         "sourceItem": "Source",
         "subtitleItem": "Subtitles",
-        "videoSection": "Video settings"
+        "videoSection": "Video settings",
+        "castItem": "Cast to device",
+        "castArtemisOnly": "No cast device available",
+        "castStop": "Tap to stop casting"
       },
       "sources": {
         "failed": {
@@ -801,6 +804,8 @@
         "OpenSubtitlesChoice": "External Subtitles",
         "loadingExternal": "Loading external subtitles...",
         "transcriptChoice": "Transcript",
+        "autoSelectChoice": "Auto select",
+        "autoSelectDifferentChoice": "Tap again to auto select different subtitle",
         "settings": {
           "backlink": "Custom subtitles",
           "delay": "Subtitle delay",
@@ -1309,7 +1314,10 @@
       },
       "BorderThicknessLabel": "Border Thickness"
     },
-    "unsaved": "You have unsaved changes... ฅ^•ﻌ•^ฅ"
+    "unsaved": "You have unsaved changes... ฅ^•ﻌ•^ฅ",
+    "ads": {
+      "title": "Advertisements"
+    }
   },
   "discover": {
     "tabs": {

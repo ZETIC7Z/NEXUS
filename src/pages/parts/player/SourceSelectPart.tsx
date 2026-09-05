@@ -1,11 +1,8 @@
-/* eslint-disable react/forbid-dom-props */
-import { ScrapeMedia } from "@p-stream/providers";
+import { ScrapeMedia } from "@nexus/providers";
 import React, { ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getCachedMetadata } from "@/backend/helpers/providerApi";
-import { zeticuzScrapers, getActiveZeticuzProviders } from "@/backend/providers/zeticuz-provider";
-import { getSourceSortOrder } from "@/backend/providers/providers";
 import { Loading } from "@/components/layout/Loading";
 import {
   useEmbedScraping,
@@ -13,9 +10,11 @@ import {
 } from "@/components/player/hooks/useSourceSelection";
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { SelectableLink } from "@/components/player/internals/ContextMenu/Links";
-import { usePlayerStore } from "@/stores/player/store";
-import { getMediaKey } from "@/stores/player/slices/source";
+import { getLiveNexusProviders } from "@/providers/nexus-providers-index";
+import { getPackedEmbedLabel } from "@/providers/embeds/shared";
 import { usePreferencesStore } from "@/stores/preferences";
+import { usePlayerStore } from "@/stores/player/store";
+import { isAnimeByTitle, getAllowedSourceIds } from "@/providers/allowed-providers";
 
 // Embed option component
 function EmbedOption(props: {
@@ -27,11 +26,18 @@ function EmbedOption(props: {
   const { t } = useTranslation();
   const unknownEmbedName = t("player.menus.sources.unknownOption");
 
+  // Track currently active embed for checkmark
+  const activeEmbedId = usePlayerStore((s) => s.embedId);
+  const isActive = props.embedId === activeEmbedId;
+
   const embedName = useMemo(() => {
     if (!props.embedId) return unknownEmbedName;
-    const sourceMeta = getCachedMetadata().find((s) => s.id === props.embedId);
-    return sourceMeta?.name ?? unknownEmbedName;
-  }, [props.embedId, unknownEmbedName]);
+    // Prefer the real server name packed by the source (Prime / Orbit / Euro).
+    const packedLabel = getPackedEmbedLabel(props.url);
+    if (packedLabel) return packedLabel;
+    const meta = getCachedMetadata().find((s) => s.id === props.embedId);
+    return meta?.name ?? unknownEmbedName;
+  }, [props.embedId, props.url, unknownEmbedName]);
 
   const { run, errored, loading, notFound } = useEmbedScraping(
     props.routerId,
@@ -40,9 +46,9 @@ function EmbedOption(props: {
     props.embedId,
   );
 
-  let rightSide;
+  let rightSide: React.ReactNode;
   if (loading) {
-    rightSide = undefined; // Let SelectableLink handle loading
+    rightSide = undefined;
   } else if (notFound) {
     rightSide = (
       <div className="flex items-center text-video-scraping-noresult">
@@ -58,13 +64,13 @@ function EmbedOption(props: {
       loading={loading}
       error={errored && !notFound}
       onClick={run}
-      rightSide={rightSide}
+      selected={isActive}
+      rightSide={isActive ? undefined : rightSide}
     >
-      <span className="flex flex-col">
-        <span>{embedName}</span>
-      </span>
+      <span>{embedName}</span>
     </SelectableLink>
   );
+
 }
 
 // Embed selection view (when a source is selected)
@@ -158,67 +164,96 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
   const enableLastSuccessfulSource = usePreferencesStore(
     (s) => s.enableLastSuccessfulSource,
   );
-  const disabledSources = usePreferencesStore((s) => s.disabledSources);
+  // Track currently active source for checkmark display
+  const activeSourceId = usePlayerStore((s) => s.sourceId);
 
-  const playerMeta = usePlayerStore((s) => s.meta);
-  const probedSources = usePlayerStore((s) => s.probedSources);
+  const [live, setLive] = React.useState<{ id: string; name: string }[]>([]);
+  const [liveLoaded, setLiveLoaded] = React.useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getLiveNexusProviders(props.media)
+      .then((p) => {
+        if (!active) return;
+        setLive(p);
+        setLiveLoaded(true);
+      })
+      .catch(() => {
+        if (active) setLiveLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [props.media]);
 
   const sources = useMemo(() => {
     const metaType = props.media.type;
     if (!metaType) return [];
 
-    // Sort order: determined by getSourceSortOrder (custom or default alphabetical order)
-    const sortOrder = getSourceSortOrder(preferredSourceOrder, enableSourceOrder);
-
-    const mediaKey = getMediaKey(playerMeta);
-    const probedForMedia = mediaKey ? probedSources[mediaKey] : null;
-    const probeComplete = probedForMedia && Object.values(probedForMedia).some((s) => s === "working" || s === "failed");
-
-    // Fallback: use activeZeticuzIds only when probe hasn't completed yet
-    const activeZeticuzIds = probeComplete ? null : getActiveZeticuzProviders(playerMeta);
-
+    const isAnime = isAnimeByTitle(props.media.title, props.media.tmdbId);
+    const allowedIds = getAllowedSourceIds(metaType, isAnime);
+    const liveIds = new Set(live.map((provider) => provider.id));
     const allSources = getCachedMetadata()
-      .filter((v) => v.type === "source")
-      .filter((v) => v.mediaTypes?.includes(metaType))
-      .filter((v) => !(disabledSources || []).includes(v.id))
-      .filter((v) => sortOrder.includes(v.id))
-      .filter((v) => {
-        // For zeticuz providers: use probed status when available, else activeZeticuzIds
-        if (!v.id.startsWith("zeticuz-")) return true;
-        if (probeComplete && probedForMedia) {
-          const status = probedForMedia[v.id];
-          return status === "working";
+      .filter(
+        (v) =>
+          v.type === "source" &&
+          allowedIds.includes(v.id) &&
+          (!liveLoaded || liveIds.has(v.id)),
+      )
+      .sort((a, b) => allowedIds.indexOf(a.id) - allowedIds.indexOf(b.id));
+
+
+
+    if (!enableSourceOrder || preferredSourceOrder.length === 0) {
+      // Even without custom source order, prioritize last successful source if enabled
+      if (enableLastSuccessfulSource && lastSuccessfulSource) {
+        const lastSourceIndex = allSources.findIndex(
+          (s) => s.id === lastSuccessfulSource,
+        );
+        if (lastSourceIndex !== -1) {
+          const lastSource = allSources.splice(lastSourceIndex, 1)[0];
+          return [lastSource, ...allSources];
         }
-        if (!activeZeticuzIds) return true; // show all if not resolved yet
-        return activeZeticuzIds.includes(v.id);
-      })
-      // For non-zeticuz: filter by probe status
-      .filter((v) => {
-        if (v.id.startsWith("zeticuz-")) return true; // already handled above
-        if (!probedForMedia) return true;
-        const status = probedForMedia[v.id];
-        return status === "working" || status === "probing" || status === undefined;
-      })
-      // Hide anime-only sources when watching a movie
-      .filter((v) => {
-        if (metaType !== "movie") return true;
-        return v.id !== "zeticuz-anikoto" && v.id !== "zeticuz-anikai";
-      });
+      }
+      return allSources;
+    }
 
-    allSources.sort((a, b) => {
-      const idxA = sortOrder.indexOf(a.id);
-      const idxB = sortOrder.indexOf(b.id);
-      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
-    });
+    // Sort sources according to preferred order, but prioritize last successful source
+    const orderedSources = [];
+    const remainingSources = [...allSources];
 
-    return allSources;
+    // First, add the last successful source if it exists, is available, and the feature is enabled
+    if (enableLastSuccessfulSource && lastSuccessfulSource) {
+      const lastSourceIndex = remainingSources.findIndex(
+        (s) => s.id === lastSuccessfulSource,
+      );
+      if (lastSourceIndex !== -1) {
+        orderedSources.push(remainingSources[lastSourceIndex]);
+        remainingSources.splice(lastSourceIndex, 1);
+      }
+    }
+
+    // Add sources in preferred order
+    for (const sourceId of preferredSourceOrder) {
+      const sourceIndex = remainingSources.findIndex((s) => s.id === sourceId);
+      if (sourceIndex !== -1) {
+        orderedSources.push(remainingSources[sourceIndex]);
+        remainingSources.splice(sourceIndex, 1);
+      }
+    }
+
+    // Add remaining sources that weren't in the preferred order
+    orderedSources.push(...remainingSources);
+
+    return orderedSources;
   }, [
     props.media.type,
-    disabledSources,
-    playerMeta,
-    probedSources,
     preferredSourceOrder,
     enableSourceOrder,
+    lastSuccessfulSource,
+    enableLastSuccessfulSource,
+    live,
+    liveLoaded,
   ]);
 
   if (selectedSourceId) {
@@ -247,6 +282,7 @@ export function SourceSelectPart(props: { media: ScrapeMedia }) {
               <SelectableLink
                 key={v.id}
                 onClick={() => setSelectedSourceId(v.id)}
+                selected={v.id === activeSourceId}
               >
                 {v.name}
               </SelectableLink>

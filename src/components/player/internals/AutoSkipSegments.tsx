@@ -24,6 +24,7 @@ export function AutoSkipSegments() {
   const meta = usePlayerStore((s) => s.meta);
   const segments = useSkipTime();
 
+  // Track which segments we've already skipped to avoid re-skipping
   const skippedSegmentsRef = useRef<Map<string, SegmentSkipState>>(new Map());
 
   // Reset skip state when media changes
@@ -37,11 +38,14 @@ export function AutoSkipSegments() {
     const currentSeconds = time;
 
     for (const segment of segments) {
+      // For credits, only skip if skipCredits is enabled and end_ms is null (end of video)
       const isCreditsSegment = segment.type === "credits";
       if (isCreditsSegment) {
         if (!skipCredits) continue;
+        // Check if credits go to end of video (end_ms is null)
         if (segment.end_ms !== null) continue;
       } else if (segment.end_ms === null) {
+        // For intro, recap, preview - skip if enabled and end time is defined
         continue;
       }
 
@@ -49,14 +53,18 @@ export function AutoSkipSegments() {
       const endSeconds = segment.end_ms ? segment.end_ms / 1000 : Infinity;
       const segmentId = `${segment.type}-${startSeconds}-${endSeconds}`;
 
+      // Check if we're inside the segment
       if (currentSeconds >= startSeconds && currentSeconds < endSeconds) {
         const skipState = skippedSegmentsRef.current.get(segmentId);
 
+        // Only skip if we haven't skipped this segment yet
         if (!skipState || !skipState.hasSkipped) {
+          // Skip to the end of the segment
           display.setTime(
             endSeconds === Infinity ? currentSeconds + 10 : endSeconds,
           );
 
+          // Mark this segment as skipped
           skippedSegmentsRef.current.set(segmentId, {
             segmentId,
             hasSkipped: true,

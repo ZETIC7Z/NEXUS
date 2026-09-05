@@ -517,10 +517,7 @@ function DiscoverNexusDropdown() {
               </span>
             </div>
           </a>
-        </div>
-      )}
-
-                <a
+          <a
             href="https://www.nexusph.xyz"
             target="_blank"
             rel="noopener noreferrer"
@@ -528,17 +525,13 @@ function DiscoverNexusDropdown() {
           >
             <div className="flex items-center gap-3">
               <div
-                className="w-9 h-9 rounded overflow-hidden flex-shrink-0"
-                style={{
-                  background: "#000",
-                  boxShadow: "0 0 14px rgba(168,85,247,0.85), 0 0 30px rgba(168,85,247,0.45)",
-                }}
+                className="w-9 h-9 flex-shrink-0"
+                style={{ filter: "drop-shadow(0 0 8px rgba(168,85,247,0.9)) drop-shadow(0 0 18px rgba(168,85,247,0.5))" }}
               >
                 <img
                   src="/icon.png"
                   alt="Nexus"
                   className="w-full h-full object-contain"
-                  style={{ mixBlendMode: "screen" }}
                 />
               </div>
               <span className="text-base font-medium uppercase tracking-wider">WATCH ON NEXUS 2.0</span>
@@ -550,6 +543,9 @@ function DiscoverNexusDropdown() {
               </span>
             </div>
           </a>
+        </div>
+      )}
+
 
       {/* Download Modal Portal */}
       <DownloadModal

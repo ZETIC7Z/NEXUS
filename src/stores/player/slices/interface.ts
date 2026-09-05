@@ -20,11 +20,11 @@ export interface InterfaceSlice {
     hasOpenOverlay: boolean;
     hovering: PlayerHoverState;
     lastHoveringState: PlayerHoverState;
-    canAirplay: boolean;
-    isCasting: boolean;
     hideNextEpisodeBtn: boolean;
     shouldStartFromBeginning: boolean;
     error?: DisplayError;
+    isCasting: boolean; // actively casting to a chromecast
+    isScreenLocked: boolean; // mobile lock screen active
 
     volumeChangedWithKeybind: boolean; // has the volume recently been adjusted with the up/down arrows recently?
     volumeChangedWithKeybindDebounce: NodeJS.Timeout | null; // debounce for the duration of the "volume changed thingamajig"
@@ -34,7 +34,8 @@ export interface InterfaceSlice {
     timeFormat: VideoPlayerTimeFormat; // Time format of the video player
     isSpeedBoosted: boolean; // is playback speed temporarily boosted to 2x
     showSpeedIndicator: boolean; // should the speed indicator be shown
-    isScreenLocked: boolean; // Netflix-style screen lock - hides controls and blocks touches
+    showAutoFallbackPopout: boolean; // should the auto-fallback popout be shown
+    autoFallbackFailedSourceName: string | null; // human-readable name of the source being switched away from
   };
   updateInterfaceHovering(newState: PlayerHoverState): void;
   setSeeking(seeking: boolean): void;
@@ -47,12 +48,12 @@ export interface InterfaceSlice {
   setShouldStartFromBeginning(val: boolean): void;
   setSpeedBoosted(state: boolean): void;
   setShowSpeedIndicator(state: boolean): void;
+  setAutoFallbackPopout(state: boolean, failedSourceName?: string | null): void;
   setScreenLocked(state: boolean): void;
 }
 
 export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
   interface: {
-    isCasting: false,
     hasOpenOverlay: false,
     isFullscreen: false,
     isSeeking: false,
@@ -64,12 +65,14 @@ export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
     volumeChangedWithKeybind: false,
     volumeChangedWithKeybindDebounce: null,
     timeFormat: VideoPlayerTimeFormat.REGULAR,
-    canAirplay: false,
     hideNextEpisodeBtn: false,
     shouldStartFromBeginning: false,
+    isCasting: false,
+    isScreenLocked: false,
     isSpeedBoosted: false,
     showSpeedIndicator: false,
-    isScreenLocked: false,
+    showAutoFallbackPopout: false,
+    autoFallbackFailedSourceName: null,
   },
 
   setShouldStartFromBeginning(val) {
@@ -129,6 +132,14 @@ export const createInterfaceSlice: MakeSlice<InterfaceSlice> = (set, get) => ({
   setShowSpeedIndicator(state) {
     set((s) => {
       s.interface.showSpeedIndicator = state;
+    });
+  },
+  setAutoFallbackPopout(state, failedSourceName = null) {
+    set((s) => {
+      s.interface.showAutoFallbackPopout = state;
+      s.interface.autoFallbackFailedSourceName = state
+        ? failedSourceName
+        : null;
     });
   },
   setScreenLocked(state) {

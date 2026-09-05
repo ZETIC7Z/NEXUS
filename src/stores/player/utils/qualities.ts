@@ -1,4 +1,4 @@
-import { Qualities, Stream } from "@p-stream/providers";
+import { Qualities, Stream } from "@nexus/providers";
 
 import { QualityStore } from "@/stores/quality";
 
@@ -7,16 +7,28 @@ export type SourceQuality = Qualities;
 export type StreamType = "hls" | "mp4";
 
 export type SourceFileStream = {
-  type: "mp4" | "hls";
+  type: "mp4";
   url: string;
+  headers?: Stream["headers"];
+  preferredHeaders?: Stream["preferredHeaders"];
 };
+
+export interface SourceAudioTrack {
+  id: string;
+  label: string;
+  language: string;
+  url: string;
+  type?: StreamType;
+  default?: boolean;
+  headers?: Stream["headers"];
+  preferredHeaders?: Stream["preferredHeaders"];
+}
 
 export type LoadableSource = {
   type: StreamType;
   url: string;
   headers?: Stream["headers"];
   preferredHeaders?: Stream["preferredHeaders"];
-  hlsQualities?: Record<string, string>;
 };
 
 export type SourceSliceSource =
@@ -25,12 +37,14 @@ export type SourceSliceSource =
       qualities: Partial<Record<SourceQuality, SourceFileStream>>;
       headers?: Stream["headers"];
       preferredHeaders?: Stream["preferredHeaders"];
+      audioTracks?: SourceAudioTrack[];
     }
   | {
       type: "hls";
       url: string;
       headers?: Stream["headers"];
       preferredHeaders?: Stream["preferredHeaders"];
+      audioTracks?: SourceAudioTrack[];
     };
 
 const qualitySorting: Record<SourceQuality, number> = {
@@ -39,7 +53,7 @@ const qualitySorting: Record<SourceQuality, number> = {
   "480": 20,
   "720": 30,
   "1080": 40,
-  "4k": 50,
+  "4k": 35, // 4k has lower priority, you need faster internet for it
 };
 const sortedQualities: SourceQuality[] = Object.entries(qualitySorting)
   .sort((a, b) => b[1] - a[1])
@@ -84,6 +98,13 @@ export function getPreferredQuality(
   return nearestChoseQuality;
 }
 
+function mergeHeaders(
+  ...headerSets: Array<Record<string, string> | undefined>
+): Record<string, string> | undefined {
+  const merged = Object.assign({}, ...headerSets.filter(Boolean));
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 export function selectQuality(
   source: SourceSliceSource,
   qualityPreferences: QualityStore["quality"],
@@ -93,40 +114,38 @@ export function selectQuality(
 } {
   if (source.type === "hls")
     return {
-      stream: {
-        type: source.type,
-        url: source.url,
-        headers: source.headers,
-        preferredHeaders: source.preferredHeaders,
-        // Preserve multi-quality map if present (e.g., from zeticuz provider)
-        hlsQualities: (source as any).hlsQualities ?? undefined,
-      } as LoadableSource,
+      stream: source,
       quality: null,
     };
   if (source.type === "file") {
     const availableQualities = Object.entries(source.qualities)
       .filter((entry) => (entry[1].url.length ?? 0) > 0)
       .map((entry) => entry[0]) as SourceQuality[];
-    const quality = getPreferredQuality(availableQualities, qualityPreferences);
+    
+    let quality = getPreferredQuality(
+      availableQualities,
+      qualityPreferences,
+    );
+
+    if (qualityPreferences.automaticQuality) {
+      const qualityPreferenceOrder: SourceQuality[] = ["1080", "720", "4k", "480", "360"];
+      quality =
+        qualityPreferenceOrder.find((q) => availableQualities.includes(q)) ??
+        availableQualities.find((q) => q !== "unknown") ??
+        availableQualities[0];
+    }
+
     if (quality) {
       const stream = source.qualities[quality];
       if (stream) {
-        // Collect all HLS quality URLs if it is an HLS file stream
-        const hlsQualities: Record<string, string> = {};
-        let isHlsFile = false;
-        Object.entries(source.qualities).forEach(([q, fileStream]) => {
-          if (fileStream && fileStream.type === "hls" && fileStream.url) {
-            hlsQualities[q] = fileStream.url;
-            isHlsFile = true;
-          }
-        });
-
         return {
           stream: {
             ...stream,
-            headers: source.headers,
-            preferredHeaders: source.preferredHeaders,
-            hlsQualities: isHlsFile ? hlsQualities : undefined,
+            headers: mergeHeaders(source.headers, stream.headers),
+            preferredHeaders: mergeHeaders(
+              source.preferredHeaders,
+              stream.preferredHeaders,
+            ),
           },
           quality,
         };
@@ -142,7 +161,7 @@ const qualityNameMap: Record<SourceQuality, string> = {
   "360": "360p",
   "480": "480p",
   "720": "720p",
-  unknown: "Auto",
+  unknown: "unknown",
 };
 
 export const allQualities = Object.keys(qualityNameMap) as SourceQuality[];

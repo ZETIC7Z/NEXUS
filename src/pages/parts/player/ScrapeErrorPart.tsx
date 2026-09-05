@@ -7,7 +7,7 @@ import {
   sendPage,
 } from "@/backend/extension/messaging";
 import { Button } from "@/components/buttons/Button";
-import { Icon, Icons } from "@/components/Icon";
+import { Icons } from "@/components/Icon";
 import { IconPill } from "@/components/layout/IconPill";
 import { useModal } from "@/components/overlays/Modal";
 import { Paragraph } from "@/components/text/Paragraph";
@@ -17,9 +17,8 @@ import { ErrorContainer, ErrorLayout } from "@/pages/layouts/ErrorLayout";
 import { conf } from "@/setup/config";
 import { useOnboardingStore } from "@/stores/onboarding";
 import { usePreferencesStore } from "@/stores/preferences";
-import { getExtensionState } from "@/utils/extension";
-import type { ExtensionStatus } from "@/utils/extension";
-import { getProviderApiUrls } from "@/utils/proxyUrls";
+import { getExtensionState } from "@/utils/browser/extension";
+import type { ExtensionStatus } from "@/utils/browser/extension";
 
 import { ErrorCardInModal } from "../errors/ErrorCard";
 
@@ -41,44 +40,55 @@ export function ScrapeErrorPart(props: ScrapeErrorPartProps) {
 
   const error = useMemo(() => {
     const data = props.data;
-    let str = "";
-    const apiUrls = getProviderApiUrls();
-    str += `URL - ${location.pathname}\n`;
-    str += `API - ${apiUrls.length > 0}\n\n`;
-    Object.values(data.sources).forEach((v) => {
-      str += `${v.id}: ${v.status}\n`;
-      if (v.reason) str += `${v.reason}\n`;
-      if (v.error?.message)
-        str += `${v.error?.name ?? "unknown"}: ${v.error.message}\n`;
-      else if (v.error) str += `${v.error.toString()}\n`;
+    const lines: string[] = [];
+    lines.push(`=== SCRAPE FAILURE ===`);
+    lines.push(`Time: ${new Date().toISOString()}`);
+    lines.push(`URL: ${location.pathname}${location.search}`);
+    lines.push(`Online: ${navigator.onLine}`);
+    lines.push(`Extension state: ${extensionState}`);
+    lines.push(`Extension active (cached): ${isExtensionActiveCached()}`);
+    lines.push(`Has febbox key: ${!!febboxKey}`);
+    lines.push(`User Agent: ${navigator.userAgent}`);
+    lines.push("");
+    lines.push(`=== SOURCE ORDER (${data.sourceOrder.length}) ===`);
+    data.sourceOrder.forEach((s, i) => {
+      const childCount = s.children?.length ?? 0;
+      lines.push(
+        `  ${i + 1}. ${s.id}${childCount > 0 ? ` (+${childCount} embeds)` : ""}`,
+      );
     });
-    return str;
-  }, [props, location]);
+    lines.push("");
+    lines.push(`=== SOURCE RESULTS (${Object.keys(data.sources).length}) ===`);
+    Object.values(data.sources).forEach((v) => {
+      lines.push(`--- ${v.id} ---`);
+      lines.push(`Status: ${v.status}`);
+      if (v.percentage !== undefined) lines.push(`Progress: ${v.percentage}%`);
+      if (v.reason) lines.push(`Reason: ${v.reason}`);
+      if (v.error) {
+        if (v.error instanceof Error) {
+          lines.push(`Error: ${v.error.name}: ${v.error.message}`);
+          if (v.error.stack) lines.push(`Stack:\n${v.error.stack}`);
+        } else if (typeof v.error === "object") {
+          const name = (v.error as any).name ?? "unknown";
+          const msg =
+            (v.error as any).message ?? JSON.stringify(v.error, null, 2);
+          lines.push(`Error: ${name}: ${msg}`);
+          const stack = (v.error as any).stack;
+          if (stack) lines.push(`Stack:\n${stack}`);
+        } else {
+          lines.push(`Error: ${String(v.error)}`);
+        }
+      }
+      lines.push("");
+    });
+    return lines.join("\n");
+  }, [props, location, extensionState, febboxKey]);
 
   useEffect(() => {
     getExtensionState().then((state: ExtensionStatus) => {
       setExtensionState(state);
     });
   }, [t]);
-
-  // Periodically check if extension is enabled - auto reload if it becomes success
-  useEffect(() => {
-    if (extensionState === "success") return;
-
-    const interval = setInterval(async () => {
-      const state = await getExtensionState();
-      if (state === "success") {
-        window.location.reload();
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [extensionState]);
-
-  function handleOnboarding() {
-    setOnboardingCompleted(false);
-    window.location.reload();
-  }
 
   if (extensionState === "disallowed") {
     return (
@@ -126,6 +136,11 @@ export function ScrapeErrorPart(props: ScrapeErrorPartProps) {
     );
   }
 
+  function handleOnboarding() {
+    setOnboardingCompleted(false);
+    window.location.reload();
+  }
+
   return (
     <ErrorLayout>
       <ErrorContainer>
@@ -152,90 +167,24 @@ export function ScrapeErrorPart(props: ScrapeErrorPartProps) {
             {t("player.scraping.notFound.detailsButton")}
           </Button>
         </div>
-
+        {/* <Button
+          onClick={() => navigate("/discover")}
+          theme="secondary"
+          padding="md:px-12 p-2.5"
+          className="mt-6"
+        >
+          {t("player.scraping.notFound.discoverButton")}
+        </Button> */}
         {(!isExtensionActiveCached() || !febboxKey) && conf().HAS_ONBOARDING ? (
-          <div className="mt-6 p-4 rounded-lg bg-video-scraping-error/20 border border-video-scraping-error/30 max-w-lg">
-            <div className="flex items-start gap-3">
-              <Icon
-                icon={Icons.CIRCLE_EXCLAMATION}
-                className="text-amber-500 text-xl mt-0.5 flex-shrink-0"
-              />
-              <div className="text-left">
-                <p className="text-white font-medium mb-2">
-                  {extensionState === "unknown"
-                    ? "Extension Not Detected"
-                    : t("player.scraping.notFound.onboardingTitle") ||
-                      "Need More Sources?"}
-                </p>
-                {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-                  navigator.userAgent,
-                ) ? (
-                  <>
-                    <p className="text-sm text-type-dimmed mb-2">
-                      You&apos;re on a <strong className="text-white">mobile device</strong>.
-                      Browser extensions aren&apos;t available on mobile
-                      browsers.
-                    </p>
-                    <ul className="text-sm text-type-dimmed ml-4 list-disc space-y-1 mb-3">
-                      <li>Try refreshing the page or come back later</li>
-                      <li>
-                        Some content may not be available from all sources
-                      </li>
-                      <li>
-                        <strong className="text-white">Android tip:</strong> Use
-                        Kiwi Browser which supports Chrome extensions
-                      </li>
-                    </ul>
-                  </>
-                ) : (
-                  <p className="text-sm text-type-dimmed mb-2">
-                    {extensionState === "unknown"
-                      ? "Install our browser extension to unlock more sources and better quality providers like FebBox, VidLink, and more."
-                      : t("player.scraping.notFound.onboarding")}
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {extensionState === "unknown" &&
-                  !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-                    navigator.userAgent,
-                  ) ? (
-                    <Button
-                      href="/onboarding/extension"
-                      theme="purple"
-                      className="text-sm px-6"
-                    >
-                      Install Extension
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleOnboarding()}
-                      theme="purple"
-                      className="text-sm"
-                    >
-                      {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-                        navigator.userAgent,
-                      )
-                        ? "View Setup Guide"
-                        : t("player.scraping.notFound.onboardingButton")}
-                    </Button>
-                  )}
-                  {(extensionState as string) === "disallowed" && (
-                    <Button
-                      onClick={() => {
-                        sendPage({
-                          page: "PermissionGrant",
-                          redirectUrl: window.location.href,
-                        });
-                      }}
-                      theme="purple"
-                      className="text-sm px-6"
-                    >
-                      Enable Extension
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="flex flex-col max-w-md gap-3 items-center py-3">
+            <Paragraph>{t("player.scraping.notFound.onboarding")}</Paragraph>
+            <Button
+              onClick={() => handleOnboarding()}
+              theme="purple"
+              className="w-fit"
+            >
+              {t("player.scraping.notFound.onboardingButton")}
+            </Button>
           </div>
         ) : null}
       </ErrorContainer>

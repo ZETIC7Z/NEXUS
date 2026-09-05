@@ -27,43 +27,61 @@ export function usePlayerMeta() {
     (m: DetailedMeta, episodeId?: string) => {
       let playerMeta: PlayerMeta;
       if (m.meta.type === MWMediaType.SERIES) {
-        const ep = m.meta.seasonData.episodes.find(
-          (v) => v.id.toString() === episodeId,
-        );
+        let customSeason: number | undefined;
+        let customEpisode: number | undefined;
+        let cleanEpisodeId = episodeId;
+        if (episodeId) {
+          const match = episodeId.match(/-s(\d+)-e(\d+)$/);
+          if (match) {
+            customSeason = parseInt(match[1], 10);
+            customEpisode = parseInt(match[2], 10);
+            cleanEpisodeId = episodeId.replace(/-s\d+-e\d+$/, "");
+          }
+        }
+
+        const ep = m.meta.seasonData.episodes.find((v) => v.id === cleanEpisodeId);
         if (!ep) return null;
         playerMeta = {
           type: "show",
           releaseYear: +(m.meta.year ?? 0),
           title: m.meta.title,
+          originalTitle: m.meta.originalTitle,
           poster: m.meta.poster,
           tmdbId: m.tmdbId ?? "",
           imdbId: m.imdbId,
+          overview: m.meta.overview,
           episodes: m.meta.seasonData.episodes.map((v) => ({
             number: v.number,
             title: v.title,
             tmdbId: v.id,
             air_date: v.air_date,
+            overview: v.overview,
           })),
           episode: {
             number: ep.number,
             title: ep.title,
             tmdbId: ep.id,
             air_date: ep.air_date,
+            overview: ep.overview,
           },
           season: {
             number: m.meta.seasonData.number,
             title: m.meta.seasonData.title,
             tmdbId: m.meta.seasonData.id,
           },
+          customSeason,
+          customEpisode,
         };
       } else {
         playerMeta = {
           type: "movie",
           releaseYear: +(m.meta.year ?? 0),
           title: m.meta.title,
+          originalTitle: m.meta.originalTitle,
           poster: m.meta.poster,
           tmdbId: m.tmdbId ?? "",
           imdbId: m.imdbId,
+          overview: m.meta.overview,
         };
       }
       setDirectMeta(playerMeta);

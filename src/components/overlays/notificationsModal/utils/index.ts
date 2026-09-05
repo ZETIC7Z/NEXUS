@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 import { proxiedFetch } from "@/backend/helpers/fetch";
 
 const DEFAULT_FEEDS = ["/notifications.xml"];
@@ -104,10 +106,29 @@ export const formatDate = (dateString: string) => {
 };
 
 export const getCategoryColor = (category: string) => {
-  return "";
+  if (!category || category.trim() === "") {
+    return "";
+  }
+
+  switch (category.toLowerCase()) {
+    case "announcement":
+      return "bg-blue-500";
+    case "feature":
+      return "bg-green-500";
+    case "update":
+      return "bg-yellow-500";
+    case "bugfix":
+      return "bg-red-500";
+    default:
+      return "";
+  }
 };
 
 export const getCategoryLabel = (category: string) => {
+  if (!category || category.trim() === "") {
+    return category;
+  }
+
   switch (category.toLowerCase()) {
     case "announcement":
       return "Announcement";
@@ -123,7 +144,7 @@ export const getCategoryLabel = (category: string) => {
 };
 export function formatNotificationDescription(description: string): string {
   return (
-    description
+    DOMPurify.sanitize(description)
       // First, normalize multiple consecutive line breaks to single line breaks
       .replace(/\n{3,}/g, "\n\n")
       // Handle bullet points before paragraph breaks

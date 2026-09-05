@@ -12,7 +12,7 @@ import { useProgressBar } from "@/hooks/useProgressBar";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { SubtitleStyling, useSubtitleStore } from "@/stores/subtitles";
-import { isFirefox } from "@/utils/detectFeatures";
+import { isFirefox } from "@/utils/browser/detectFeatures";
 
 export function ColorOption(props: {
   color: string;
@@ -96,24 +96,9 @@ export function CaptionDelay(props: {
         {/* Slider */}
         <div ref={ref}>
           <div
-            role="slider"
-            aria-label={props.label}
-            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
-            aria-valuemin={props.min}
-            aria-valuemax={props.max}
-            aria-valuenow={props.value}
-            tabIndex={0}
-            className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
+            className="group/progress w-full h-8 flex items-center cursor-pointer"
             onMouseDown={dragMouseDown}
             onTouchStart={dragMouseDown}
-            onKeyDown={(e) => {
-              const step = 1 / 10 ** (props.decimalsAllowed ?? 0);
-              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-                props.onChange?.(Math.min(props.max, props.value + step));
-              } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-                props.onChange?.(Math.max(props.min, props.value - step));
-              }
-            }}
           >
             <div
               dir="ltr"
@@ -171,8 +156,6 @@ export function CaptionDelay(props: {
               className={inputClasses}
               value={inputValue}
               autoFocus
-              aria-label={props.label}
-              title={props.label}
               onFocus={(e) => {
                 (e.target as HTMLInputElement).select();
               }}
@@ -285,24 +268,9 @@ export function CaptionSetting(props: {
       <div className="grid items-center grid-cols-[1fr,auto] gap-4">
         <div ref={ref}>
           <div
-            role="slider"
-            aria-label={props.label}
-            // eslint-disable-next-line jsx-a11y/role-has-required-aria-props
-            aria-valuemin={props.min}
-            aria-valuemax={props.max}
-            aria-valuenow={props.value}
-            tabIndex={0}
-            className="group/progress w-full h-8 flex items-center cursor-pointer outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded"
+            className="group/progress w-full h-8 flex items-center cursor-pointer"
             onMouseDown={dragMouseDown}
             onTouchStart={dragMouseDown}
-            onKeyDown={(e) => {
-              const step = 1 / 10 ** (props.decimalsAllowed ?? 0);
-              if (e.key === "ArrowRight" || e.key === "ArrowUp") {
-                props.onChange?.(Math.min(props.max, props.value + step));
-              } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
-                props.onChange?.(Math.max(props.min, props.value - step));
-              }
-            }}
           >
             <div
               dir="ltr"
@@ -341,8 +309,6 @@ export function CaptionSetting(props: {
               className={inputClasses}
               value={inputValue}
               autoFocus
-              aria-label={props.label}
-              title={props.label}
               onFocus={(e) => {
                 (e.target as HTMLInputElement).select();
               }}
@@ -360,7 +326,16 @@ export function CaptionSetting(props: {
               }
             />
           ) : (
-            <div className="relative outline-none focus:ring-2 focus:ring-[hsl(var(--colors-active))] rounded">
+            <div
+              className="relative"
+              onClick={(evt) => {
+                if ((evt.target as HTMLButtonElement).closest(".actions"))
+                  return;
+
+                setInputValue(props.value.toFixed(props.decimalsAllowed ?? 0));
+                setIsFocused(true);
+              }}
+            >
               <button
                 className={classNames(
                   inputClasses,
@@ -368,14 +343,6 @@ export function CaptionSetting(props: {
                 )}
                 type="button"
                 tabIndex={0}
-                title={`Edit ${props.label}`}
-                aria-label={`Edit ${props.label}`}
-                onClick={() => {
-                  setInputValue(
-                    props.value.toFixed(props.decimalsAllowed ?? 0),
-                  );
-                  setIsFocused(true);
-                }}
               >
                 {textTransformer(
                   props.value.toFixed(props.decimalsAllowed ?? 0),
@@ -386,12 +353,12 @@ export function CaptionSetting(props: {
                   <div className="actions w-6 h-full absolute left-0 top-0 grid grid-cols-1 items-center justify-center">
                     <button
                       type="button"
-                      title="Decrease value"
-                      aria-label="Decrease value"
-                      onClick={() =>
-                        props.onChange?.(
-                          props.value - 1 / 10 ** (props.decimalsAllowed ?? 0),
-                        )
+                      onClick={
+                        () =>
+                          props.onChange?.(
+                            props.value -
+                              1 / 10 ** (props.decimalsAllowed ?? 0),
+                          ) // Remove depending on the decimalsAllowed. If there's 1 decimal allowed, add 0.1. For 2, add 0.01, etc.
                       }
                       className={arrowButtonClasses}
                     >
@@ -401,12 +368,12 @@ export function CaptionSetting(props: {
                   <div className="actions w-6 h-full absolute right-0 top-0 grid grid-cols-1 items-center justify-center">
                     <button
                       type="button"
-                      title="Increase value"
-                      aria-label="Increase value"
-                      onClick={() =>
-                        props.onChange?.(
-                          props.value + 1 / 10 ** (props.decimalsAllowed ?? 0),
-                        )
+                      onClick={
+                        () =>
+                          props.onChange?.(
+                            props.value +
+                              1 / 10 ** (props.decimalsAllowed ?? 0),
+                          ) // Add depending on the decimalsAllowed. If there's 1 decimal allowed, add 0.1. For 2, add 0.01, etc.
                       }
                       className={arrowButtonClasses}
                     >
@@ -469,6 +436,7 @@ export function CaptionSettingsView({
       verticalPosition: 1,
       fontStyle: "default",
       borderThickness: 1,
+      lineHeight: 1.5,
     });
   };
 
@@ -504,8 +472,8 @@ export function CaptionSettingsView({
             </span>
             <CaptionDelay
               label={t("player.menus.subtitles.settings.delay")}
-              max={20}
-              min={-20}
+              max={40}
+              min={-40}
               onChange={(v) => setDelay(v)}
               value={delay}
               textTransformer={(s) => `${s}s`}
@@ -658,8 +626,6 @@ export function CaptionSettingsView({
                   <input
                     type="color"
                     value={styling.color}
-                    aria-label="Custom subtitle color"
-                    title="Custom subtitle color"
                     onChange={(e) => {
                       const color = e.target.value;
                       handleStylingChange({ ...styling, color });
@@ -672,47 +638,27 @@ export function CaptionSettingsView({
                 </div>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <Menu.FieldTitle>
-                {t("settings.subtitles.verticalPositionLabel")}
-              </Menu.FieldTitle>
-              <div className="flex justify-center items-center space-x-2">
-                <button
-                  type="button"
-                  className={classNames(
-                    "px-3 py-1 rounded transition-colors duration-100",
-                    styling.verticalPosition === 1
-                      ? "bg-video-context-buttonFocus"
-                      : "bg-video-context-buttonFocus bg-opacity-0 hover:bg-opacity-50",
-                  )}
-                  onClick={() =>
-                    handleStylingChange({
-                      ...styling,
-                      verticalPosition: 1,
-                    })
-                  }
-                >
-                  {t("settings.subtitles.low")}
-                </button>
-                <button
-                  type="button"
-                  className={classNames(
-                    "px-3 py-1 rounded transition-colors duration-100",
-                    styling.verticalPosition === 3
-                      ? "bg-video-context-buttonFocus"
-                      : "bg-video-context-buttonFocus bg-opacity-0 hover:bg-opacity-50",
-                  )}
-                  onClick={() =>
-                    handleStylingChange({
-                      ...styling,
-                      verticalPosition: 3,
-                    })
-                  }
-                >
-                  {t("settings.subtitles.high")}
-                </button>
-              </div>
-            </div>
+            <CaptionSetting
+              label={t("settings.subtitles.verticalPositionLabel")}
+              max={30}
+              min={0}
+              decimalsAllowed={0}
+              textTransformer={(s) => `${s}rem`}
+              onChange={(v) =>
+                handleStylingChange({ ...styling, verticalPosition: v })
+              }
+              value={styling.verticalPosition}
+            />
+            <CaptionSetting
+              label={t("settings.subtitles.lineSpacingLabel", "Line spacing")}
+              max={250}
+              min={100}
+              textTransformer={(s) => `${s}%`}
+              onChange={(v) =>
+                handleStylingChange({ ...styling, lineHeight: v / 100 })
+              }
+              value={(styling.lineHeight ?? 1.5) * 100}
+            />
             <Button
               className="w-full md:w-auto"
               theme="secondary"

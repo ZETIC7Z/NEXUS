@@ -46,6 +46,11 @@ export function SidebarPart(props: {
         id: "settings-connection",
         icon: Icons.LINK,
       },
+      {
+        textKey: "settings.ads.title",
+        id: "settings-ads",
+        icon: Icons.COINS,
+      },
     ],
     [],
   );

@@ -21,9 +21,9 @@ interface RoomUser {
   content: {
     title: string;
     type: string;
-    tmdbId?: number;
-    seasonId?: number;
-    episodeId?: number;
+    tmdbId?: string | number;
+    seasonId?: string | number;
+    episodeId?: string | number;
     seasonNumber?: number;
     episodeNumber?: number;
   };
@@ -48,6 +48,8 @@ interface WatchPartySyncResult {
   refreshRoomData: () => Promise<void>;
   // Current user count in room
   userCount: number;
+  // True when the sync backend could not be reached
+  isOffline: boolean;
 }
 
 /**
@@ -59,6 +61,7 @@ export function useWatchPartySync(
   const [roomUsers, setRoomUsers] = useState<RoomUser[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [userCount, setUserCount] = useState(1);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Refs for tracking state
   const syncStateRef = useRef({
@@ -280,8 +283,10 @@ export function useWatchPartySync(
       // Update room users
       syncStateRef.current.prevRoomUsers = users;
       setRoomUsers(users);
+      setIsOffline(false);
     } catch (error) {
       console.error("Failed to refresh room data:", error);
+      setIsOffline(true);
     }
   }, [backendUrl, account, roomCode, enabled]);
 
@@ -329,5 +334,6 @@ export function useWatchPartySync(
     isSyncing,
     refreshRoomData,
     userCount,
+    isOffline,
   };
 }

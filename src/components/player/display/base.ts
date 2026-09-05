@@ -12,18 +12,15 @@ import {
 } from "@/components/player/display/displayInterface";
 import { handleBuffered } from "@/components/player/utils/handleBuffered";
 import { getMediaErrorDetails } from "@/components/player/utils/mediaErrorDetails";
-import {
-  createM3U8ProxyUrl,
-  createMP4ProxyUrl,
-  isUrlAlreadyProxied,
-} from "@/components/player/utils/proxy";
+import { SpeechCapture } from "@/components/player/utils/speechCapture";
 import { useLanguageStore } from "@/stores/language";
+import { usePreferencesStore } from "@/stores/preferences";
+import { usePlayerStore } from "@/stores/player/store";
 import {
   LoadableSource,
   SourceQuality,
   getPreferredQuality,
 } from "@/stores/player/utils/qualities";
-import { processCdnLink } from "@/utils/cdn";
 import {
   canChangeVolume,
   canFullscreen,
@@ -32,8 +29,10 @@ import {
   canPlayHlsNatively,
   canWebkitFullscreen,
   canWebkitPictureInPicture,
-} from "@/utils/detectFeatures";
-import { makeEmitter } from "@/utils/events";
+  isIOS,
+} from "@/utils/browser/detectFeatures";
+import { makeEmitter } from "@/utils/common/events";
+import { isSameOriginStreamProxyUrl } from "@/utils/hosting/cdn";
 
 const levelConversionMap: Record<number, SourceQuality> = {
   360: "360",
@@ -66,7 +65,7 @@ function hlsLevelToQuality(level?: Level): SourceQuality | null {
     }
   }
 
-  return "360"; // fallback to lowest standard quality
+  return "unknown"; // fallback to unknown quality
 }
 
 function hlsLevelsToQualities(levels: Level[]): SourceQuality[] {
@@ -79,6 +78,13 @@ function hlsLevelsToQualities(levels: Level[]): SourceQuality[] {
 function sortLevelsByQuality(levels: Level[]): Level[] {
   return [...levels].sort((a, b) => (b.height || 0) - (a.height || 0));
 }
+
+// Mobile devices get leaner buffers and a lower ABR starting estimate:
+// less RAM, smaller screens and slower networks. Desktop keeps the deep
+// buffer that makes seeking instant.
+const IS_MOBILE =
+  isIOS || /Android|Mobile/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints ?? 0) > 1;
 
 export function makeVideoElementDisplayInterface(): DisplayInterface {
   const { emit, on, off } = makeEmitter<DisplayInterfaceEvents>();
@@ -94,10 +100,26 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
   let automaticQuality = false;
   let preferenceQuality: SourceQuality | null = null;
   let lastVolume = 1;
+
+
+  let audioCtx: AudioContext | null = null;
+  let audioAnalyser: AnalyserNode | null = null;
+  let audioStreamSource: MediaStreamAudioSourceNode | null = null;
+  let audioSampleTimer: ReturnType<typeof setInterval> | null = null;
+  let audioBuffer: { t: number; e: number }[] = [];
+  let speechCapture: SpeechCapture | null = null;
+  let audioSyncAvailable = false;
+  let audioInitAttempts = 0;
+  const AUDIO_BUFFER_MAX = 9000; // ~6 min at 25Hz
+  const AUDIO_INIT_MAX_ATTEMPTS = 6;
   let lastValidDuration = 0; // Store the last valid duration to prevent reset during source switches
   let lastValidTime = 0; // Store the last valid time to prevent reset during source switches
   let shouldAutoplayAfterLoad = false; // Flag to track if we should autoplay after loading completes
-  let currentBlobUrl: string | null = null;
+  let qualityChangeTimeout: NodeJS.Timeout | null = null; // Timeout for debouncing rapid quality changes
+  let speedHistory: number[] = [];
+  let lastProgressTime = 0;
+  let lastBufferedEnd = 0;
+  let fileQualitySwitchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   const languagePromises = new Map<
     string,
@@ -115,19 +137,11 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
 
   function reportAudioTracks() {
     if (!hls) return;
+    const currentLanguage = useLanguageStore.getState().language;
     const audioTracks = hls.audioTracks;
-    // Always prefer English by default if available in tracks, otherwise fall back to user UI language
-    let defaultTrack = audioTracks.find(
-      (v) =>
-        v.lang?.toLowerCase().startsWith("en") ||
-        v.name?.toLowerCase().includes("english"),
-    );
-    if (!defaultTrack) {
-      const currentLanguage = useLanguageStore.getState().language;
-      defaultTrack = audioTracks.find((v) => v.lang === currentLanguage);
-    }
-    if (defaultTrack) {
-      hls.audioTrack = audioTracks.indexOf(defaultTrack);
+    const languageTrack = audioTracks.find((v) => v.lang === currentLanguage);
+    if (languageTrack) {
+      hls.audioTrack = audioTracks.indexOf(languageTrack);
     }
     const currentTrack = audioTracks?.[hls.audioTrack ?? 0];
     if (!currentTrack) return;
@@ -175,18 +189,29 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         }
       }
     } else {
-      hls.currentLevel = -1;
-      hls.loadLevel = -1;
+       // Good job fucking up auto qualities on non standarts so i have to make this fix
+      const sortedLevels = sortLevelsByQuality(hls.levels);
+      const topLevel = sortedLevels[0];
+      const topIndex = topLevel ? hls.levels.indexOf(topLevel) : -1;
+      if (topIndex !== -1) {
+        hls.startLevel = topIndex;
+        hls.nextLevel = topIndex;
+      } else {
+        hls.currentLevel = -1;
+        hls.loadLevel = -1;
+      }
     }
-    const quality = hlsLevelToQuality(hls.levels[hls.currentLevel]);
-    emit("changedquality", quality);
+
   }
 
-  async function setupSource(vid: HTMLVideoElement, src: LoadableSource) {
-    hls = null;
+  function setupSource(vid: HTMLVideoElement, src: LoadableSource) {
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
     if (src.type === "hls") {
       if (canPlayHlsNatively(vid)) {
-        vid.src = processCdnLink(src.url);
+        vid.src = src.url;
         vid.currentTime = startAt;
         return;
       }
@@ -196,9 +221,15 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       if (!hls) {
         hls = new Hls({
           autoStartLoad: true,
-          maxBufferLength: 120, // 120 seconds
-          maxMaxBufferLength: 240,
-          abrEwmaDefaultEstimate: 5 * 1000 * 1000, // 5 Mbps default bandwidth estimate for better ABR decisions
+          // Device-aware buffering: mobile keeps a short, memory-friendly
+          // window; desktop buffers deep for instant seeking.
+          maxBufferLength: IS_MOBILE ? 30 : 120,
+          maxMaxBufferLength: IS_MOBILE ? 60 : 240,
+          backBufferLength: IS_MOBILE ? 30 : Infinity,
+          capLevelToPlayerSize: IS_MOBILE,
+          abrEwmaDefaultEstimate: IS_MOBILE
+            ? 1.5 * 1000 * 1000 // 1.5 Mbps - avoid 4K starts on cell data
+            : 5 * 1000 * 1000, // 5 Mbps default bandwidth estimate for better ABR decisions
           fragLoadPolicy: {
             default: {
               maxLoadTimeMs: 30 * 1000, // allow it load extra long, fragments are slow if requested for the first time on an origin
@@ -216,12 +247,31 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
             },
           },
           renderTextTracksNatively: false,
+          xhrSetup: (xhr, url) => {
+            if (isSameOriginStreamProxyUrl(url)) return;
+            const requestHeaders = {
+              ...src.preferredHeaders,
+              ...src.headers,
+            };
+            Object.entries(requestHeaders).forEach(([key, value]) => {
+              try {
+                xhr.setRequestHeader(key, value);
+              } catch {
+                // Browsers reject restricted headers such as Referer/User-Agent.
+              }
+            });
+          },
         });
         const exceptions = [
           "Failed to execute 'appendBuffer' on 'SourceBuffer': This SourceBuffer has been removed from the parent media source.",
         ];
         hls?.on(Hls.Events.ERROR, (event, data) => {
-          console.error("HLS error", data);
+          // Recoverable hls.js errors (buffer stalls, fragment retries, level
+          // switches) are normal while streaming - only fatal errors belong in
+          // the console so real problems stay visible.
+          if (data.fatal) {
+            console.error("HLS error", data);
+          }
 
           // Extract detailed HLS error information
           const hlsErrorInfo = {
@@ -313,8 +363,21 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         });
         hls.on(Hls.Events.LEVEL_SWITCHED, () => {
           if (!hls) return;
-          const quality = hlsLevelToQuality(hls.levels[hls.currentLevel]);
-          emit("changedquality", quality);
+
+          // Don't process level switched events during debounced quality changes
+          if (qualityChangeTimeout) return;
+
+          const currentLevel = hls.levels[hls.currentLevel];
+          const currentQuality = hlsLevelToQuality(currentLevel);
+
+          if (automaticQuality) {
+            // Only emit quality changes when automatic quality is enabled
+            emit("changedquality", currentQuality);
+          } else {
+            // For manual quality selection, emit the user's preferred quality
+            // This ensures the UI shows the selected quality, not the actual playing quality
+            emit("changedquality", preferenceQuality);
+          }
         });
         hls.on(Hls.Events.SUBTITLE_TRACK_LOADED, () => {
           for (const [lang, resolve] of languagePromises) {
@@ -328,96 +391,13 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         });
       }
 
-      if (isExtensionActiveCached()) {
-        const targetDomains = new Set<string>();
-        if (src.hlsQualities) {
-          Object.values(src.hlsQualities).forEach((url) => {
-            try {
-              targetDomains.add(new URL(url).hostname);
-            } catch {}
-          });
-        }
-        try {
-          if (src.url && !src.url.startsWith("blob:") && !src.url.startsWith("data:")) {
-            targetDomains.add(new URL(src.url).hostname);
-          }
-        } catch {}
-
-        if (targetDomains.size > 0) {
-          await setDomainRule({
-            ruleId: RULE_IDS.SET_DOMAINS_HLS,
-            targetDomains: Array.from(targetDomains),
-            requestHeaders: {
-              ...src.preferredHeaders,
-              ...src.headers,
-            },
-          });
-        }
-      }
-
       hls.attachMedia(vid);
-
-      if (src.hlsQualities && Object.keys(src.hlsQualities).length > 0) {
-        const HLS_QUALITY_INFO: Record<string, { bandwidth: number; resolution: string }> = {
-          "360": { bandwidth: 800000, resolution: "640x360" },
-          "480": { bandwidth: 1400000, resolution: "854x480" },
-          "720": { bandwidth: 2800000, resolution: "1280x720" },
-          "1080": { bandwidth: 5000000, resolution: "1920x1080" },
-          "4k": { bandwidth: 15000000, resolution: "3840x2160" },
-        };
-        const qualitySorting: Record<string, number> = {
-          unknown: 0,
-          "360": 10,
-          "480": 20,
-          "720": 30,
-          "1080": 40,
-          "4k": 50,
-        };
-        const qualityNameMap: Record<string, string> = {
-          "4k": "4K",
-          "1080": "1080p",
-          "360": "360p",
-          "480": "480p",
-          "720": "720p",
-          unknown: "Auto",
-        };
-
-        let m3u8 = "#EXTM3U\n#EXT-X-VERSION:3\n";
-        const sortedKeys = Object.keys(src.hlsQualities).sort((a, b) => {
-          return (qualitySorting[a] ?? 0) - (qualitySorting[b] ?? 0);
-        });
-
-        for (const quality of sortedKeys) {
-          const url = src.hlsQualities[quality];
-          const info = HLS_QUALITY_INFO[quality] || { bandwidth: 1500000, resolution: "854x480" };
-          const name = qualityNameMap[quality] || quality;
-          m3u8 += `#EXT-X-STREAM-INF:BANDWIDTH=${info.bandwidth},RESOLUTION=${info.resolution},NAME="${name}"\n`;
-          let finalUrl = url;
-          if (src.headers && Object.keys(src.headers).length > 0 && !url.includes("proxy")) {
-            finalUrl = createM3U8ProxyUrl(url, src.headers);
-          }
-          m3u8 += `${finalUrl}\n`;
-        }
-
-        const blob = new Blob([m3u8], { type: "application/x-mpegURL" });
-        if (currentBlobUrl) {
-          URL.revokeObjectURL(currentBlobUrl);
-        }
-        currentBlobUrl = URL.createObjectURL(blob);
-        hls.loadSource(currentBlobUrl);
-      } else {
-        let hlsUrl = processCdnLink(src.url);
-        if (src.headers && Object.keys(src.headers).length > 0 && !hlsUrl.includes("proxy")) {
-          hlsUrl = createM3U8ProxyUrl(hlsUrl, src.headers);
-        }
-        hls.loadSource(hlsUrl);
-      }
-
+      hls.loadSource(src.url);
       vid.currentTime = startAt;
       return;
     }
 
-    vid.src = processCdnLink(src.url);
+    vid.src = src.url;
     vid.currentTime = startAt;
   }
 
@@ -440,9 +420,38 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     }
   }
 
-  async function setSource() {
+  let lastQualitySwitchTimestamp = 0;
+
+  function triggerFileQualitySwitch(newQuality: string) {
+    if (fileQualitySwitchTimeout) return;
+    if (newQuality === preferenceQuality) return;
+    if (Date.now() - lastQualitySwitchTimestamp < 15000) return; // 15s cooldown
+
+    fileQualitySwitchTimeout = setTimeout(() => {
+      const storeSource = usePlayerStore.getState().source;
+      if (videoElement && storeSource?.type === "file") {
+        const stream = storeSource.qualities[newQuality as SourceQuality];
+        if (stream) {
+          lastQualitySwitchTimestamp = Date.now();
+          const isPaused = videoElement.paused;
+          const currentTime = videoElement.currentTime;
+          videoElement.src = stream.url;
+          videoElement.currentTime = currentTime;
+          if (!isPaused) {
+            videoElement.play().catch(() => {});
+          }
+          preferenceQuality = newQuality as any;
+          emit("changedquality", newQuality as any);
+          speedHistory = [];
+        }
+      }
+      fileQualitySwitchTimeout = null;
+    }, 1000);
+  }
+
+  function setSource() {
     if (!videoElement || !source) return;
-    await setupSource(videoElement, source);
+    setupSource(videoElement, source);
 
     videoElement.addEventListener("play", () => {
       emit("play", undefined);
@@ -457,25 +466,73 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         type: "htmlvideo",
       });
     });
-    videoElement.addEventListener("playing", () => emit("play", undefined));
+    videoElement.addEventListener("playing", () => {
+      emit("play", undefined);
+      initAudioAnalysis();
+    });
     videoElement.addEventListener("pause", () => emit("pause", undefined));
     videoElement.addEventListener("canplay", () => {
-      emit("loading", false);
+      // Check if video has enough buffered data to play smoothly (at least 5 seconds ahead)
+      const hasEnoughBuffer = (() => {
+        if (!videoElement) return false;
+        const currentTime = videoElement.currentTime ?? 0;
+        const buffered = videoElement.buffered;
+        if (buffered.length === 0) return false;
+
+        // Find the buffered range that contains current time
+        for (let i = 0; i < buffered.length; i += 1) {
+          if (
+            currentTime >= buffered.start(i) &&
+            currentTime <= buffered.end(i)
+          ) {
+            const bufferedAhead = buffered.end(i) - currentTime;
+            return bufferedAhead >= 5; // At least 5 seconds buffered ahead
+          }
+        }
+        return false;
+      })();
+
+      // Only set loading to false if we have enough buffer or if we're not at the start
+      if (hasEnoughBuffer || (videoElement?.currentTime ?? 0) > 0) {
+        emit("loading", false);
+      }
+
       // Attempt autoplay if this was an autoplay transition (startAt = 0)
       if (shouldAutoplayAfterLoad && startAt === 0 && videoElement) {
         shouldAutoplayAfterLoad = false; // Reset the flag
         // Try to play - this will work on most platforms, but iOS may block it
         const playPromise = videoElement.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            // Play was blocked (likely iOS), emit that we're not playing
-            // The AutoPlayStart component will show a play button
-            emit("pause", undefined);
-          });
+          playPromise
+            .then(() => {
+              // Autoplay succeeded
+            })
+            .catch((_error) => {
+              // Play was blocked (likely iOS), emit that we're not playing
+              // The AutoPlayStart component will show a play button
+              emit("pause", undefined);
+            });
         }
       }
     });
-    videoElement.addEventListener("waiting", () => emit("loading", true));
+
+    let waitingDebounceTimeout: any = null;
+    videoElement.addEventListener("waiting", () => {
+      if (waitingDebounceTimeout) clearTimeout(waitingDebounceTimeout);
+      waitingDebounceTimeout = setTimeout(() => {
+        if (videoElement?.readyState && videoElement.readyState < 3) {
+          emit("loading", true);
+          const storeSource = usePlayerStore.getState().source;
+          if (storeSource?.type === "file" && automaticQuality && Date.now() - lastQualitySwitchTimestamp > 15000) {
+            const sortedQuals = ["360", "480", "720", "1080", "4k"].filter((q) => storeSource.qualities[q as SourceQuality]);
+            const currentIdx = sortedQuals.indexOf(preferenceQuality || "480");
+            if (currentIdx > 0) {
+              triggerFileQualitySwitch(sortedQuals[currentIdx - 1]);
+            }
+          }
+        }
+      }, 1200);
+    });
     videoElement.addEventListener("volumechange", () =>
       emit(
         "volumechange",
@@ -516,25 +573,89 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
     });
     videoElement.addEventListener("progress", () => {
-      if (videoElement)
-        emit(
-          "buffered",
-          handleBuffered(videoElement.currentTime, videoElement.buffered),
+      if (videoElement) {
+        const bufferedTime = handleBuffered(
+          videoElement.currentTime,
+          videoElement.buffered,
         );
+        emit("buffered", bufferedTime);
+
+        // Adaptive Bitrate for File sources (MP4)
+        const storeSource = usePlayerStore.getState().source;
+        if (storeSource?.type === "file" && automaticQuality) {
+          const now = Date.now();
+          const currentTime = videoElement.currentTime;
+          const buffered = videoElement.buffered;
+          let activeRangeEnd = 0;
+          for (let i = 0; i < buffered.length; i += 1) {
+            if (currentTime >= buffered.start(i) && currentTime <= buffered.end(i)) {
+              activeRangeEnd = buffered.end(i);
+              break;
+            }
+          }
+          const bufferedAhead = activeRangeEnd - currentTime;
+
+          if (lastProgressTime > 0 && activeRangeEnd > lastBufferedEnd) {
+            const deltaBuffered = activeRangeEnd - lastBufferedEnd;
+            const deltaTime = (now - lastProgressTime) / 1000;
+            if (deltaTime > 0.1) {
+              const ratio = deltaBuffered / deltaTime;
+              speedHistory.push(ratio);
+              if (speedHistory.length > 15) speedHistory.shift();
+
+              // Require at least 10 samples before evaluating automatic quality switch
+              if (speedHistory.length >= 10 && Date.now() - lastQualitySwitchTimestamp > 20000) {
+                const avgRatio = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+                const sortedQuals = ["360", "480", "720", "1080", "4k"].filter((q) => storeSource.qualities[q as SourceQuality]);
+                const currentIdx = sortedQuals.indexOf(preferenceQuality || "480");
+
+                if (avgRatio > 4.0 && bufferedAhead > 15 && currentIdx !== -1 && currentIdx < sortedQuals.length - 1) {
+                  // Connection is rock solid & buffer is deep, upgrade quality
+                  const nextQuality = sortedQuals[currentIdx + 1];
+                  triggerFileQualitySwitch(nextQuality);
+                } else if (avgRatio < 0.8 && bufferedAhead < 3 && currentIdx > 0) {
+                  // Connection is poor & buffer is low, downgrade quality
+                  const prevQuality = sortedQuals[currentIdx - 1];
+                  triggerFileQualitySwitch(prevQuality);
+                }
+              }
+            }
+          }
+          lastProgressTime = now;
+          lastBufferedEnd = activeRangeEnd;
+        }
+
+        // Check if we now have enough buffer to stop loading
+        const hasEnoughBuffer = (() => {
+          const buffered = videoElement.buffered;
+          if (buffered.length === 0) return false;
+
+          const currentTime = videoElement.currentTime ?? 0;
+          // Find the buffered range that contains current time
+          for (let i = 0; i < buffered.length; i += 1) {
+            if (
+              currentTime >= buffered.start(i) &&
+              currentTime <= buffered.end(i)
+            ) {
+              const bufferedAhead = buffered.end(i) - currentTime;
+              return bufferedAhead >= 5; // At least 5 seconds buffered ahead
+            }
+          }
+          return false;
+        })();
+
+        // If we're still loading but now have enough buffer, stop loading
+        // This handles cases where canplay fired with insufficient buffer
+        if (hasEnoughBuffer && videoElement.readyState >= 3) {
+          emit("loading", false);
+        }
+      }
     });
     videoElement.addEventListener("webkitendfullscreen", () => {
       isFullscreen = false;
       emit("fullscreen", isFullscreen);
       if (!isFullscreen) emit("needstrack", false);
     });
-    videoElement.addEventListener(
-      "webkitplaybacktargetavailabilitychanged",
-      (e: any) => {
-        if (e.availability === "available") {
-          emit("canairplay", true);
-        }
-      },
-    );
     videoElement.addEventListener(
       "webkitpresentationmodechanged",
       webkitPresentationModeChange,
@@ -556,7 +677,108 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     });
   }
 
+  function teardownAudioAnalysis() {
+    if (audioSampleTimer) {
+      clearInterval(audioSampleTimer);
+      audioSampleTimer = null;
+    }
+    try {
+      speechCapture?.stop();
+    } catch {
+      // ignore
+    }
+    speechCapture = null;
+    try {
+      audioStreamSource?.disconnect();
+    } catch {
+      // ignore
+    }
+    if (audioCtx) audioCtx.close().catch(() => {});
+    audioStreamSource = null;
+    audioAnalyser = null;
+    audioCtx = null;
+    audioBuffer = [];
+    audioSyncAvailable = false;
+    audioInitAttempts = 0;
+  }
+
+
+  function initAudioAnalysis() {
+    if (audioAnalyser || !videoElement) return; 
+    if (audioInitAttempts >= AUDIO_INIT_MAX_ATTEMPTS) return;
+  
+    if (!usePreferencesStore.getState().enableAutoSubtitleSync) {
+      audioInitAttempts = AUDIO_INIT_MAX_ATTEMPTS;
+      return;
+    }
+    audioInitAttempts += 1;
+    try {
+      const el = videoElement as any;
+      const stream: MediaStream | undefined =
+        el.captureStream?.() ?? el.mozCaptureStream?.();
+      if (!stream || stream.getAudioTracks().length === 0) return; 
+
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) {
+        audioInitAttempts = AUDIO_INIT_MAX_ATTEMPTS;
+        return;
+      }
+      audioCtx = new Ctx();
+      audioCtx.resume?.().catch(() => {});
+      audioStreamSource = audioCtx.createMediaStreamSource(stream);
+      audioAnalyser = audioCtx.createAnalyser();
+      audioAnalyser.fftSize = 2048;
+      
+      audioStreamSource.connect(audioAnalyser);
+
+     
+      if (usePreferencesStore.getState().enableAutoSubtitleSync) {
+        try {
+          speechCapture = new SpeechCapture(
+            audioCtx,
+            audioStreamSource,
+            () => videoElement?.currentTime ?? 0,
+          );
+          speechCapture.start();
+        } catch {
+          speechCapture = null;
+        }
+      }
+
+      const freqBuf = new Uint8Array(audioAnalyser.frequencyBinCount);
+      const res = audioCtx.sampleRate / audioAnalyser.fftSize;
+      const lowBin = Math.max(1, Math.floor(300 / res)); 
+      const highBin = Math.min(freqBuf.length - 1, Math.ceil(3400 / res));
+      audioSampleTimer = setInterval(() => {
+        if (!videoElement || !audioAnalyser) return;
+        if (videoElement.paused || isSeeking) return;
+        audioAnalyser.getByteFrequencyData(freqBuf);
+        let sum = 0;
+        for (let i = lowBin; i <= highBin; i += 1) sum += freqBuf[i];
+       
+        const e = sum / ((highBin - lowBin + 1) * 255);
+        if (e > 1e-3) audioSyncAvailable = true;
+        audioBuffer.push({ t: videoElement.currentTime, e });
+        if (audioBuffer.length > AUDIO_BUFFER_MAX) {
+          audioBuffer.splice(0, audioBuffer.length - AUDIO_BUFFER_MAX);
+        }
+      }, 40);
+    } catch {
+      // SecurityError (tainted) or unsupported — give up permanently.
+      teardownAudioAnalysis();
+      audioInitAttempts = AUDIO_INIT_MAX_ATTEMPTS;
+    }
+  }
+
   function unloadSource() {
+    // Clear any pending quality change timeout
+    if (qualityChangeTimeout) {
+      clearTimeout(qualityChangeTimeout);
+      qualityChangeTimeout = null;
+    }
+
+    teardownAudioAnalysis();
+
     if (videoElement) {
       videoElement.removeAttribute("src");
       videoElement.load();
@@ -564,10 +786,6 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     if (hls) {
       hls.destroy();
       hls = null;
-    }
-    if (currentBlobUrl) {
-      URL.revokeObjectURL(currentBlobUrl);
-      currentBlobUrl = null;
     }
     // Reset the last valid duration and time when unloading source
     lastValidDuration = 0;
@@ -578,6 +796,11 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     unloadSource();
     if (videoElement) {
       videoElement = null;
+    }
+    // Clear any remaining timeout
+    if (qualityChangeTimeout) {
+      clearTimeout(qualityChangeTimeout);
+      qualityChangeTimeout = null;
     }
   }
 
@@ -657,10 +880,47 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       setSource();
     },
     changeQuality(newAutomaticQuality, newPreferredQuality) {
+      const storeSource = usePlayerStore.getState().source;
+      if (storeSource?.type === "file") {
+        automaticQuality = newAutomaticQuality;
+        if (newAutomaticQuality) {
+          speedHistory = [];
+          const sortedQuals = ["360", "480", "720", "1080", "4k"].filter((q) => storeSource.qualities[q as SourceQuality]);
+          const startQual = sortedQuals.includes("480") ? "480" : (sortedQuals[0] ?? "unknown");
+          triggerFileQualitySwitch(startQual);
+        } else if (newPreferredQuality) {
+          const stream = storeSource.qualities[newPreferredQuality as SourceQuality];
+          if (stream && videoElement) {
+            const isPaused = videoElement.paused;
+            const currentTime = videoElement.currentTime;
+            videoElement.src = stream.url;
+            videoElement.currentTime = currentTime;
+            if (!isPaused) {
+              videoElement.play().catch(() => {});
+            }
+            preferenceQuality = newPreferredQuality;
+            emit("changedquality", newPreferredQuality);
+          }
+        }
+        return;
+      }
+
       if (source?.type !== "hls") return;
+
+      // Clear any pending quality change to prevent race conditions
+      if (qualityChangeTimeout) {
+        clearTimeout(qualityChangeTimeout);
+        qualityChangeTimeout = null;
+      }
+
       automaticQuality = newAutomaticQuality;
       preferenceQuality = newPreferredQuality;
-      setupQualityForHls();
+
+      // Debounce quality changes to prevent rapid switching issues
+      qualityChangeTimeout = setTimeout(() => {
+        setupQualityForHls();
+        qualityChangeTimeout = null;
+      }, 100); // 100ms debounce delay
     },
 
     processVideoElement(video) {
@@ -679,7 +939,9 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       videoElement?.pause();
     },
     play() {
+      if (audioCtx?.state === "suspended") audioCtx.resume().catch(() => {});
       videoElement?.play();
+      initAudioAnalysis();
     },
     setSeeking(active) {
       if (active === isSeeking) return;
@@ -724,16 +986,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
     },
     toggleFullscreen() {
-      const screenAny = window.screen as any;
       if (isFullscreen) {
-        if (screenAny?.orientation?.unlock) {
-          try {
-            screenAny.orientation.unlock();
-          } catch {
-            // Silently fail
-          }
-        }
-
         isFullscreen = false;
         emit("fullscreen", isFullscreen);
         emit("needstrack", false);
@@ -743,12 +996,6 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
 
       // enter fullscreen
-      if (screenAny?.orientation?.lock) {
-        screenAny.orientation.lock("landscape").catch(() => {
-          // Silently fail if not supported (iOS/Desktop)
-        });
-      }
-
       isFullscreen = true;
       emit("fullscreen", isFullscreen);
       if (!canFullscreen() || fscreen.fullscreenElement) return;
@@ -781,80 +1028,6 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
         }
       }
     },
-    startAirplay() {
-      const videoPlayer = videoElement as any;
-      if (!videoPlayer || !videoPlayer.webkitShowPlaybackTargetPicker) return;
-
-      if (!source) {
-        // No source loaded, just trigger Airplay
-        videoPlayer.webkitShowPlaybackTargetPicker();
-        return;
-      }
-
-      // Store the original URL to restore later
-      const originalUrl =
-        source?.type === "hls" ? hls?.url || source.url : videoPlayer.src;
-
-      let proxiedUrl: string | null = null;
-
-      if (source?.type === "hls") {
-        // Only proxy HLS streams if they need it:
-        // 1. Not already proxied AND
-        // 2. Has headers (either preferredHeaders or headers)
-        const allHeaders = {
-          ...source.preferredHeaders,
-          ...source.headers,
-        };
-        const hasHeaders = Object.keys(allHeaders).length > 0;
-
-        // Don't create proxy URL if it's already using the proxy
-        if (!isUrlAlreadyProxied(source.url) && hasHeaders) {
-          proxiedUrl = createM3U8ProxyUrl(source.url, allHeaders);
-        } else {
-          proxiedUrl = source.url; // Already proxied or no headers needed
-        }
-      } else if (source?.type === "mp4") {
-        // TODO: Implement MP4 proxy for protected streams
-        const hasHeaders =
-          source.headers && Object.keys(source.headers).length > 0;
-        if (hasHeaders) {
-          // Use MP4 proxy for streams with headers
-          proxiedUrl = createMP4ProxyUrl(source.url, source.headers || {});
-        } else {
-          proxiedUrl = source.url;
-        }
-      }
-
-      if (proxiedUrl && proxiedUrl !== originalUrl) {
-        // Temporarily set the proxied URL for Airplay
-        if (source?.type === "hls") {
-          if (hls) {
-            hls.loadSource(proxiedUrl);
-          }
-        } else {
-          videoPlayer.src = proxiedUrl;
-        }
-
-        // Small delay to ensure the URL is set before triggering Airplay
-        setTimeout(() => {
-          videoPlayer.webkitShowPlaybackTargetPicker();
-
-          // Restore original URL after a short delay
-          setTimeout(() => {
-            if (source?.type === "hls") {
-              if (hls && originalUrl) {
-                hls.loadSource(originalUrl);
-              }
-            } else if (originalUrl) {
-              videoPlayer.src = originalUrl;
-            }
-          }, 1000);
-        }, 100);
-      } else {
-        // No proxying needed, just trigger Airplay
-        videoPlayer.webkitShowPlaybackTargetPicker();
-      }
-    },
     setPlaybackRate(rate) {
       if (videoElement) videoElement.playbackRate = rate;
     },
@@ -875,11 +1048,46 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     getSubtitleTracks() {
       return hls?.subtitleTracks ?? [];
     },
-    async setSubtitlePreference(lang) {
-      if (!lang) {
-        if (hls) hls.subtitleTrack = -1;
-        return Promise.resolve();
+    getAudioActivity() {
+
+      if (speechCapture?.isReady()) return speechCapture.getActivitySamples();
+      return audioBuffer;
+    },
+    getCodecsHint() {
+      // hls.js probes real codec fourccs from the actual segment bytes
+      // during demuxing, even when the manifest's #EXT-X-STREAM-INF line
+      // omits CODECS= entirely — this is ground truth, unlike a
+      // resolution-keyed guess. Used to hand Chromecast's receiver (which
+      // never runs hls.js and needs CODECS in the manifest text) real data
+      // instead of a server-side guess.
+      const level = hls?.levels?.[hls.currentLevel];
+      if (!level) return null;
+      const codecs = [level.videoCodec, level.audioCodec]
+        .filter((c): c is string => !!c)
+        .join(",");
+      return codecs || null;
+    },
+    getResolvedVariantUrl() {
+      // The currently-active level's OWN media-playlist URL (already
+      // resolved to an absolute /hls?v=<token> through artemis) — fetching
+      // this directly returns a plain media playlist with real CDN segment
+      // URLs already in it (confirmed live), no further master/variant
+      // negotiation needed. Handing this to Chromecast instead of the master
+      // means Shaka Player never has to do its own variant-selection fetch
+      // through artemis at all — it just gets one flat playlist.
+      const level = hls?.levels?.[hls.currentLevel];
+      return level?.uri ?? null;
+    },
+    isAudioSyncAvailable() {
+      return audioSyncAvailable || !!speechCapture?.isReady();
+    },
+    getAudioWindow(durationSec: number) {
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
       }
+      return speechCapture?.getAudioWindow(durationSec) ?? null;
+    },
+    async setSubtitlePreference(lang) {
       // default subtitles are already loaded by hls.js
       const track = hls?.subtitleTracks.find((t) => t.lang === lang);
       if (track?.details !== undefined) return Promise.resolve();

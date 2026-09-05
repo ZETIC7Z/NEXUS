@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ofetch } from "ofetch";
 
 import { getApiToken, setApiToken } from "@/backend/helpers/providerApi";

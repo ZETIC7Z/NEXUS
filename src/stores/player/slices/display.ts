@@ -1,7 +1,6 @@
 import { DisplayInterface } from "@/components/player/display/displayInterface";
-import { playerStatus, getMediaKey } from "@/stores/player/slices/source";
+import { playerStatus } from "@/stores/player/slices/source";
 import { MakeSlice } from "@/stores/player/slices/types";
-import { usePreferencesStore } from "@/stores/preferences";
 
 export interface DisplaySlice {
   display: DisplayInterface | null;
@@ -91,52 +90,12 @@ export const createDisplaySlice: MakeSlice<DisplaySlice> = (set, get) => ({
         s.caption.asTrack = needsTrack;
       });
     });
-    newDisplay.on("canairplay", (canAirplay) => {
-      set((s) => {
-        s.interface.canAirplay = canAirplay;
-      });
-    });
     newDisplay.on("playbackrate", (rate) => {
       set((s) => {
         s.mediaPlaying.playbackRate = rate;
       });
     });
     newDisplay.on("error", (err) => {
-      const state = get() as any;
-      const enableAutoResume = usePreferencesStore.getState().enableAutoResumeOnPlaybackError;
-      const currentSourceId = state.sourceId;
-      const currentEmbedId = state.embedId;
-
-      const isFatalError =
-        err.type === "hls"
-          ? (err.hls?.fatal ?? false)
-          : err.type === "htmlvideo";
-
-      if (enableAutoResume && isFatalError && currentSourceId) {
-        // Mark failed source/embed
-        if (currentEmbedId) {
-          state.addFailedEmbed(currentSourceId, currentEmbedId);
-          const mediaKey = getMediaKey(state.meta);
-          if (mediaKey) {
-            const failedEmbedsForMedia = state.failedEmbedsPerMedia[mediaKey] || {};
-            const failedEmbedsForSource = failedEmbedsForMedia[currentSourceId] || [];
-            if (failedEmbedsForSource.length >= 2) {
-              state.addFailedSource(currentSourceId);
-            }
-          }
-        } else {
-          state.addFailedSource(currentSourceId);
-        }
-
-        // Auto-resume: transition straight to scraping status
-        set((s: any) => {
-          s.resumeFromSourceId = currentSourceId;
-          s.status = playerStatus.SCRAPING;
-          s.interface.error = undefined;
-        });
-        return;
-      }
-
       set((s) => {
         s.status = playerStatus.PLAYBACK_ERROR;
         s.interface.error = err;
