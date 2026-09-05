@@ -55,6 +55,15 @@
 
 ## 🆕 What's New
 
+### v6.4.0 - September 4, 2026
+
+- 🎬 **New Streaming Providers** — Videasy, VaPlayer, CastleTV, ShowBox, ZXCStreams, OneTouchTV, AniKoto, AniKai, NetMirror and Yamie now all work on this site.
+- ⚡ **Faster Loading** — The site is optimized to load much faster on all devices and browsers.
+- ✨ **Watch On NEXUS 2.0** — New cross-site button added to the menu with a glow + NEW badge.
+- 🛡️ **Ads Toggle** — You can now turn ads on or off from Settings (Preferences → Disable advertisements).
+- 🧾 **Ads Ready** — The ad slot is prepared; add your own Money-Tag banner via  (see ADDING_ADS_TUTORIAL.md).
+
+
 ### v6.3.0 - July 1, 2026 (Updated: 1:04 AM PHT)
 
 #### 🌐 Dual Backend Account & Watch Session Synchronization

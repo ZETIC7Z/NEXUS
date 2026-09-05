@@ -1,128 +1,98 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   buildProviders,
-  getBuiltinEmbeds,
-  getBuiltinSources,
   makeStandardFetcher,
   targets,
-} from "@p-stream/providers";
+} from "@nexus/providers";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
+import { makeExtensionFetcher } from "@/backend/providers/fetchers";
 import {
-  makeExtensionFetcher,
-  makeLoadBalancedSimpleProxyFetcher,
-  setupM3U8Proxy,
-} from "@/backend/providers/fetchers";
-import { vidlinkScraper } from "@/backend/providers/custom";
-import { zeticuzScrapers } from "@/backend/providers/zeticuz-provider";
+  nexusCustomProviders,
+  nexusCustomEmbeds,
+  NEXUS_PROVIDER_CATALOG,
+} from "@/providers/nexus-providers-index";
 
-// Initialize M3U8 proxy on module load
-setupM3U8Proxy();
-
-const zeticuzIds = zeticuzScrapers.map((s) => s.id);
-
-/**
- * Patch builtin provider names so we can add emojis without touching the package.
- * true source name VidLink 🔥 / Alias use for this site: Abyss
- * true source name LookMovies 🔥 / Alias use for this site: Apex
- */
-const PROVIDER_NAME_PATCHES: Record<string, string> = {
-  "vidlink-custom": "Abyss 🔥",
-  lookmovie: "Apex 🔥",
-};
-
-function patchProviderNames<T extends { id: string; name: string }[]>(
-  providers: T,
-): T {
-  providers.forEach((p) => {
-    if (PROVIDER_NAME_PATCHES[p.id]) {
-      p.name = PROVIDER_NAME_PATCHES[p.id];
-    }
-  });
-  return providers;
-}
-
-function buildBase(includeExtensionSources: boolean) {
-  const builder = buildProviders().setFetcher(makeStandardFetcher(fetch));
-
-  // Add each ZETICUZ provider as its own selectable source.
-  // They share a response cache inside zeticuz-provider.ts so the backend is only
-  // called once per media even though every provider is registered separately.
-  // Ranks must be unique, so decrement by 1 for each provider.
-  zeticuzScrapers.forEach((scraper, index) => {
-    builder.addSource({ ...scraper, rank: 950 - index } as any);
-  });
-
-  if (includeExtensionSources) {
-    // Abyss (VidLink) 🔥 rank: 890 — requires browser extension
-    const vidlink = { ...vidlinkScraper, rank: 890 };
-    builder.addSource(vidlink as any);
-
-    // Apex (LookMovies) 🔥 — only available with the browser extension/app path.
-    const builtinSources = getBuiltinSources();
-    patchProviderNames(builtinSources);
-    const activeBuiltinIds = new Set(["lookmovie"]);
-    const customIds = new Set(["vidlink", "vidlink-custom", ...zeticuzIds]);
-    builtinSources.forEach((source) => {
-      if (activeBuiltinIds.has(source.id) && !customIds.has(source.id)) {
-        builder.addSource(source);
-      }
-    });
-  }
-
-  // Add all built-in embeds so any embed results resolve correctly
-  const builtinEmbeds = getBuiltinEmbeds();
-  builtinEmbeds.forEach((embed) => {
-    builder.addEmbed(embed);
-  });
-
-  return builder;
+function isDesktopApp(): boolean {
+  return Boolean(typeof window !== "undefined" && (window as any).__NEXUS_DESKTOP__);
 }
 
 export function getProviders() {
-  const extensionActive = isExtensionActiveCached();
-  const builder = buildBase(extensionActive);
+  const builder = buildProviders();
 
-  if (extensionActive) {
-    return builder
+  // Desktop app has extension built in and can play MKV; use NATIVE target.
+  if (isDesktopApp()) {
+    builder
+      .setFetcher(makeStandardFetcher(fetch))
+      .setProxiedFetcher(makeExtensionFetcher())
+      .setTarget(targets.NATIVE)
+      .enableConsistentIpForRequests();
+  } else if (isExtensionActiveCached()) {
+    builder
+      .setFetcher(makeStandardFetcher(fetch))
       .setProxiedFetcher(makeExtensionFetcher())
       .setTarget(targets.BROWSER_EXTENSION)
-      .enableConsistentIpForRequests()
-      .build();
+      .enableConsistentIpForRequests();
+  } else {
+    // The HF provider returns browser-ready URLs. Keep the normal fetcher
+    // available to provider code, but do not install a destination proxy.
+    builder
+      .setFetcher(makeStandardFetcher(fetch))
+      .setProxiedFetcher(makeStandardFetcher(fetch))
+      .setTarget(targets.BROWSER)
+      .enableConsistentIpForRequests();
   }
 
-  setupM3U8Proxy();
+  for (const provider of nexusCustomProviders) {
+    builder.addSource(provider as any);
+  }
+  for (const embed of nexusCustomEmbeds) {
+    builder.addEmbed(embed as any);
+  }
 
-  // Default setup: ZETICUZ sources are always available even without the
-  // extension. We use the extension target so sources without the CORS_ALLOWED
-  // flag are still selectable; streams are still proxied through
-  // the configured M3U8 proxy.
-  return builder
-    .setProxiedFetcher(makeLoadBalancedSimpleProxyFetcher())
-    .setTarget(targets.BROWSER_EXTENSION)
-    .enableConsistentIpForRequests()
-    .build();
+  return builder.build();
 }
 
 export function getAllProviders() {
-  return buildBase(true)
-    .setTarget(targets.BROWSER_EXTENSION)
-    .enableConsistentIpForRequests()
-    .build();
+  const builder = buildProviders()
+    .setFetcher(makeStandardFetcher(fetch))
+    .setProxiedFetcher(makeStandardFetcher(fetch))
+    .setTarget(targets.BROWSER)
+    .enableConsistentIpForRequests();
+
+  for (const provider of nexusCustomProviders) {
+    builder.addSource(provider as any);
+  }
+  for (const embed of nexusCustomEmbeds) {
+    builder.addEmbed(embed as any);
+  }
+
+  return builder.build();
 }
 
+/** Display name for a provider id, resolving the nexus catalog first. */
 export function getProviderDisplayName(id: string): string {
-  if (PROVIDER_NAME_PATCHES[id]) return PROVIDER_NAME_PATCHES[id];
-  const zeticuz = zeticuzScrapers.find((p) => p.id === id);
-  if (zeticuz) return zeticuz.name;
+  const slug = id.replace(/^nexus-/, "");
+  const def = NEXUS_PROVIDER_CATALOG.find((p) => p.id === slug);
+  if (def) return def.name;
   return id;
+}
+
+/** Every playable custom provider id (prefixed with `nexus-`). */
+export const zeticuzIds = NEXUS_PROVIDER_CATALOG.filter((p) => p.playable).map(
+  (p) => `nexus-${p.id}`,
+);
+
+export function patchProviderNames<T extends { id: string; name: string }[]>(
+  providers: T,
+): T {
+  return providers;
 }
 
 export function getSourceSortOrder(
   customOrder?: string[],
   enableCustom?: boolean,
 ): string[] {
-  const allSources = getAllProviders().listSources();
+  const allSources: { id: string; name: string }[] = getAllProviders().listSources() as any;
   const sourceIDs = allSources.map((s) => s.id);
 
   if (enableCustom && customOrder && customOrder.length > 0) {
@@ -131,33 +101,12 @@ export function getSourceSortOrder(
     return [...updated, ...missing];
   }
 
-  // Default order: Abyss first, Apex second, rest alphabetical by display name
-  const patched = allSources.map((s) => {
-    let displayName = s.name;
-    if (PROVIDER_NAME_PATCHES[s.id]) {
-      displayName = PROVIDER_NAME_PATCHES[s.id];
-    } else {
-      const zeticuz = zeticuzScrapers.find((p) => p.id === s.id);
-      if (zeticuz) displayName = zeticuz.name;
-    }
-    return { id: s.id, name: displayName };
+  // Default order: playable nexus providers by catalog rank (desc), then the rest.
+  const patched = allSources.map((s: { id: string; name: string }) => {
+    const slug = s.id.replace(/^nexus-/, "");
+    const def = NEXUS_PROVIDER_CATALOG.find((p: { id: string }) => p.id === slug);
+    return { id: s.id, name: def?.name ?? s.name, rank: def?.rank ?? 0 };
   });
-
-  const abyss = patched.find((s) => s.id === "vidlink-custom" || s.id === "vidlink");
-  const apex = patched.find((s) => s.id === "lookmovie");
-
-  const rest = patched.filter(
-    (s) => s.id !== "vidlink-custom" && s.id !== "vidlink" && s.id !== "lookmovie"
-  );
-  rest.sort((a, b) => a.name.localeCompare(b.name));
-
-  const sortedList: string[] = [];
-  if (abyss) sortedList.push(abyss.id);
-  if (apex) sortedList.push(apex.id);
-  sortedList.push(...rest.map((s) => s.id));
-
-  return sortedList;
+  patched.sort((a: { rank: number; name: string }, b: { rank: number; name: string }) => b.rank - a.rank || a.name.localeCompare(b.name));
+  return patched.map((s: { id: string }) => s.id);
 }
-
-export { patchProviderNames };
-export { zeticuzIds };

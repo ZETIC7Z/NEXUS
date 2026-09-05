@@ -416,6 +416,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "@nexus/providers": path.resolve(__dirname, "./node_modules/@p-stream/providers"),
         "@sozialhelden/ietf-language-tags": path.resolve(
           __dirname,
           "./node_modules/@sozialhelden/ietf-language-tags/dist/cjs",

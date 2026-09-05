@@ -147,5 +147,17 @@ Enjoy the new mobile experience!</description>
       <media:content url="https://zeticuz.online/nexus-logo-full.png" medium="image" />
       <media:thumbnail url="https://zeticuz.online/nexus-logo-full.png" />
     </item>
+    <item>
+      <guid>nexus-update-providers-2026</guid>
+      <title>NEXUS — New Streaming Providers &amp; Speed Upgrade</title>
+      <description>We integrated brand-new streaming providers! To help us keep the platform updated and running smoothly, please consider supporting us with a donation. — [DEV] ZETICUZ
+
+- **New Providers Added** 🎬: Videasy, VaPlayer, CastleTV, ShowBox, ZXCStreams, OneTouchTV, AniKoto, AniKai, NetMirror and Yamie now all work on this site.
+- **Faster Loading** ⚡: The site is optimized to load much faster on all devices and browsers.
+- **Watch On NEXUS 2.0** ✨: New cross-site button added to the menu.
+- **Ads Toggle** 🛡️: You can now turn ads on or off from Settings.</description>
+      <pubDate>Thu, 04 Sep 2026 12:00:00 GMT</pubDate>
+    </item>
+
   </channel>
 </rss>

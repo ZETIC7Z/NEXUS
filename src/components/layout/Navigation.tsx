@@ -494,7 +494,7 @@ function DiscoverNexusDropdown() {
             className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200"
           >
             <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded overflow-hidden flex-shrink-0" style={{ background: "#000" }}>
+              <div className="w-9 h-9 rounded overflow-hidden flex-shrink-0" style={{ background: "#000" }}>
                 <img
                   src="/ZETFLIX.png"
                   alt="Zetflix"
@@ -519,6 +519,37 @@ function DiscoverNexusDropdown() {
           </a>
         </div>
       )}
+
+                <a
+            href="https://www.nexusph.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-between px-4 py-4 text-gray-300 hover:text-white hover:bg-white/5 transition-colors duration-200 relative"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded overflow-hidden flex-shrink-0"
+                style={{
+                  background: "#000",
+                  boxShadow: "0 0 14px rgba(168,85,247,0.85), 0 0 30px rgba(168,85,247,0.45)",
+                }}
+              >
+                <img
+                  src="/icon.png"
+                  alt="Nexus"
+                  className="w-full h-full object-contain"
+                  style={{ mixBlendMode: "screen" }}
+                />
+              </div>
+              <span className="text-base font-medium uppercase tracking-wider">WATCH ON NEXUS 2.0</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-orange-400 animate-pulse">
+                <span className="animate-bounce inline-block">🔥</span>
+                NEW
+              </span>
+            </div>
+          </a>
 
       {/* Download Modal Portal */}
       <DownloadModal
